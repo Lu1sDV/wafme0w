@@ -9,7 +9,7 @@
 
 Based on <a href ="https://github.com/EnableSecurity/wafw00f/">Wafw00f</a>, its features are:
 
-- Concurrent fingerprint
+- Concurrent fingerprinting
 - **STDIN** supported
 - Fast detection mode for huge target lists
 - Multiple output formats supported (JSON, file, stdout)
