@@ -22,7 +22,7 @@ Based on <a href ="https://github.com/EnableSecurity/wafw00f/">Wafw00f</a>, its 
 go install -v github.com/Lu1sDV/wafme0w/cmd/wafme0w@latest
 ```
 
-# Running Wafme0w
+## Running Wafme0w
 
 To run the tool on a target, just use the following command.
 
