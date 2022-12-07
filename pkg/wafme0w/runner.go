@@ -60,7 +60,7 @@ func (r *Runner) Scan() ([]Result, error) {
 		return []Result{}, err
 	}
 
-	if r.Options.Concurrency != 1 {
+	if r.Options.Concurrency > 1 {
 		//concurrent
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
