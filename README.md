@@ -71,7 +71,52 @@ Fast Web Application Firewall Fingerprinting tool
 [~] https://youtube.com no WAFs have been found
 
 ```
+<table>
+<tr>
+<td>
 
+## Wafme0w Go library
+
+Usage Example:
+```go
+package main
+
+import (
+"bytes"
+"fmt"
+"github.com/Lu1sDV/wafme0w/pkg/wafme0w"
+"os"
+)
+
+func main() {
+	targets := []byte("https://google.com\nhttps://paypal.com\n")
+	targetsReader := bytes.NewReader(targets)
+	//Otherwise you can also get your targets from a file
+	//targetsReader, err := os.Open("/tmp/alexa-top-20.txt")
+	//if err != nil {
+	//	panic(err)
+	//}
+	fingerPrintsFile, err := os.Open("/PATH/TO/wafme0w/cmd/wafme0w/resources/waf-fingerprints.json")
+	//fingerprints at https://github.com/Lu1sDV/wafme0w/blob/main/cmd/wafme0w/resources/waf-fingerprints.json 
+	opts := &wafme0w.Options{Inputs: targetsReader,
+		FingerPrints: fingerPrintsFile,
+		Silent:       true,
+		Concurrency:  10,
+		//FastMode:     true,
+		//OutputFile: "myout.json",
+	}
+	runner := wafme0w.NewRunner(opts)
+	result, err := runner.Scan()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("%#v\n", result)
+}
+
+```
+</td>  
+</tr>
+</table>
 
 # Contact
 
