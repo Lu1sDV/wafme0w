@@ -7,6 +7,7 @@ import (
 	"github.com/jessevdk/go-flags"
 	"github.com/logrusorgru/aurora/v4"
 	"os"
+	"strings"
 )
 
 //go:embed resources/waf-fingerprints.json
@@ -32,7 +33,7 @@ func main() {
 
 	if opts.Silent && opts.OutputFile == "" {
 		wafme0w.PrintError("You must provide a valid output file when Silent mode is enabled", au)
-		os.Exit(0)
+		os.Exit(1)
 	}
 
 	if hasStdin() {
@@ -40,9 +41,31 @@ func main() {
 		opts.Inputs = os.Stdin
 	}
 
+	//check if target input has been provided
+	if opts.InputFile == "" && opts.Target == "" && !opts.StdIn {
+		wafme0w.PrintError("No targets provided", au)
+		os.Exit(1)
+	}
+
+	//parse inputs if provided by command line arguments
+	if !opts.StdIn {
+		if opts.Target != "" {
+			opts.Inputs = strings.NewReader(opts.Target)
+		}
+		if opts.InputFile != "" {
+			//input file shadows target option
+			file, err := os.Open(opts.InputFile)
+			if err != nil {
+				errText := "error reading input file: " + err.Error()
+				wafme0w.PrintError(errText, au)
+			}
+			opts.Inputs = file
+		}
+	}
+
 	fingerPrints, err := readFingerPrints(opts.FingerPrintFile)
 	if err != nil {
-		errText := "error reading fingerprints: " + err.Error()
+		errText := "Error reading fingerprints: " + err.Error()
 		wafme0w.PrintError(errText, au)
 	}
 	opts.FingerPrints = bytes.NewReader(fingerPrints)
@@ -54,6 +77,7 @@ func main() {
 		wafs, err := runner.GetAllWAFs()
 		if err != nil {
 			wafme0w.PrintError("Error displaying firewalls", au)
+			os.Exit(1)
 		}
 		wafme0w.PrintAllWafs(wafs, au)
 		os.Exit(0)

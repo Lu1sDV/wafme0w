@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-const version = "1.0.0"
+const version = "v0.1.4"
 
 const cat = `
              /\_/\           ___
@@ -13,7 +13,7 @@ const cat = `
             <_____>__(_____)____/` + "\n"
 
 const whatIs = `
-                Wafme0w v` + version + "\n"
+                Wafme0w ` + version + "\n"
 const explain = `
 Fast Web Application Firewall Fingerprinting tool`
 

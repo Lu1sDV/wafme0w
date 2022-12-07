@@ -36,7 +36,7 @@ type Result struct {
 func (r *Runner) Scan() ([]Result, error) {
 	var results []Result
 
-	if r.Options.InputFile == "" && r.Options.Target == "" && !r.Options.StdIn {
+	if r.Options.InputFile == "" && r.Options.Target == "" && r.Options.Inputs == nil {
 		return results, errors.New("no target provided")
 	}
 
@@ -58,21 +58,6 @@ func (r *Runner) Scan() ([]Result, error) {
 
 	if err := r.getWAFsFromFingerPrints(); err != nil {
 		return []Result{}, err
-	}
-
-	if !r.Options.StdIn {
-		if r.Options.Target != "" {
-			r.Options.Inputs = strings.NewReader(r.Options.Target)
-		}
-
-		if r.Options.InputFile != "" {
-			//input file shadows target option
-			file, err := os.Open(r.Options.InputFile)
-			if err != nil {
-				return []Result{}, err
-			}
-			r.Options.Inputs = file
-		}
 	}
 
 	if r.Options.Concurrency != 1 {
