@@ -1,0 +1,3632 @@
+[
+	{
+		"name": "Expression Engine (EllisLab)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^exp_track.+?="
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^exp_last_.+?=",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)invalid get data"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "NetScaler AppFirewall (Citrix Systems)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Via",
+						"header_value": "(?i)NS\\-CACHE"
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^(ns_af=|citrix_ns_id|NSC_)"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)(NS Transaction|AppFW Session) id"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Violation Category.{0,5}?APPFW_"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Citrix\\|NetScaler"
+					},
+					{
+						"type": "Header",
+						"header_key": "Cneonction",
+						"header_value": "(?i)^(keep alive|close)",
+						"attack": true
+					},
+					{
+						"type": "Header",
+						"header_key": "nnCoection",
+						"header_value": "(?i)^(keep alive|close)",
+						"attack": true
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Beluga CDN (Beluga)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)Beluga"
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^beluga_request_trail="
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Shieldon Firewall (Shieldon.io)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)Please solve CAPTCHA"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)shieldon_captcha"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Unusual behavior detected"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)status-user-info"
+					}
+				]
+			},
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)Access denied"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)The IP address you are using has been blocked."
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)status-user-info"
+					}
+				]
+			},
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)Please line up"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)This page is limiting the number of people online. Please wait a moment."
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "RequestValidationMode (Microsoft)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)Request Validation has detected a potentially dangerous client input"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)ASP\\.NET has detected data in the request"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)HttpRequestValidationException"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "URLMaster SecurityCheck (iFinity/DotNetNuke)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "X-UrlMaster-Debug",
+						"header_value": "(?i).+"
+					},
+					{
+						"type": "Header",
+						"header_key": "X-UrlMaster-Ex",
+						"header_value": "(?i).+"
+					}
+				],
+				"any": true
+			},
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)Ur[li]RewriteModule"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)SecurityCheck"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "Teros (Citrix Systems)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^st8id="
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "CdnNS Application Gateway (CdnNs/WdidcNet)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)cdnnswaf application gateway"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Cloudbric (Penta Security)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)\u003ctitle\u003eCloudbric.{0,5}?ERROR!"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Your request was blocked by Cloudbric"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)please contact Cloudbric Support"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)cloudbric\\.zendesk\\.com"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Cloudbric Help Center"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)malformed request syntax.{0,4}?invalid request message framing.{0,4}?or deceptive request routing"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Incapsula (Imperva Inc.)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^incap_ses.*?="
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^visid_incap.*?="
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)incapsula incident id"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)powered by incapsula"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)/_Incapsula_Resource"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Reblaze (Reblaze)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^rbzid"
+					},
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)Reblaze Secure Web Gateway"
+					}
+				],
+				"any": true
+			},
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)current session has been terminated"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)do not hesitate to contact us"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)access denied \\(\\d{3}\\)"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "Yunjiasu (Baidu Cloud Computing)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)Yunjiasu(.+)?"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Sitelock (TrueShield)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)SiteLock will remember you"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Sitelock is leader in Business Website Security Services"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)sitelock[_\\-]shield([_\\-]logo|[\\-_]badge)?"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)SiteLock incident ID"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "NinjaFirewall (NinTechNet)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)\u003ctitle\u003eNinjaFirewall.{0,10}?\\d{3}.forbidden"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)For security reasons?.{0,10}?it was blocked and logged"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "eEye SecureIIS (BeyondTrust)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)SecureIIS is an internet security application"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Download SecureIIS Personal Edition"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)https?://www\\.eeye\\.com/Secure\\-?IIS"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Secure Entry (United Security Providers)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)Secure Entry Server"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Jiasule (Jiasule)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)jiasule\\-waf"
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^jsl_tracking(.+)?="
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)__jsluid="
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)notice\\-jiasule"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)static\\.jiasule\\.com"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "DDoS-GUARD (DDOS-GUARD CORP.)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^__ddg1.*?="
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^__ddg2.*?="
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^__ddgid.*?="
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^__ddgmark.*?="
+					},
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)ddos-guard"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "TransIP Web Firewall (TransIP)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "X-TransIP-Backend",
+						"header_value": "(?i).+"
+					},
+					{
+						"type": "Header",
+						"header_key": "X-TransIP-Balancer",
+						"header_value": "(?i).+"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Tencent Cloud Firewall (Tencent Technologies)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)waf\\.tencent\\-?cloud\\.com/"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "NetContinuum (Barracuda Networks)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^NCI__SessionId="
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Fastly (Fastly CDN)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "X-Fastly-Request-ID",
+						"header_value": "(?i)\\w+"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Astra (Czar Securities)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^cz_astra_csrf_cookie"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)astrawebsecurity\\.freshdesk\\.com"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)www\\.getastra\\.com/assets/images"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "ASP.NET Generic (Microsoft)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)iis (\\d+.)+?detailed error"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)potentially dangerous request querystring"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)application error from being viewed remotely (for security reasons)?"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)An application error occurred on the server"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Oracle Cloud (Oracle)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)\u003ctitle\u003efw_error_www"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)src=\\\"/oralogo_small\\.gif\\\""
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)www\\.oracleimg\\.com/us/assets/metrics/ora_ocom\\.js"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Trafficshield (F5 Networks)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^ASINFO="
+					},
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)F5-TrafficShield"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Shadow Daemon (Zecure)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)\u003ch\\d{1}\u003e\\d{3}.forbidden\u003c.h\\d{1}\u003e"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)request forbidden by administrative rules"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "ISA Server (Microsoft)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)The.{0,10}?(isa.)?server.{0,10}?denied the specified uniform resource locator \\(url\\)"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "StackPath (StackPath)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)\u003ctitle\u003eStackPath[^\u003c]+\u003c/title\u003e"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Protected by \u003ca href=\"https?:\\/\\/(?:www\\.)?stackpath\\.com\\/\"[^\u003e]+\u003eStackPath"
+					}
+				],
+				"any": true
+			},
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)is using a security service for protection against online attacks"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)An action has triggered the service and blocked your request"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "HyperGuard (Art of Defense)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^WODSESSION="
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Qrator (Qrator)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)QRATOR"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "SecKing (SecKing)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)secking(.?waf)?"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "WebARX (WebARX Security Solutions)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)WebARX.{0,10}?Web Application Firewall"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)www\\.webarxsecurity\\.com"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)/wp\\-content/plugins/webarx/includes/"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "BIG-IP AP Manager (F5 Networks)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^LastMRH_Session"
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^MRHSession"
+					}
+				]
+			},
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^MRHSession"
+					},
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)Big([-_])?IP",
+						"attack": true
+					}
+				]
+			},
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^F5_fullWT"
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^F5_fullWT"
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^F5_HT_shrinked"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Qcloud (Tencent Cloud)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)腾讯云Web应用防火墙"
+					},
+					{
+						"type": "Status",
+						"pattern": "403"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "NevisProxy (AdNovum)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^Navajo"
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^NP_ID"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Comodo cWatch (Comodo CyberSecurity)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)Protected by COMODO WAF(.+)?"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "NexusGuard Firewall (NexusGuard)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)Powered by Nexusguard"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)nexusguard\\.com/wafpage/.+#\\d{3};"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Chuang Yu Shield (Yunaq)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)www\\.365cyd\\.com"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)help\\.365cyd\\.com/cyd\\-error\\-help.html\\?code=403"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Safedog (SafeDog)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^safedog\\-flow\\-item="
+					},
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)Safedog"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)safedogsite/broswer_logo\\.jpg"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)404\\.safedog\\.cn/sitedog_stat.html"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)404\\.safedog\\.cn/images/safedogsite/head\\.png"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Approach (Approach)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)approach.{0,10}?web application (firewall|filtering)"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)approach.{0,10}?infrastructure team"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Azure Front Door (Microsoft)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "X-Azure-Ref",
+						"header_value": "(?i).+?"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "BlockDoS (BlockDoS)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)blockdos\\.net"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "SEnginx (Neusoft)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)SENGINX\\-ROBOT\\-MITIGATION"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "UEWaf (UCloud)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)uewaf(/[0-9\\.]+)?"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)/uewaf_deny_pages/default/img/"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)ucloud\\.cn"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "URLScan (Microsoft)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)Rejected[-_]By[_-]UrlScan"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)A custom filter or module.{0,4}?such as URLScan"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "NAXSI (NBS Systems)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "X-Data-Origin",
+						"header_value": "(?i)^naxsi(.+)?"
+					},
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)naxsi(.+)?"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)blocked by naxsi"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)naxsi blocked information"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "ACE XML Gateway (Cisco)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)ACE XML Gateway"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "SonicWall (Dell)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)SonicWALL"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)\u003c(title|h\\d{1})\u003eWeb Site Blocked"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)\\+?nsa_banner"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Squarespace (Squarespace)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)Squarespace"
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^SS_ANALYTICS_ID="
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^SS_MATTR="
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^SS_MID="
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)SS_CVT="
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)status\\.squarespace\\.com"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)BRICK\\-\\d{2}"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "VirusDie (VirusDie LLC)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)cdn\\.virusdie\\.ru/splash/firewallstop\\.png"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)copy.{0,10}?Virusdie\\.ru"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "SiteGuard (Sakura Inc.)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)Powered by SiteGuard"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)The server refuse to browse the page"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "SecuPress WP Security (SecuPress)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)\u003c(title|h\\d{1})\u003eSecuPress"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "GoDaddy Website Protection (GoDaddy)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)GoDaddy (security|website firewall)"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Varnish (OWASP)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)Request rejected by xVarnish\\-WAF"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Airlock (Phion/Ergon)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^al[_-]?(sess|lb)="
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)server detected a syntax error in your request"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "SquidProxy IDS (SquidProxy)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)squid(/[0-9\\.]+)?"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Access control configuration prevents your request"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "Huawei Cloud Firewall (Huawei)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^HWWAFSESID="
+					},
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)HuaweiCloudWAF"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)hwclouds\\.com"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)hws_security@"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Profense (ArmorLogic)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)Profense"
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^PLBSID="
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "LiteSpeed (LiteSpeed Technologies)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)LiteSpeed"
+					},
+					{
+						"type": "Status",
+						"pattern": "403"
+					}
+				]
+			},
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)Proudly powered by litespeed web server"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)www\\.litespeedtech\\.com/error\\-page"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "KeyCDN (KeyCDN)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)KeyCDN"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Yunsuo (Yunsuo)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^yunsuo_session="
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)class=\\\"yunsuologo\\\""
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "AppWall (Radware)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)CloudWebSec\\.radware\\.com"
+					},
+					{
+						"type": "Header",
+						"header_key": "X-SL-CompState",
+						"header_value": "(?i).+"
+					}
+				],
+				"any": true
+			},
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)because we have detected unauthorized activity"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)\u003ctitle\u003eUnauthorized Request Blocked"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)if you believe that there has been some mistake"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)\\?Subject=Security Page.{0,10}?Case Number"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "WP Cerber Security (Cerber Tech)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)your request looks suspicious or similar to automated"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)our server stopped processing your request"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)We.re sorry.{0,10}?you are not allowed to proceed"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)requests from spam posting software"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)\u003ctitle\u003e403 Access Forbidden"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "ChinaCache Load Balancer (ChinaCache)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Powered-By-ChinaCache",
+						"header_value": "(?i).+"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "BIG-IP Local Traffic Manager (F5 Networks)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^bigipserver"
+					},
+					{
+						"type": "Header",
+						"header_key": "X-Cnection",
+						"header_value": "(?i)close",
+						"attack": true
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "AnYu (AnYu Technologies)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)anyu.{0,10}?the green channel"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)your access has been intercepted by anyu"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "CrawlProtect (Jean-Denis Brun)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^crawlprotecttag="
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)\u003ctitle\u003ecrawlprotect"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)this site is protected by crawlprotect"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "WebLand (WebLand)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)protected by webland"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Open-Resty Lua Nginx (FLOSS)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)^openresty/[0-9\\.]+?"
+					},
+					{
+						"type": "Status",
+						"pattern": "403"
+					}
+				]
+			},
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)openresty/[0-9\\.]+?"
+					},
+					{
+						"type": "Status",
+						"pattern": "406"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "Kona SiteDefender (Akamai)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)AkamaiGHost"
+					},
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)AkamaiGHost",
+						"attack": true
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Wordfence (Defiant)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)wf[_\\-]?WAF"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Generated by Wordfence"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)broke one of (the )?Wordfence (advanced )?blocking rules"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)/plugins/wordfence"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Sucuri CloudProxy (Sucuri Inc.)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "X-Sucuri-ID",
+						"header_value": "(?i).+?"
+					},
+					{
+						"type": "Header",
+						"header_key": "X-Sucuri-Cache",
+						"header_value": "(?i).+?"
+					},
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)Sucuri(\\-Cloudproxy)?"
+					},
+					{
+						"type": "Header",
+						"header_key": "X-Sucuri-Block",
+						"header_value": "(?i).+?",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Access Denied.{0,6}?Sucuri Website Firewall"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)\u003ctitle\u003eSucuri WebSite Firewall.{0,6}?(CloudProxy)?.{0,6}?Access Denied"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)sucuri\\.net/privacy\\-policy"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)cdn\\.sucuri\\.net/sucuri[-_]firewall[-_]block\\.css"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)cloudproxy@sucuri\\.net"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Sabre Firewall (Sabre)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)dxsupport\\.sabre\\.com"
+					}
+				],
+				"any": true
+			},
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)\u003ctitle\u003eApplication Firewall Error"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)add some important details to the email for us to investigate"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "Bekchy (Faydata Technologies Inc.)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)Bekchy.{0,10}?Access Denied"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)bekchy\\.com/report"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "BitNinja (BitNinja)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)Security check by BitNinja"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Visitor anti-robot validation"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "WTS-WAF (WTS)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)wts/[0-9\\.]+?"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)\u003c(title|h\\d{1})\u003eWTS\\-WAF"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Greywizard (Grey Wizard)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)greywizard"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)\u003c(title|h\\d{1})\u003eGrey Wizard"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)contact the website owner or Grey Wizard"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)We.ve detected attempted attack or non standard traffic from your ip address"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Puhui (Puhui)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)Puhui[\\-_]?WAF"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Cloudfloor (Cloudfloor DNS)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)CloudfloorDNS(.WAF)?"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)\u003c(title|h\\d{1})\u003eCloudfloorDNS.{0,6}?Web Application Firewall Error"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)www\\.cloudfloordns\\.com/contact"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "RSFirewall (RSJoomla!)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)com_rsfirewall_(\\d{3}_forbidden|event)?"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Safe3 Web Firewall (Safe3)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)Safe3 Web Firewall"
+					},
+					{
+						"type": "Header",
+						"header_key": "X-Powered-By",
+						"header_value": "(?i)Safe3WAF/[\\.0-9]+?"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Safe3waf/[0-9\\.]+?"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Zenedge (Zenedge)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)ZENEDGE"
+					},
+					{
+						"type": "Header",
+						"header_key": "X-Zen-Fury",
+						"header_value": "(?i).+?"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)/__zenedge/"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Newdefend (NewDefend)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)Newdefend"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)www\\.newdefend\\.com/feedback"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)/nd\\-block/"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "pkSecurity IDS (pkSec)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)pk.?Security.?Module"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Security.Alert"
+					}
+				]
+			},
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)As this could be a potential hack attack"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)A safety critical (call|request) was (detected|discovered) and blocked"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)maximum number of reloads per minute and prevented access"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "DOSarrest (DOSarrest Internet Security)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "X-DIS-Request-ID",
+						"header_value": "(?i).+"
+					},
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)DOSarrest(.*)?"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Qiniu (Qiniu CDN)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "X-Qiniu-CDN",
+						"header_value": "(?i)\\d+?"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "BinarySec (BinarySec)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)BinarySec"
+					},
+					{
+						"type": "Header",
+						"header_key": "x-binarysec-via",
+						"header_value": "(?i).+"
+					},
+					{
+						"type": "Header",
+						"header_key": "x-binarysec-nocache",
+						"header_value": "(?i).+"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "WebTotem (WebTotem)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)The current request was blocked.{0,8}?\u003eWebTotem"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Imunify360 (CloudLinux)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)imunify360.{0,10}?"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)protected.by.{0,10}?imunify360"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)powered.by.{0,10}?imunify360"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)imunify360.preloader"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Anquanbao (Anquanbao)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "X-Powered-By-Anquanbao",
+						"header_value": "(?i).+?"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)aqb_cc/error/"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "AliYunDun (Alibaba Cloud Computing)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)error(s)?\\.aliyun(dun)?\\.(com|net)?"
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^aliyungf_tc="
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)cdn\\.aliyun(cs)?\\.com"
+					},
+					{
+						"type": "Status",
+						"pattern": "405"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "PowerCDN (PowerCDN)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Via",
+						"header_value": "(?i)(.*)?powercdn.com(.*)?"
+					},
+					{
+						"type": "Header",
+						"header_key": "X-Cache",
+						"header_value": "(?i)(.*)?powercdn.com(.*)?"
+					},
+					{
+						"type": "Header",
+						"header_key": "X-CDN",
+						"header_value": "(?i)PowerCDN"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Distil (Distil Networks)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)cdn\\.distilnetworks\\.com/images/anomaly\\.detected\\.png"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)distilCaptchaForm"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)distilCallbackGuard"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "West263 CDN (West263CDN)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "X-Cache",
+						"header_value": "(?i)WS?T263CDN"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Instart DX (Instart Logic)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "X-Instart-Request-ID",
+						"header_value": "(?i).+"
+					},
+					{
+						"type": "Header",
+						"header_key": "X-Instart-Cache",
+						"header_value": "(?i).+"
+					},
+					{
+						"type": "Header",
+						"header_key": "X-Instart-WL",
+						"header_value": "(?i).+"
+					}
+				],
+				"any": true
+			},
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)the requested url was rejected"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)please consult with your administrator"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)your support id is"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "PerimeterX (PerimeterX)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)www\\.perimeterx\\.(com|net)/whywasiblocked"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)client\\.perimeterx\\.(net|com)"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)denied because we believe you are using automation tools"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "XLabs Security WAF (XLabs)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "X-CDN",
+						"header_value": "(?i)XLabs Security"
+					},
+					{
+						"type": "Header",
+						"header_key": "Secured",
+						"header_value": "(?i)^By XLabs Security"
+					},
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)XLabs[-_]?.?WAF",
+						"attack": true
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "YXLink (YxLink Technologies)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^yx_ci_session="
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^yx_language="
+					},
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)Yxlink([\\-_]?WAF)?"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Armor Defense (Armor)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)blocked by website protection from armor"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)please create an armor support ticket"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "wpmudev WAF (Incsub)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)href=\"http(s)?.\\/\\/wpmudev.com\\/.{0,15}?"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Click on the Logs tab, then the WAF Log."
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Choose your site from the list"
+					},
+					{
+						"type": "Status",
+						"pattern": "403"
+					}
+				]
+			},
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)\u003ch1\u003eWhoops, this request has been blocked!"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)This request has been deemed suspicious"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)possible attack on our servers."
+					},
+					{
+						"type": "Status",
+						"pattern": "403"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "SecureSphere (Imperva Inc.)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)\u003c(title|h2)\u003eError"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)The incident ID is"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)This page can't be displayed"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Contact support for additional information"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "Eisoo Cloud Firewall (Eisoo)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)EisooWAF(\\-AZURE)?/?"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)\u003clink.{0,10}?href=\\\"/eisoo\\-firewall\\-block\\.css"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)www\\.eisoo\\.com"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)\u0026copy; \\d{4} Eisoo Inc"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "DataPower (IBM)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "X-Backside-Transport",
+						"header_value": "(?i)(OK|FAIL)"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "WatchGuard (WatchGuard Technologies)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)WatchGuard"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Request denied by WatchGuard Firewall"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)WatchGuard Technologies Inc\\."
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Safeline (Chaitin Tech.)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)safeline|\u003c!\\-\\-\\sevent id:"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Mission Control Shield (Mission Control)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)Mission Control Application Shield"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "AireeCDN (Airee)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)Airee"
+					},
+					{
+						"type": "Header",
+						"header_key": "X-Cache",
+						"header_value": "(?i)(\\w+\\.)?airee\\.cloud"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)airee\\.cloud"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Viettel (Cloudrity)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)Access Denied.{0,10}?Viettel WAF"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)cloudrity\\.com\\.(vn)?/"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Viettel WAF System"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "AWS Elastic Load Balancer (Amazon)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "X-AMZ-ID",
+						"header_value": "(?i).+?"
+					},
+					{
+						"type": "Header",
+						"header_key": "X-AMZ-Request-ID",
+						"header_value": "(?i).+?"
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^aws.?alb="
+					},
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)aws.?elb",
+						"attack": true
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "UTM Web Protection (Sophos)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)www\\.sophos\\.com"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Powered by.?(Sophos)? UTM Web Protection"
+					}
+				],
+				"any": true
+			},
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)\u003ctitle\u003eAccess to the requested URL was blocked"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Access to the requested URL was blocked"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)incident was logged with the following log identifier"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Inbound Anomaly Score exceeded"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Your cache administrator is"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "Malcare (Inactiv)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)firewall.{0,15}?powered.by.{0,15}?malcare.{0,15}?pro"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)blocked because of malicious activities"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "NullDDoS Protection (NullDDoS)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)NullDDoS(.System)?"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Bluedon (Bluedon IST)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)BDWAF"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)bluedon web application firewall"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Shield Security (One Dollar Plugin)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)You were blocked by the Shield"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)remaining transgression\\(s\\) against this site"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Something in the URL.{0,5}?Form or Cookie data wasn\\'t appropriate"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Cloudflare (Cloudflare Inc.)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "server",
+						"header_value": "(?i)cloudflare"
+					},
+					{
+						"type": "Header",
+						"header_key": "server",
+						"header_value": "(?i)cloudflare[-_]nginx"
+					},
+					{
+						"type": "Header",
+						"header_key": "cf-ray",
+						"header_value": "(?i).+?"
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)__cfduid"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Barikode (Ethic Ninja)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)\u003cstrong\u003ebarikode\u003c.strong\u003e"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "DynamicWeb Injection Check (DynamicWeb)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "X-403-Status-By",
+						"header_value": "(?i)dw.inj.check",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)by dynamic check(.{0,10}?module)?"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "PT Application Firewall (Positive Technologies)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)\u003ch1.{0,10}?Forbidden"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)\u003cpre\u003eRequest.ID:.{0,10}?\\d{4}\\-(\\d{2})+.{0,35}?pre\u003e"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "OnMessage Shield (BlackBaud)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "X-Engine",
+						"header_value": "(?i)onMessage Shield"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Blackbaud K\\-12 conducts routine maintenance"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)onMessage SHEILD"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)maintenance\\.blackbaud\\.com"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)status\\.blackbaud\\.com"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "LimeLight CDN (LimeLight)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^limelight"
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^l[mg]_sessid="
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Janusec Application Gateway (Janusec)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)janusec application gateway"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "WebSEAL (IBM)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)WebSEAL"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)This is a WebSEAL error message template file"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)WebSEAL server received an invalid HTTP request"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Palo Alto Next Gen Firewall (Palo Alto Networks)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)Download of virus.spyware blocked"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Palo Alto Next Generation Security Platform"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "PentaWAF (Global Network Services)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)PentaWaf(/[0-9\\.]+)?"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Penta.?Waf/[0-9\\.]+?.server"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "BIG-IP AppSec Manager (F5 Networks)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)the requested url was rejected"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)please consult with your administrator"
+					}
+				]
+			},
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^TS.+?"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "ZScaler (Accenture)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)ZScaler"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Access Denied.{0,10}?Accenture Policy"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)policies\\.accenture\\.com"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)login\\.zscloud\\.net/img_logo_new1\\.png"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Zscaler to protect you from internet threats"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Internet Security by ZScaler"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Accenture.{0,10}?webfilters indicate that the site likely contains"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "AzionCDN (AzionCDN)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)Azion([-_]CDN)?"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "BulletProof Security Pro (AITpro Security)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)\\+?bpsMessage"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)403 Forbidden Error Page"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)If you arrived here due to a search"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "FortiWeb (Fortinet)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^FORTIWAFSID="
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i).fgd_icon"
+					}
+				],
+				"any": true
+			},
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)fgd_icon"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)web.page.blocked"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)url"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)attack.id"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)message.id"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)client.ip"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "DotDefender (Applicure Technologies)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "X-dotDefender-denied",
+						"header_value": "(?i).+?",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)dotdefender blocked your request"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Applicure is the leading provider of web application security"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "KS-WAF (KnownSec)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)/ks[-_]waf[-_]error\\.png"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Cloud Protector (Rohde \u0026 Schwarz CyberSecurity)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)Cloud Protector.*?by Rohde.{3,8}?Schwarz Cybersecurity"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)\u003ca href='https?:\\/\\/(?:www\\.)?cloudprotector\\.com\\/'\u003eR.{1,6}?S.Cloud Protector"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "ServerDefender VP (Port80 Software)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "X-Pint",
+						"header_value": "(?i)p(ort\\-)?80"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Alert Logic (Alert Logic)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)\u003c(title|h\\d{1})\u003erequested url cannot be found"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)we are sorry.{0,10}?but the page you are looking for cannot be found"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)back to previous page"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)proceed to homepage"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)reference id"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "Cloudfront (Amazon)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)Cloudfront"
+					},
+					{
+						"type": "Header",
+						"header_key": "Via",
+						"header_value": "(?i)([0-9\\.]+?)? \\w+?\\.cloudfront\\.net \\(Cloudfront\\)"
+					},
+					{
+						"type": "Header",
+						"header_key": "X-Amz-Cf-Id",
+						"header_value": "(?i).+?",
+						"attack": true
+					},
+					{
+						"type": "Header",
+						"header_key": "X-Cache",
+						"header_value": "(?i)Error from Cloudfront",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Generated by cloudfront \\(CloudFront\\)"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Xuanwudun (Xuanwudun)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)admin\\.dbappwaf\\.cn/(index\\.php/Admin/ClientMisinform/)?"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)class=.(db[\\-_]?)?waf(.)?([\\-_]?row)?\u003e"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Wallarm (Wallarm Inc.)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)nginx[\\-_]wallarm"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "DenyALL (Rohde \u0026 Schwarz CyberSecurity)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Status",
+						"pattern": "200"
+					},
+					{
+						"type": "Reason",
+						"pattern": "(?i)Condition Intercepted"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "Yundun (Yundun)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)YUNDUN"
+					},
+					{
+						"type": "Header",
+						"header_key": "X-Cache",
+						"header_value": "(?i)YUNDUN"
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^yd_cookie="
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Blocked by YUNDUN Cloud WAF"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)yundun\\.com/yd[-_]http[_-]error/"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)www\\.yundun\\.com/(static/js/fingerprint\\d{1}?\\.js)?"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "360WangZhanBao (360 Technologies)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)qianxin\\-waf"
+					},
+					{
+						"type": "Header",
+						"header_key": "WZWS-Ray",
+						"header_value": "(?i).+?"
+					},
+					{
+						"type": "Header",
+						"header_key": "X-Powered-By-360WZB",
+						"header_value": "(?i).+?"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)wzws\\-waf\\-cgi/"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)wangshan\\.360\\.cn"
+					},
+					{
+						"type": "Status",
+						"pattern": "493"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "ModSecurity (SpiderLabs)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)(mod_security|Mod_Security|NOYB)"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)This error was generated by Mod.?Security"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)rules of the mod.security.module"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)mod.security.rules triggered"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Protected by Mod.?Security"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)/modsecurity[\\-_]errorpage/"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)modsecurity iis"
+					}
+				],
+				"any": true
+			},
+			{
+				"fingerprints": [
+					{
+						"type": "Reason",
+						"pattern": "(?i)ModSecurity Action"
+					},
+					{
+						"type": "Status",
+						"pattern": "403"
+					}
+				]
+			},
+			{
+				"fingerprints": [
+					{
+						"type": "Reason",
+						"pattern": "(?i)ModSecurity Action"
+					},
+					{
+						"type": "Status",
+						"pattern": "406"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "RayWAF (WebRay Solutions)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)WebRay\\-WAF"
+					},
+					{
+						"type": "Header",
+						"header_key": "DrivedBy",
+						"header_value": "(?i)RaySrv.RayEng/[0-9\\.]+?"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Barracuda (Barracuda Networks)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^barra_counter_session="
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^BNI__BARRACUDA_LB_COOKIE="
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^BNI_persistence="
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^BN[IE]S_.*?="
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Barracuda.Networks"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "aeSecure (aeSecure)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "aeSecure-code",
+						"header_value": "(?i).+?"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)aesecure_denied\\.png"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "FirePass (F5 Networks)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^VHOST"
+					},
+					{
+						"type": "Header",
+						"header_key": "Location",
+						"header_value": "(?i)\\/my\\.logon\\.php3"
+					}
+				]
+			},
+			{
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^F5_fire.+?"
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^F5_passid_shrinked"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "CacheWall (Varnish)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)Varnish"
+					},
+					{
+						"type": "Header",
+						"header_key": "X-Varnish",
+						"header_value": "(?i).+"
+					},
+					{
+						"type": "Header",
+						"header_key": "X-Cachewall-Action",
+						"header_value": "(?i).+?"
+					},
+					{
+						"type": "Header",
+						"header_key": "X-Cachewall-Reason",
+						"header_value": "(?i).+?"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)security by cachewall"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)403 naughty.{0,10}?not nice!"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)varnish cache server"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "ASPA Firewall (ASPA Engineering Co.)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)ASPA[\\-_]?WAF"
+					},
+					{
+						"type": "Header",
+						"header_key": "ASPA-Cache-Status",
+						"header_value": "(?i).+?"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Nemesida (PentestIt)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)@?nemesida(\\-security)?\\.com"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Suspicious activity detected.{0,10}?Access to the site is blocked"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)nwaf@"
+					},
+					{
+						"type": "Status",
+						"pattern": "222"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "Edgecast (Verizon Digital Media)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)^ECD(.+)?"
+					},
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)^ECS(.*)?"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "CacheFly CDN (CacheFly)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "BestCDN",
+						"header_value": "(?i)Cachefly"
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)^cfly_req.*="
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "WebKnight (AQTRONIX)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Status",
+						"pattern": "999"
+					},
+					{
+						"type": "Reason",
+						"pattern": "(?i)No Hacking"
+					},
+					{
+						"type": "Status",
+						"pattern": "404"
+					},
+					{
+						"type": "Reason",
+						"pattern": "(?i)Hack Not Found"
+					}
+				]
+			},
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)WebKnight Application Firewall Alert"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)What is webknight\\?"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)AQTRONIX WebKnight is an application firewall"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)WebKnight will take over and protect"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)aqtronix\\.com/WebKnight"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)AQTRONIX.{0,10}?WebKnight"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "ArvanCloud (ArvanCloud)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)ArvanCloud"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "MaxCDN (MaxCDN)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "X-CDN",
+						"header_value": "(?i)maxcdn"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "SiteGround (SiteGround)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)Our system thinks you might be a robot!"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)access is restricted due to a security rule"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "NSFocus (NSFocus Global Inc.)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)NSFocus"
+					}
+				],
+				"any": true
+			}
+		]
+	},
+	{
+		"name": "IndusGuard (Indusface)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)IF_WAF"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)This website is secured against online attacks. Your request was blocked"
+					}
+				],
+				"any": true
+			}
+		]
+	}
+]
