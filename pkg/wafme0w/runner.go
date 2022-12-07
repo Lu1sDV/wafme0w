@@ -87,6 +87,7 @@ func (r *Runner) Scan() ([]Result, error) {
 			if !r.Options.Silent {
 				r.outputResult(result)
 			}
+			results = append(results, result)
 		}
 	}
 
