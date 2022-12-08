@@ -3,12 +3,13 @@
   Wafme0w
 </h1>
 
-<h4 align="center">Fast and lightweight Web Application Fingerprinting tool.</h4>
+<h4 align="center">Fast and lightweight Web Application Firewall fingerprinting tool.</h4>
 
 # Features
 
 Based on <a href ="https://github.com/EnableSecurity/wafw00f/">Wafw00f</a>, its features are:
 
+- Can detect **153** different Firewalls
 - Concurrent fingerprinting
 - **STDIN** supported
 - Fast detection mode for huge target lists
