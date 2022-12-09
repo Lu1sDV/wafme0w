@@ -41,98 +41,14 @@ func NewIdentifier(responses []RequestResponse, wafs []WAF) *Identify {
 	return &Identify{Responses: responses, Wafs: wafs}
 }
 
-func (i *Identify) Do() []FingerPrintDetection {
-	var fingerPrintPattern string
-	var responseHeader string
-	var responses = i.Responses
-	emptyResponse := &RequestResponse{}
-	var results []FingerPrintDetection
-
-	normalResponse := GetResponseByType(&responses, "Normal")
-	attackResponse := GetResponseByType(&responses, "CentralAttack")
-
-	if normalResponse.Data == nil || attackResponse.Data == nil {
-		return results
-	}
-
-WAFSLOOP:
-	for _, waf := range i.Wafs {
-		for _, schema := range waf.Schemas {
-			matchingFingerPrints := 0
-			fingerPrintsCount := len(schema.FingerPrints)
-			for _, fingerPrint := range schema.FingerPrints {
-				response := normalResponse
-				if fingerPrint.Attack {
-					response = attackResponse
-				}
-
-				if response == emptyResponse {
-					continue
-				}
-				switch fingerPrint.Type {
-				case "Cookie":
-					fingerPrintPattern = fingerPrint.Pattern
-					for _, cookie := range response.Data.Cookies() {
-						if matched, _ := regexp.MatchString(fingerPrintPattern, cookie.String()); matched {
-							//add to waf
-							matchingFingerPrints++
-							break
-						}
-					}
-				case "Header":
-					fingerPrintPattern = fingerPrint.HeaderValue
-					responseHeader = response.Data.Header.Get(fingerPrint.HeaderKey)
-					if matched, _ := regexp.MatchString(fingerPrintPattern, responseHeader); matched {
-						//add to waf
-						matchingFingerPrints++
-					}
-				case "Content":
-					if matched, _ := regexp.MatchString(fingerPrint.Pattern, string(response.Body)); matched {
-						//add to waf
-						matchingFingerPrints++
-					}
-				case "Status":
-					responseStatusCode := response.Data.StatusCode
-					fingerPrintStatusCode, err := strconv.Atoi(fingerPrint.Pattern)
-					if err != nil {
-						continue
-					}
-					if responseStatusCode == fingerPrintStatusCode {
-						matchingFingerPrints++
-					}
-				case "Reason":
-					//TODO
-				}
-			}
-			if matchingFingerPrints != 0 {
-				if !schema.Any {
-					//All fingerprints in schema must match
-					if matchingFingerPrints != fingerPrintsCount {
-						continue
-					}
-				}
-				results = append(results, FingerPrintDetection{WafName: waf.Name})
-				continue WAFSLOOP
-			}
-		}
-	}
-	return results
-}
-
+// DoAll does WAF fingerprint on all received http responses
 func (i *Identify) DoAll() []FingerPrintDetection {
 	var fingerPrintPattern string
 	var responseHeader string
 	var responses = i.Responses
 	emptyRequest := &RequestResponse{}
 	var results []FingerPrintDetection
-
-	normalResponse := GetResponseByType(&responses, "Normal")
-	attackResponse := GetResponseByType(&responses, "CentralAttack")
-
-	if normalResponse.Data == nil || attackResponse.Data == nil {
-		return results
-	}
-
+	
 WAFSLOOP:
 	for _, waf := range i.Wafs {
 		for _, schema := range waf.Schemas {
@@ -142,7 +58,7 @@ WAFSLOOP:
 			for _, fingerPrint := range schema.FingerPrints {
 				for _, r := range responses {
 					requestName := r.Type
-					response := GetResponseByType(&responses, requestName)
+					response := getResponseByType(&responses, requestName)
 
 					if response == emptyRequest {
 						continue
@@ -204,20 +120,20 @@ WAFSLOOP:
 			}
 		}
 	}
-
 	return results
 }
 
+// GenericDetect detects generic firewall activities
 func (i *Identify) GenericDetect() GenericDetection {
 
-	requests := i.Responses
+	responses := i.Responses
 
-	normalResponse := GetResponseByType(&requests, "Normal")
-	noUAResponse := GetResponseByType(&requests, "NoUserAgent") //no user agent
-	xssResponse := GetResponseByType(&requests, "XssAttack")
-	sqliResponse := GetResponseByType(&requests, "SqliAttack")
-	lfiResponse := GetResponseByType(&requests, "LfiAttack")
-	attackResponse := GetResponseByType(&requests, "CentralAttack")
+	normalResponse := getResponseByType(&responses, "Normal")
+	noUAResponse := getResponseByType(&responses, "NoUserAgent") //no user agent
+	xssResponse := getResponseByType(&responses, "XssAttack")
+	sqliResponse := getResponseByType(&responses, "SqliAttack")
+	lfiResponse := getResponseByType(&responses, "LfiAttack")
+	attackResponse := getResponseByType(&responses, "CentralAttack")
 
 	if normalResponse.Data == nil {
 		return GenericDetection{}

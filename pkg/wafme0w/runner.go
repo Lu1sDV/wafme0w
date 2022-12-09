@@ -172,9 +172,9 @@ func sequentialFingerPrint(target string, wafs []WAF, fastMode bool, withGeneric
 	urlNoPath := parsedUrl.Scheme + "://" + parsedUrl.Host
 
 	if fastMode {
-		responses = SendBasicRequests(parsedUrl.String())
+		responses = sendBasicRequests(parsedUrl.String())
 	} else {
-		responses = SendAllTypesRequests(parsedUrl.String())
+		responses = sendAllTypesRequests(parsedUrl.String())
 	}
 
 	for _, resp := range responses {

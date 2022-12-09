@@ -35,26 +35,6 @@ type HTTPRequest struct {
 	Client  http.Client
 }
 
-type RequestOpts struct {
-	Method   string
-	Target   string
-	Path     string
-	Headers  map[string]string
-	Params   map[string]string
-	Type     string
-	PostBody io.Reader
-}
-
-func NewRequestOpts() RequestOpts {
-	return RequestOpts{Method: "GET",
-		Target:   "https://example.com",
-		Path:     "/",
-		Params:   nil,
-		Headers:  defaultHeaders,
-		Type:     "normal",
-		PostBody: nil}
-}
-
 func NewHTTPRequest(options RequestOpts, client http.Client) HTTPRequest {
 	return HTTPRequest{Options: options, Client: client}
 }

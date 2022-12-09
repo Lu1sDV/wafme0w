@@ -3,6 +3,7 @@ package wafme0w
 import (
 	"errors"
 	"fmt"
+	"io"
 	"math/rand"
 	"net/http"
 	"reflect"
@@ -23,7 +24,17 @@ const requestsDelay = 50 * time.Millisecond
 
 var basicRequestsTypes = []string{"Normal", "NoUserAgent", "CentralAttack"}
 
-type TypeOptions struct {
+type RequestOpts struct {
+	Method   string
+	Target   string
+	Path     string
+	Headers  map[string]string
+	Params   map[string]string
+	Type     string
+	PostBody io.Reader
+}
+
+type RequestTypes struct {
 	Normal        RequestOpts
 	NoUserAgent   RequestOpts
 	NonExistent   RequestOpts
@@ -35,7 +46,7 @@ type TypeOptions struct {
 	RceAttack     RequestOpts
 }
 
-func NewTypeOptions(target string) TypeOptions {
+func newTypeOptions(target string) RequestTypes {
 
 	//create random path
 	rand.Seed(time.Now().UnixNano())
@@ -118,7 +129,7 @@ func NewTypeOptions(target string) TypeOptions {
 		Headers: defaultHeaders,
 	}
 
-	return TypeOptions{
+	return RequestTypes{
 		Normal:        normal,
 		NoUserAgent:   noUserAgent,
 		NonExistent:   nonExistent,
@@ -131,7 +142,7 @@ func NewTypeOptions(target string) TypeOptions {
 	}
 }
 
-func (t TypeOptions) GetByType(requestType string) (*RequestOpts, error) {
+func (t RequestTypes) GetByType(requestType string) (*RequestOpts, error) {
 	reqOpts := &RequestOpts{}
 
 	s := reflect.ValueOf(&t).Elem()
@@ -145,7 +156,7 @@ func (t TypeOptions) GetByType(requestType string) (*RequestOpts, error) {
 	return reqOpts, nil
 }
 
-func GetResponseByType(responses *[]RequestResponse, requestType string) *RequestResponse {
+func getResponseByType(responses *[]RequestResponse, requestType string) *RequestResponse {
 	for _, request := range *responses {
 		if request.Type == requestType {
 			return &request
@@ -154,7 +165,7 @@ func GetResponseByType(responses *[]RequestResponse, requestType string) *Reques
 	return &RequestResponse{}
 }
 
-func SendBasicRequests(target string) []RequestResponse {
+func sendBasicRequests(target string) []RequestResponse {
 	var wg sync.WaitGroup
 
 	client := NewHTTPClient()
@@ -169,7 +180,7 @@ func SendBasicRequests(target string) []RequestResponse {
 		}
 		go func(i int, requestType string) {
 			defer wg.Done()
-			resp := SendRequest(target, requestType, client)
+			resp := sendRequest(target, requestType, client)
 			if requestType == "Normal" && resp.Data == nil {
 				errText := target + " does not seem to be alive"
 				err := errors.New(errText)
@@ -183,17 +194,17 @@ func SendBasicRequests(target string) []RequestResponse {
 	return responses
 }
 
-func SendAllTypesRequests(target string) []RequestResponse {
+func sendAllTypesRequests(target string) []RequestResponse {
 	var responses []RequestResponse
 
 	client := NewHTTPClient()
-	typeOpts := NewTypeOptions(target)
+	typeOpts := newTypeOptions(target)
 
 	val := reflect.ValueOf(&typeOpts).Elem()
 
 	for i := 0; i < val.NumField(); i++ {
 		typeName := val.Type().Field(i).Name
-		resp := SendRequest(target, typeName, client)
+		resp := sendRequest(target, typeName, client)
 		if typeName == "Normal" && resp.Data == nil {
 			errText := target + " does not seem to be alive"
 			err := errors.New(errText)
@@ -207,8 +218,8 @@ func SendAllTypesRequests(target string) []RequestResponse {
 	return responses
 }
 
-func SendRequest(target string, requestType string, client http.Client) RequestResponse {
-	typeOpts := NewTypeOptions(target)
+func sendRequest(target string, requestType string, client http.Client) RequestResponse {
+	typeOpts := newTypeOptions(target)
 	requestOpts, err := typeOpts.GetByType(requestType)
 	if err != nil {
 		return RequestResponse{Error: err}
@@ -225,12 +236,12 @@ func SendRequest(target string, requestType string, client http.Client) RequestR
 }
 
 // ConcurrentSendAllTypesRequests TODO may be implemented, very fast, very intrusive
-func ConcurrentSendAllTypesRequests(target string) []RequestResponse {
+func concurrentSendAllTypesRequests(target string) []RequestResponse {
 	var responses []RequestResponse
 	var wg sync.WaitGroup
 
 	client := NewHTTPClient()
-	typeOpts := NewTypeOptions(target)
+	typeOpts := newTypeOptions(target)
 
 	val := reflect.ValueOf(&typeOpts).Elem()
 
