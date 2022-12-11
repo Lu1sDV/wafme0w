@@ -133,8 +133,10 @@ func (r *Runner) getWAFsFromFingerPrints() error {
 	return nil
 }
 
+// GetAllWAFs gets all wafs and returns a map waf=>manufacturer
 func (r *Runner) GetAllWAFs() (map[string]string, error) {
 
+	r.getWAFsFromFingerPrints()
 	result := make(map[string]string, len(r.Wafs))
 
 	for _, waf := range r.Wafs {

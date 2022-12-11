@@ -17,13 +17,19 @@ func main() {
 	opts := wafme0w.NewOptions()
 
 	args := os.Args
-	if len(args) < 2 {
-		args = []string{"--help"}
-	}
 
 	_, err := flags.ParseArgs(opts, args)
 	if err != nil {
 		os.Exit(0)
+	}
+
+	if hasStdin() {
+		opts.StdIn = true
+		opts.Inputs = os.Stdin
+	}
+
+	if !opts.StdIn && len(args) < 2 {
+		args = []string{"--help"}
 	}
 
 	au := aurora.New(aurora.WithColors(!opts.NoColors))
@@ -36,13 +42,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	if hasStdin() {
-		opts.StdIn = true
-		opts.Inputs = os.Stdin
-	}
-
 	//check if target input has been provided
-	if opts.InputFile == "" && opts.Target == "" && !opts.StdIn {
+	if opts.InputFile == "" && opts.Target == "" && !opts.StdIn && !opts.ListWAFS {
 		wafme0w.PrintError("No targets provided", au)
 		os.Exit(1)
 	}

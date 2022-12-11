@@ -136,21 +136,21 @@ Usage Example:
 package main
 
 import (
-"bytes"
-"fmt"
-"github.com/Lu1sDV/wafme0w/pkg/wafme0w"
-"os"
+	"bytes"
+	"fmt"
+	"github.com/Lu1sDV/wafme0w/pkg/wafme0w"
+	"os"
 )
 
 func main() {
 	targets := []byte("https://google.com\nhttps://paypal.com\n")
 	targetsReader := bytes.NewReader(targets)
 	/*
-	Otherwise you can also load your targets from a file
-	targetsReader, err := os.Open("/tmp/alexa-top-20.txt")
-	if err != nil {
-		panic(err)
-	}
+		Otherwise you can also load your targets from a file
+		targetsReader, err := os.Open("/tmp/alexa-top-20.txt")
+		if err != nil {
+			panic(err)
+		}
 	*/
 	fingerPrintsFile, err := os.Open("/PATH/TO/wafme0w/cmd/wafme0w/resources/waf-fingerprints.json")
 	//fingerprints at https://github.com/Lu1sDV/wafme0w/blob/main/cmd/wafme0w/resources/waf-fingerprints.json 
