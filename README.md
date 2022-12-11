@@ -121,6 +121,11 @@ func main() {
 </tr>
 </table>
 
+# Thanks
+People who contributed
+
+[@Fibonaccispiralz](https://github.com/Fibonaccispiralz)
+
 # Contact
 
 divittorioluis **AT** gmail **DOT** com
