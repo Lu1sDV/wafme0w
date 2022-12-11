@@ -185,7 +185,7 @@ func sequentialFingerPrint(target string, wafs []WAF, fastMode bool, withGeneric
 	identify := NewIdentifier(responses, wafs)
 	results := identify.DoAll()
 
-	if withGeneric {
+	if withGeneric && len(results) == 0 {
 		generic = identify.GenericDetect()
 	}
 

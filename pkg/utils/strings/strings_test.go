@@ -1,6 +1,9 @@
 package strutil
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestStringInSlice(t *testing.T) {
 	type args struct {
@@ -42,6 +45,27 @@ func TestSubStringBetweenDelimiters(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := SubStringBetweenDelimiters(tt.args.s, tt.args.firstDelimiter, tt.args.secondDelimiter); got != tt.want {
 				t.Errorf("SubStringBetweenDelimiters() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSplitAtUpperCases(t *testing.T) {
+	type args struct {
+		str string
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{name: "Split MyString", args: args{str: "MyString"}, want: []string{"My", "String"}},
+		{name: "Nothing to split", args: args{str: "alllowercase"}, want: []string{"alllowercase"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := SplitAtUpperCases(tt.args.str); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SplitAtUpperCases() = %v, want %v", got, tt.want)
 			}
 		})
 	}

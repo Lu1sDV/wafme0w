@@ -2,7 +2,6 @@ package wafme0w
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
@@ -118,8 +117,9 @@ func newTypeOptions(target string) RequestTypes {
 	var lfiAttack = RequestOpts{
 		Method:  "GET",
 		Target:  target,
-		Path:    "/" + lfiString,
+		Path:    "/",
 		Headers: defaultHeaders,
+		Params:  map[string]string{"p": lfiString},
 	}
 	var rceAttack = RequestOpts{
 		Method:  "GET",
@@ -231,7 +231,6 @@ func sendRequest(target string, requestType string, client http.Client) RequestR
 		return RequestResponse{Error: err}
 	}
 	resp.Type = requestType
-
 	return resp
 }
 
@@ -258,7 +257,6 @@ func concurrentSendAllTypesRequests(target string) []RequestResponse {
 
 			req, err := httpRequest.Send()
 			if err != nil {
-				fmt.Println(err)
 				return
 			}
 			req.Type = typeName

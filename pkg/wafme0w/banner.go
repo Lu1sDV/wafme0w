@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-const version = "v0.1.6"
+const version = "v0.2.0"
 
 const cat = `
              /\_/\           ___

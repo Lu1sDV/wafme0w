@@ -1,7 +1,7 @@
 package wafme0w
 
 import (
-	"fmt"
+	httputil "github.com/Lu1sDV/wafme0w/pkg/utils/http"
 	"regexp"
 	"strconv"
 )
@@ -28,10 +28,6 @@ type FingerPrintDetection struct {
 	WafName string
 }
 
-type GenericDetection struct {
-	Reason string
-}
-
 type Identify struct {
 	Responses []RequestResponse
 	Wafs      []WAF
@@ -48,7 +44,7 @@ func (i *Identify) DoAll() []FingerPrintDetection {
 	var responses = i.Responses
 	emptyRequest := &RequestResponse{}
 	var results []FingerPrintDetection
-	
+
 WAFSLOOP:
 	for _, waf := range i.Wafs {
 		for _, schema := range waf.Schemas {
@@ -125,74 +121,66 @@ WAFSLOOP:
 
 // GenericDetect detects generic firewall activities
 func (i *Identify) GenericDetect() GenericDetection {
-
 	responses := i.Responses
+	var detection GenericDetection
+	emptyDetection := GenericDetection{}
 
 	normalResponse := getResponseByType(&responses, "Normal")
-	noUAResponse := getResponseByType(&responses, "NoUserAgent") //no user agent
-	xssResponse := getResponseByType(&responses, "XssAttack")
-	sqliResponse := getResponseByType(&responses, "SqliAttack")
-	lfiResponse := getResponseByType(&responses, "LfiAttack")
-	attackResponse := getResponseByType(&responses, "CentralAttack")
-
 	if normalResponse.Data == nil {
-		return GenericDetection{}
+		return emptyDetection
 	}
-
 	normalStatusCode := normalResponse.Data.StatusCode
 	normalServerHeader := normalResponse.Data.Header.Get("Server")
 
-	//detect waf when no User Agent provided
-	if noUAResponse.Data != nil {
-		noUAStatusCode := noUAResponse.Data.StatusCode
-		if normalStatusCode != noUAStatusCode {
-			reason := "Server returned a different response when request didn't contain the User-Agent header\n"
-			reason = reason + fmt.Sprintf("Normal response code is \"%s\"", strconv.Itoa(normalStatusCode))
-			reason = reason + fmt.Sprintf(" while the response code to a modified request is \"%s\"", strconv.Itoa(noUAStatusCode))
-			return GenericDetection{Reason: reason}
+OUTERLOOP:
+	for _, resp := range responses {
+		if resp.Type == "Normal" || resp.Data == nil {
+			continue
+		}
+		responseServerHeader := resp.Data.Header.Get("Server")
+		responseStatusCode := resp.Data.StatusCode
+		//check if any generic WAF header is thrown
+		for _, wafHeader := range genericWAFHeaders {
+			headerValue := httputil.GetHTTPHeaderByName(resp.Data.Header, wafHeader)
+			if headerValue == "" {
+				//header not found
+				continue
+			}
+			detection = GenericDetection{Mode: WAFHeaderDetected,
+				GenericWAFHeader:      wafHeader,
+				GenericWAFHeaderValue: headerValue,
+				RequestType:           resp.Type,
+			}
+			break OUTERLOOP
+		}
+		//check if any different status code is thrown
+		if normalStatusCode != responseStatusCode {
+			//skip not found
+			if responseStatusCode == 404 {
+				continue
+			}
+			detection = GenericDetection{Mode: ChangeInStatus,
+				BeforeStatus: normalStatusCode,
+				AfterStatus:  responseStatusCode,
+				RequestType:  resp.Type,
+			}
+			break OUTERLOOP
+		}
+		//check any change in Server Header
+		if normalServerHeader != responseServerHeader {
+			//skip not found
+			detection = GenericDetection{Mode: ChangeInHeader,
+				BeforeHeader: normalServerHeader,
+				AfterHeader:  responseServerHeader,
+				RequestType:  resp.Type,
+			}
+			break OUTERLOOP
 		}
 	}
 
-	if xssResponse.Data != nil {
-		xssStatusCode := xssResponse.Data.StatusCode
-		if normalStatusCode != xssStatusCode {
-			reason := "Server returned a different response when a XSS Attack was tried\n"
-			reason = reason + fmt.Sprintf("Normal response code is \"%s\"", strconv.Itoa(normalStatusCode))
-			reason = reason + fmt.Sprintf(" while the response code to a Xss attack is \"%s\"", strconv.Itoa(xssStatusCode))
-			return GenericDetection{Reason: reason}
-		}
+	if detection != emptyDetection {
+		detection.generateReason()
+		return detection
 	}
-
-	if sqliResponse.Data != nil {
-		sqliStatusCode := sqliResponse.Data.StatusCode
-		if normalStatusCode != sqliStatusCode {
-			reason := "Server returned a different response when a SQLI Attack was tried\n"
-			reason = reason + fmt.Sprintf("Normal response code is \"%s\"", strconv.Itoa(normalStatusCode))
-			reason = reason + fmt.Sprintf(" while the response code to a SQLI attack is \"%s\"", strconv.Itoa(sqliStatusCode))
-			return GenericDetection{Reason: reason}
-		}
-	}
-
-	if lfiResponse.Data != nil {
-		lfiStatusCode := lfiResponse.Data.StatusCode
-		if normalStatusCode != lfiStatusCode && lfiStatusCode != 404 {
-			reason := "Server returned a different response when a LFI Attack was tried\n"
-			reason = reason + fmt.Sprintf("Normal response code is \"%s\"", strconv.Itoa(normalStatusCode))
-			reason = reason + fmt.Sprintf(" while the response code to a LFI attack is \"%s\"", strconv.Itoa(lfiStatusCode))
-			return GenericDetection{Reason: reason}
-		}
-	}
-
-	//detect changes in Server header
-	if attackResponse.Data != nil {
-		attackServerHeader := attackResponse.Data.Header.Get("Server")
-		if attackServerHeader != normalServerHeader {
-			reason := "The server header is different when an attack is detected.\n"
-			reason = reason + fmt.Sprintf("Normal Server header is: \"%s\"", normalServerHeader)
-			reason = reason + fmt.Sprintf(" while attack's Server header is: \"%s\"", attackServerHeader)
-			return GenericDetection{Reason: reason}
-		}
-	}
-
-	return GenericDetection{}
+	return emptyDetection
 }

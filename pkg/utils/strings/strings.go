@@ -1,6 +1,9 @@
 package strutil
 
-import "strings"
+import (
+	"strings"
+	"unicode"
+)
 
 func SubStringBetweenDelimiters(s string, firstDelimiter string, secondDelimiter string) string {
 	i := strings.Index(s, firstDelimiter)
@@ -20,4 +23,18 @@ func StringInSlice(str string, list []string) bool {
 		}
 	}
 	return false
+}
+
+// SplitAtUpperCases splits a string every time it finds an uppercase
+func SplitAtUpperCases(str string) []string {
+	var words []string
+	l := 0
+	for s := str; s != ""; s = s[l:] {
+		l = strings.IndexFunc(s[1:], unicode.IsUpper) + 1
+		if l <= 0 {
+			l = len(s)
+		}
+		words = append(words, s[:l])
+	}
+	return words
 }

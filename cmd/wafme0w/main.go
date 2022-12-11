@@ -62,7 +62,6 @@ func main() {
 			opts.Inputs = file
 		}
 	}
-
 	fingerPrints, err := readFingerPrints(opts.FingerPrintFile)
 	if err != nil {
 		errText := "Error reading fingerprints: " + err.Error()

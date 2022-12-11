@@ -2,6 +2,7 @@ package httputil
 
 import (
 	strutils "github.com/Lu1sDV/wafme0w/pkg/utils/strings"
+	"net/http"
 	"net/url"
 	"strings"
 )
@@ -40,4 +41,19 @@ func IsValidHTTPURL(uri string) bool {
 
 	_, err := url.ParseRequestURI(uri)
 	return err == nil
+}
+
+// GetHTTPHeaderByName returns the value of provided header.
+// It accepts headers list (http.Header) and header's name
+// It returns the value if header is found. Otherwise, returns an empty string
+func GetHTTPHeaderByName(headers http.Header, headerName string) string {
+	if headerName == "" {
+		return ""
+	}
+	for header, headerValue := range headers {
+		if strings.EqualFold(header, headerName) {
+			return headerValue[0]
+		}
+	}
+	return ""
 }
