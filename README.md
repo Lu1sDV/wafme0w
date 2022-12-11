@@ -15,6 +15,59 @@ Based on <a href ="https://github.com/EnableSecurity/wafw00f/">Wafw00f</a>, its 
 - Fast detection mode for huge target lists
 - Multiple output formats supported (JSON, file, stdout)
 
+# Benchmark
+
+Scanned Alexa top 100 domains. Running on i7-7700K CPU @ 4.20GHz × 4 (8 Threads)
+
+<table role="table">
+<thead>
+<tr>
+<th>tool</th>
+<th>flags</th>
+<th>Time elapsed</th>
+<th>Wafs found</th>
+<th>Generic Wafs found</th>
+<th>Diff</th>
+
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><b>wafme0w</b></td>
+<td>--fast --concurrency 30</td>
+<td>1min 37s (Best)</td>
+<td>20</td>
+<td>11</td>
+<td>+0%</td>
+</tr>
+<tr>
+<td><b>wafme0w</b></td>
+<td>--concurrency 30</td>
+<td>3min 51s</td>
+<td>22 (Best)</td>
+<td>16</td>
+<td>+138%</td>
+</tr>
+<tr>
+<td>wafw00f</td>
+<td></td>
+<td>13min 3s</td>
+<td>20</td>
+<td>16</td>
+<td>+707%</td>
+</tr>
+<tr>
+<td>wafw00f</td>
+<td>-a</td>
+<td>15min 8s</td>
+<td>20</td>
+<td>23 (Best)</td>
+<td>+836%</td>
+</tr>
+
+</tbody>
+</table>
+
 # Getting started
 ## Installation
 `wafme0w` requires **go >= 1.19** to install successfully. Run the following command to install the latest version:
