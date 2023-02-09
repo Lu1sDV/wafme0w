@@ -75,6 +75,30 @@ Scanned Alexa top 100 domains. Running on i7-7700K CPU @ 4.20GHz × 4 (8 Threads
 ```sh
 go install -v github.com/Lu1sDV/wafme0w/cmd/wafme0w@latest
 ```
+## Building Docker image
+```sh
+git clone https://github.com/Lu1sDV/wafme0w.git
+cd wafme0w
+docker build -t wafme0w:latest .
+```
+
+## Running Docker container
+```
+docker run --rm -it wafme0w:latest -t https://canva.com
+
+
+             /\_/\           ___
+            = o_o =_______    \ \ 
+             __^      __(  \.__) )
+            <_____>__(_____)____/
+
+                Wafme0w v1.0.0
+
+Fast Web Application Firewall Fingerprinting tool
+
+[+] https://canva.com is behind Cloudflare (Cloudflare Inc.)
+
+```
 
 ## Running Wafme0w
 
