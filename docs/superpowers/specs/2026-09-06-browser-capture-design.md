@@ -88,7 +88,7 @@ Use LSP references before exported-symbol changes and migrate affected callers/t
 
 Use owned fixtures and launch the actual CLI/Chromium surface; no arbitrary public-site probing.
 
-1. **Independence:** browser off causes no Chromium activity; browser-only needs no key; help/list need neither. Every admitted input occurrence is attempted despite HTTP match/failure. Verify duplicate handling, cancellation and serial output.
+1. **Independence:** browser off causes no Chromium activity; browser-only needs no key; help/non-network listings need neither. Explicit provider-model discovery belongs to the AI delivery and must not launch Chromium. Every admitted input occurrence is attempted despite HTTP match/failure. Verify duplicate handling, cancellation and serial output.
 2. **Identity/provenance:** a fixture returns different Go HTTP and browser-rendered content. Preserve case-sensitive URL path/query/escaping, actual browser headers and document IDs. Visually confirm the screenshot describes its browser document, not the original HTTP response.
 3. **Containment:** observe blocked origins, resolution/destination restrictions, redirects, workers/new contexts and denied channels outside Chromium, not just in event logs. Verify TLS certificate failure, sandbox operation and selected runtime resource restrictions. Unsupported enforcement fails before claiming a successful supported capture.
 4. **Readiness:** delayed JavaScript, visible images and fonts appear in the initial viewport; a scroll-only asset is not requested. Continuous mutation and slow/broken assets yield bounded timeout or explicit restriction. Navigation mode produces no image.

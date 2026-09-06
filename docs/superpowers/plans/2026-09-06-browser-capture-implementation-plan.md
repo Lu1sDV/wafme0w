@@ -209,7 +209,7 @@ Run the integration command inside its declared controlled runtime, not an arbit
 
 | Browser-design acceptance group | Owning gates |
 |---|---|
-| Independence: off, no key, help/list, all admitted occurrences, cancellation | Gates 5 and 6 |
+| Independence: off, no key for browser-only, help/non-network listing, all admitted occurrences, cancellation | Gates 5 and 6 |
 | Identity/provenance: actual browser document/headers, exact URL, visual correspondence | Gates 2 and 3 |
 | Containment: origin/destination/context/channel restrictions, sandbox/certificates/resources | Gates 1 and 2 |
 | Readiness: delayed visible content, no scrolling, honest timeout, navigate has no image | Gate 3 |

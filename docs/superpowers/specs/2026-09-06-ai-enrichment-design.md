@@ -1,6 +1,6 @@
 # AI enrichment subsystem design
 
-**Status:** written design set approved for planning on 2026-09-06. This remains the second delivery; only browser-capture implementation planning is currently authorized. No application implementation is authorized.
+**Status:** written design set approved for planning on 2026-09-06, with subsequently approved provider-model discovery and test-driven development requirements. This remains the second delivery; only browser-capture implementation planning is currently authorized. No application implementation is authorized.
 
 [Shared contracts, budgets and acceptance ownership](2026-09-06-ai-integration-design.md) define the common boundaries. This is the second delivery, after browser capture, but text-only assessment and saved-plan replay must not acquire a browser implicitly.
 
@@ -14,11 +14,34 @@ Captured response content and separately rendered browser DOM are the relevant s
 
 Correct optional collection is sufficient for functional acceptance. Improved identification accuracy is not required or claimed without independently labelled measurements.
 
+## Provider selection and model discovery
+
+**Confirmed refinement:** select the provider explicitly with `--ai-provider=openai|anthropic`, and select the exact model ID with `--ai-model` when requesting inference. `anthropic` identifies the provider; Claude is its model family. Never infer a provider from a model-name prefix, choose a default/latest model implicitly, or switch models/providers after an error. Discovery does not persist or change the selected model.
+
+CLI resolves only the selected provider's credential: `OPENAI_API_KEY` for OpenAI or `ANTHROPIC_API_KEY` for Anthropic. The library receives resolved credentials through the existing native-provider boundary; it does not read environment variables or another application's login store. Selection does not require a discovery preflight: an explicit ID can be used even when the account cannot list models.
+
+**Approved discovery interface, not yet implemented:**
+
+```sh
+wafme0w --ai-provider openai --ai-list-models
+wafme0w --ai-provider anthropic --ai-list-models
+```
+
+`--ai-list-models` is an explicit standalone provider-metadata operation, not a scan or an assessment mode. It requires a provider and that provider's key, but no model, target, Chromium or evidence. Do not read stdin, open scan inputs/artifacts, call `Run`/`RunCaptured`, acquire a browser or send inference requests. Reject combinations with target/input/evidence, selected browser, generation/replay, non-off AI assessment, model-selection or scan-report/journal files before any acquisition. Shared presentation controls such as `--jsonl` and `--no-colors` remain valid. Help remains local and needs no credential. Ordinary scans with AI off still make no provider calls.
+
+Use each provider's authenticated native `GET /v1/models` endpoint. Follow documented pagination, including Anthropic's `has_more`/`last_id` cursor contract; OpenAI's currently documented list is not paginated. Keep subsequent requests on the selected native endpoint. Reject missing, repeated or non-progressing required cursors rather than looping. Do not introduce a hardcoded model catalogue, cache, automatic probes or a provider-management service.
+
+Return provider and exact model ID, an optional display name, and image-input/structured-output capabilities when supplied. Capabilities are supported, unsupported or unknown; absent/null metadata is unknown, not false or true. OpenAI's current list supplies basic model metadata rather than these capabilities; Anthropic may supply nullable capability information. Do not filter unfamiliar model IDs or claim endpoint/feature compatibility from a name or presence in the list. Actual inference still must satisfy the native endpoint and response contract; unsupported selections fail explicitly without a downgrade or replacement.
+
+Collect the bounded complete list before publishing, with one row per exact model ID and deterministic ID ordering. Print a human-readable listing by default; existing `--jsonl` emits discovery records, with unknown capabilities represented by null, and no human text on stdout. This is not a scan `Result`, CSV report or diagnostics journal. Preserve terminal escaping and output errors. Missing credentials, malformed/error responses, pagination/size/deadline failures and output failures return an error, not a fabricated empty list, successful partial inventory or cached fallback.
+
+Discovery uses the selected provider's separate verified-HTTPS client, no redirects/retries, caller cancellation and the shared discovery-specific limits. It sends no target/evidence data and consumes neither inference tokens nor the per-target generation/assessment allowance. It is never an implicit part of a normal scan or offline saved-response analysis.
+
 ## Routing and per-target flow
 
-**Proposed flags:** `--ai=off|undetected|always`, `--ai-provider`, `--ai-model`, `--ai-generate-headers`, `--ai-k`, and explicit saved-plan replay with separately selected reassessment. CLI resolves provider-specific environment keys, not command-line secrets. Library configuration receives resolved credentials and decoded inputs.
+**Proposed scan flags:** `--ai=off|undetected|always`, `--ai-provider`, `--ai-model`, `--ai-generate-headers`, `--ai-k`, and explicit saved-plan replay with separately selected reassessment. The standalone discovery operation above is separate from this per-target routing. CLI resolves provider-specific environment keys, not command-line secrets. Library configuration receives resolved credentials and decoded inputs.
 
-`off` invokes no provider or generation. `undetected` uses the confirmed predicate: deterministic state `Complete`, zero named matches and zero diagnostics. A generic anomaly neither opens nor closes this gate. `always` is a proposed explicit analysis mode that permits named/incomplete results only when usable HTTP evidence exists, with limitations retained; it is not an override for scope, refusal, privacy or evidence requirements.
+During a scan, `off` invokes no provider or generation. `undetected` uses the confirmed predicate: deterministic state `Complete`, zero named matches and zero diagnostics. A generic anomaly neither opens nor closes this gate. `always` is a proposed explicit analysis mode that permits named/incomplete results only when usable HTTP evidence exists, with limitations retained; it is not an override for scope, refusal, privacy or evidence requirements.
 
 | HTTP outcome | Undetected assessment/generation eligibility |
 |---|---|
@@ -67,6 +90,7 @@ Determine membership against the loaded `Engine.Products()` snapshot. Do not tru
 | Concern | OpenAI | Anthropic |
 |---|---|---|
 | Endpoint | Responses API, `/v1/responses` | Messages API, `/v1/messages` |
+| Model discovery | Native `GET /v1/models` | Native `GET /v1/models`, with documented cursor pagination |
 | Image representation | Inline `input_image` data URL | Base64 `image` content block |
 | Structured response | JSON Schema through `text.format` on compatible models | JSON Schema through `output_config.format` on compatible models |
 | Non-success response handling | Inspect refusal content and incomplete status before success decoding | Inspect `stop_reason`, including refusal and token exhaustion, before success decoding |
@@ -78,6 +102,12 @@ Provider clients are separate from target clients: verified HTTPS, bounded decod
 Use static schemas without target/private catalogue values in schema enums. Put catalogue names in request content when supplied, then validate locally. OpenAI requests explicitly set `store:false`; this is not a zero-retention promise. Account/model/feature policies and exceptions apply to both providers and schema caching can differ from message retention. Never alter retention settings to access a restricted model without approval.
 
 Respect provider restrictions, including restricted challenge/CAPTCHA content. No failover, repackaging to evade refusal, challenge-solving request or unstructured downgrade follows an unsupported model/schema or refusal.
+
+### Codex models and authentication
+
+API-exposed Codex models use the same `openai` provider, `OPENAI_API_KEY` and Responses API; no separate Codex provider, CLI subprocess or agent execution is needed. For example, the current GPT-5.3-Codex API documentation lists Responses, structured outputs and image input as supported. This is a documented example, not a default, frozen allowlist or proof of access for the operator's account. Keep model IDs opaque and apply the same selected-modality/schema validation, refusal and no-tools boundaries as for other models.
+
+Codex API-key usage is billed through the OpenAI Platform account, separately from included ChatGPT subscription usage. ChatGPT sign-in, Codex workspace/access tokens and Codex cloud access are different authentication/product paths, not interchangeable Platform API keys. Do not import `~/.codex/auth.json`, perform OAuth, call private subscription endpoints or assume every model visible in a Codex client is available through the public API. Public API availability and the required feature support govern selection.
 
 ## Ordinary-header plans and replay
 
@@ -116,6 +146,20 @@ Browser acquisition itself is a dependency already verified by its own gate; tes
 4. **Generation and attempts:** rejected batches cause zero generated traffic. Valid short/duplicate batches preserve URL/method and account honestly. Owned endpoints observe at most `k` actual attempts, including connection-reuse/follow-up cases; duplicate targets share origin pacing and cancellation prevents future admissions.
 5. **Replay:** save and replay canonical inputs against an owned endpoint without any generator/provider call unless reassessment was selected. Compare emitted inputs, not nondeterministic responses. Reject tampered/incompatible plans and preserve network-free offline classification.
 6. **Resource/failure boundaries:** bounded input/output, evidence retention reservations, provider/AI deadlines and permit cleanup remain deterministic. Browser-only needs no keys, text-only AI needs no Chromium, and all optional workflows off produces no new activity/report.
+7. **Model discovery and selection:** native fixtures expose provider-specific models and capabilities, including unknown metadata and Anthropic pagination. Verify that the selected credentials/protocol produce the correct observable listing, an explicit model remains usable without a listing preflight, and no inference, target read/request, browser or other-provider work occurs during discovery. Invalid options/keys, malformed responses, repeated cursors, budgets, cancellation and sink errors fail honestly. A Codex model uses the ordinary OpenAI API boundary without a subprocess or login-store access. Model IDs and provider text cannot corrupt terminal or JSONL output.
+
+### Test-driven implementation requirement
+
+**Confirmed development method:** implement this AI delivery with red → green → refactor TDD. Before changing production behavior, write a focused test of its observable contract, run it and observe the intended failure; implement the smallest change that passes, then refactor while it remains green. Record the actual focused commands and red/green results during implementation. A compile-only scaffold, source-text assertion or provider mock that merely echoes supplied fields is not behavioral proof.
+
+Start discovery/selection with these behavior boundaries, using the existing Go test and CLI harness conventions and controlled native-protocol responders:
+
+1. **Standalone dispatch:** valid discovery works without target input or a browser and contacts only the selected provider's metadata endpoint. Help and AI-off scans need no key or provider access; invalid discovery combinations fail before reading input or making a request.
+2. **Inventory truth:** native results, additional pages, unfamiliar IDs and supported/unsupported/unknown capabilities produce the corresponding complete human/JSONL listing. Empty valid inventories differ from malformed data. Pagination cannot silently truncate results or repeat indefinitely.
+3. **Failure boundaries:** controlled responders and failing sinks exercise authentication/rate-limit errors, malformed/oversized responses, page/aggregate bounds, cancellation, output failure and untrusted display strings. No failure produces a successful partial list, retry, fallback model/provider or leaked key.
+4. **Explicit model execution:** a controlled native inference service accepts only the selected model/protocol while denying model listing. The observed assessment succeeds without preflight; unsupported model/schema/image requests remain errors. Include an API-exposed Codex model under the OpenAI contract without reading another application's credentials or launching its CLI.
+
+Keep these tests offline and deterministic; do not use real keys or make model inference calls in CI. Then run the actual CLI against controlled responders, and perform the separately authorized minimal live-provider acceptance checks already required above. Fixture success is not proof of account entitlement or live compatibility. TDD is a requirement for the later implementation, not a claim that runtime tests were written or executed for this specification update.
 
 Functional completion requires valid bounded replayable behavior and honest reporting, not accuracy uplift. When independently labelled cases are available, compare baseline, equal-budget fixed/random ordinary-header controls and the LLM batch over all cases. Report abstention/refusal, false hypotheses, top-k quality, outcome changes, requests, latency and usage; generated catalogue witnesses are not independent truth.
 
@@ -124,3 +168,5 @@ No native-provider calls, feature implementation or accuracy experiments were pe
 ## Protocol references
 
 Historical research: OpenAI [images](https://developers.openai.com/api/docs/guides/images-vision), [structured outputs](https://developers.openai.com/api/docs/guides/structured-outputs), [retention](https://developers.openai.com/api/docs/guides/your-data); Anthropic [images](https://platform.claude.com/docs/en/build-with-claude/vision), [structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs), [retention](https://platform.claude.com/docs/en/manage-claude/api-and-data-retention). Verify current model/API compatibility during the approved implementation cycle rather than treating this research as a live API test.
+
+Discovery/authentication references checked for this refinement: [OpenAI model listing](https://developers.openai.com/api/reference/resources/models/methods/list), [Anthropic model listing](https://platform.claude.com/docs/en/api/models/list), [GPT-5.3-Codex API capabilities](https://developers.openai.com/api/docs/models/gpt-5.3-codex), [Codex authentication and billing](https://learn.chatgpt.com/docs/auth), and [Codex client model availability](https://learn.chatgpt.com/docs/models). These are documentation checks, not authenticated requests or availability guarantees.

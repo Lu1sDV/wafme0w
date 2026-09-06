@@ -15,7 +15,7 @@ This index and the three linked subsystem designs replace the monolithic archite
 | Order | Focused design | Owns | Dependencies and independent completion |
 |---|---|---|---|
 | 1 | [Browser capture](2026-09-06-browser-capture-design.md) | Rod/Chromium acquisition, containment, readiness, provenance, local artifacts and browser reporting | Existing HTTP/classification/runner boundaries only; works with AI off and no TLS instrumentation |
-| 2 | [AI enrichment](2026-09-06-ai-enrichment-design.md) | Native OpenAI/Anthropic, bounded projections, routing, hypotheses, header-only generation and replay | Existing HTTP evidence plus the capture contract when browser mode is selected; text-only operation needs no Chromium |
+| 2 | [AI enrichment](2026-09-06-ai-enrichment-design.md) | Native OpenAI/Anthropic, explicit provider/model selection and discovery, bounded projections, routing, hypotheses, header-only generation and replay | Existing HTTP evidence plus the capture contract when browser mode is selected; text-only operation needs no Chromium; standalone model discovery needs only the selected provider's credential |
 | 3 | [Controlled-edge TLS comparison](2026-09-06-tls-comparison-design.md) | Attributable service observations, local prior-capture import and comparison | Browser response/provenance contract and operator-supplied TLS-edge observations; no AI dependency |
 
 Each subsystem gets its own reviewed implementation plan, implementation and acceptance cycle. Browser capture is first because acquisition, isolation and readiness can be proved independently of model interpretation. Native providers, generation/replay and TLS comparison are still required by the complete design; a browser-only milestone is not completion of the whole request.
@@ -59,7 +59,7 @@ Requested, acquired, transmitted and saved modalities are distinct. Browser DOM,
 
 **Confirmed:** browser acquisition can operate with AI off; AI never implicitly selects a browser. Every admitted supplied URL occurrence, including duplicates, receives the selected bounded browser attempt. No crawling of discovered pages. Invalid/out-of-scope input is explicitly not attempted. Cancellation and input/sink failure retain existing `Run` semantics; there is no promise to process unread input after cancellation.
 
-**Proposed controls:** `--browser=off|navigate|screenshot` and `--ai=off|undetected|always`, both defaulting off. Screenshot mode includes one navigation, not a second visit. Saving and provider transmission require their own opt-ins. Validate only selected capabilities before acquisition: browser-only needs no key, text-only AI needs no Chromium, and help/list need neither. Screenshot-only options require screenshot mode instead of selecting it silently.
+**Proposed controls:** `--browser=off|navigate|screenshot` and `--ai=off|undetected|always`, both defaulting off. Screenshot mode includes one navigation, not a second visit. Saving and provider transmission require their own opt-ins. Validate only selected capabilities before acquisition: browser-only needs no key, text-only AI needs no Chromium, and help/non-network listings need neither. The approved standalone `--ai-list-models` operation is different: it needs the selected provider's key but no model, target, evidence or Chromium, and never performs inference. Screenshot-only options require screenshot mode instead of selecting it silently.
 
 Caller scope and code-enforced budgets govern acquisition; provider content refusal does not authorize targets. Redirects, subresources, new contexts and address resolution do not expand authority. Current HTTP origin policy is not an IP/network sandbox; the browser design owns its additional containment boundary. Never use a Go-fetched substitute and call its handshake browser TLS.
 
@@ -93,11 +93,12 @@ These are starting limits, not measured optima, hard renderer-memory limits or d
 | Browser requests / navigation redirects | 40 admitted HTTP(S) starts, including subresources/redirects / at most 3 navigation redirects |
 | Browser DOM / screenshot | 1 MiB retained DOM / one viewport up to 1440×900 pixels and 2 MiB encoded |
 | AI phase admission / work allowance | 2 concurrently active AI phases; release AI permits around browser work / 240 seconds of counted AI work per target |
-| Provider calls / individual deadlines | At most 1 generation and 1 assessment per target / 30 and 60 seconds, no retries |
+| Inference calls / individual deadlines | At most 1 generation and 1 assessment per target / 30 and 60 seconds, no retries |
+| Standalone model discovery | 30 seconds total, at most 32 pages, 1 MiB decoded per page and 4 MiB decoded aggregate; explicit failure on exhaustion, no redirects/retries or inference |
 | Generated HTTP | Configurable `k`, default 20 additional attempts; sequential per target; at most 1 start/second per origin shared across duplicate targets |
 | Retained HTTP with AI enabled | 16 MiB per target, with concurrent reservations; keep metadata and mark bodies truncated on exhaustion |
 | Decoded HTTP body | Existing 1 MiB per-response default |
-| Provider text / decoded response / output tokens | 64 KiB total sanitized evidence text / 64 KiB / explicit initial 4096 ceiling on compatible models |
+| Inference text / decoded response / output tokens | 64 KiB total sanitized evidence text / 64 KiB / explicit initial 4096 ceiling on compatible models |
 | Provider hypotheses / references | At most 5 hypotheses and 6 references each, with bounded strings |
 | TLS observation / prior input | 4 KiB service record / 1 MiB decoded prior-capture input |
 
@@ -125,7 +126,7 @@ The original fourteen acceptance areas remain required; each is assigned here ra
 | 4. Untrusted generation | AI: rejected plans cause zero generated traffic |
 | 5. Attempt boundaries | AI plus HTTP admission: actual attempts, shared origin pacing and cancellation |
 | 6. Browser provenance and lifecycle | Browser: containment, document identity, cleanup, sandbox and secret isolation |
-| 7. Native provider behavior | AI: both protocols, refusal/schema behavior and authorized synthetic live smoke |
+| 7. Native provider behavior | AI: provider/model selection and discovery, both protocols, refusal/schema behavior, test-first implementation and authorized synthetic live smoke |
 | 8. Privacy | Browser and AI: inspect actual saved/uploaded bytes; raw classifier input unchanged |
 | 9. Separation and output | All three: actual serializers/CLI, state separation and atomic publication |
 | 10. Replay | AI: same validated request inputs, no generator or inherited authorization |
@@ -139,5 +140,7 @@ Verification uses saved captures, synthetic evidence and owned/authorized fixtur
 ## Review gate
 
 The user approved this shared contract and the three subsystem designs for planning on 2026-09-06. Enhanced-mode timeout ownership, first supported browser runtime, retained strict modality-failure policy, defaults, staged CSV cutovers and the explicit TLS observation-only workflow are the planning baseline. None changes the confirmed no-stealth, independent-mode, evidence, privacy or authorization boundaries.
+
+The subsequently approved AI refinement adds explicit authenticated provider-model discovery and red → green → refactor TDD to the AI delivery. API-exposed Codex models remain ordinary OpenAI selections, not a separate authentication or agent-execution feature. This specification approval does not change browser-first sequencing or authorize application implementation.
 
 The requested `writing-plans` skill was unavailable in the installed registry and checked local skill paths. A direct repository-grounded [browser-capture implementation plan](../plans/2026-09-06-browser-capture-implementation-plan.md) records the next steps without installing a skill. That plan requires review before application implementation; AI and TLS planning remain later deliveries.
