@@ -1,6 +1,6 @@
 # AI enrichment subsystem design
 
-**Status:** capture-first delivery direction approved; detailed proposals awaiting written-design review. No implementation authorized.
+**Status:** written design set approved for planning on 2026-09-06. This remains the second delivery; only browser-capture implementation planning is currently authorized. No application implementation is authorized.
 
 [Shared contracts, budgets and acceptance ownership](2026-09-06-ai-integration-design.md) define the common boundaries. This is the second delivery, after browser capture, but text-only assessment and saved-plan replay must not acquire a browser implicitly.
 

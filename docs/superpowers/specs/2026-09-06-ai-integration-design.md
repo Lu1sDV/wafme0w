@@ -1,6 +1,6 @@
 # Browser-first AI integration: shared design contracts
 
-**Status:** capture-first restructuring approved on 2026-09-06; written designs awaiting review. No application changes or implementation planning authorized.
+**Status:** written design set approved for planning on 2026-09-06. Browser-capture implementation planning is authorized; application implementation is not.
 
 ## Purpose and authority
 
@@ -8,7 +8,7 @@ Extend wafme0w with independently selected browser acquisition, optional AI enri
 
 This index and the three linked subsystem designs replace the monolithic architecture as the working design. The original interviews, corrections and scoring remain in the local historical record `.omc/specs/deep-interview-wafme0w-ai-integration.md`; they are not implementation-readiness measurements. This design set is self-contained and does not require that local record to build or review it.
 
-**Confirmed** denotes an interview decision. **Proposed** denotes an engineering choice awaiting written-design approval, including numerical defaults. Approval to restructure did not approve partial-evidence fallback or authorize code changes.
+**Confirmed** denotes an interview decision. **Proposed** denotes an engineering choice in the approved planning baseline, including numerical defaults, rather than an existing capability or measured result. Written-design approval authorizes browser-first planning; it does not adopt the alternative partial-evidence fallback or authorize code changes.
 
 ## Delivery boundaries
 
@@ -138,6 +138,6 @@ Verification uses saved captures, synthetic evidence and owned/authorized fixtur
 
 ## Review gate
 
-Review these shared contracts and the three subsystem designs before implementation planning. Particular proposed choices to review are enhanced-mode timeout ownership, first supported browser runtime, retained strict modality-failure policy, defaults, staged CSV cutovers and the explicit TLS observation-only workflow. None changes the confirmed no-stealth, independent-mode, evidence, privacy or authorization boundaries.
+The user approved this shared contract and the three subsystem designs for planning on 2026-09-06. Enhanced-mode timeout ownership, first supported browser runtime, retained strict modality-failure policy, defaults, staged CSV cutovers and the explicit TLS observation-only workflow are the planning baseline. None changes the confirmed no-stealth, independent-mode, evidence, privacy or authorization boundaries.
 
-After written-spec approval, the next skill is `writing-plans`, starting with browser capture only. No implementation skill or code execution work is authorized by this document.
+The requested `writing-plans` skill was unavailable in the installed registry and checked local skill paths. A direct repository-grounded [browser-capture implementation plan](../plans/2026-09-06-browser-capture-implementation-plan.md) records the next steps without installing a skill. That plan requires review before application implementation; AI and TLS planning remain later deliveries.

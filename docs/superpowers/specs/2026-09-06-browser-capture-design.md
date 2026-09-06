@@ -1,6 +1,6 @@
 # Browser capture subsystem design
 
-**Status:** capture-first delivery direction approved; detailed proposals awaiting written-design review. No implementation authorized.
+**Status:** written design set approved for planning on 2026-09-06. Browser-capture implementation planning is authorized; application implementation is not.
 
 [Shared contracts, budgets and acceptance ownership](2026-09-06-ai-integration-design.md) are normative for this subsystem. Delivery order is browser capture, AI enrichment, then controlled-edge TLS comparison; this document does not remove the later features.
 

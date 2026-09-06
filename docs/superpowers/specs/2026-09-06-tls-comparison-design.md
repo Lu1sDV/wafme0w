@@ -1,6 +1,6 @@
 # Controlled-edge TLS comparison subsystem design
 
-**Status:** capture-first delivery direction approved; detailed proposals awaiting written-design review. No implementation authorized.
+**Status:** written design set approved for planning on 2026-09-06. This remains the third delivery; only browser-capture implementation planning is currently authorized. No application implementation is authorized.
 
 [Shared contracts, budgets and acceptance ownership](2026-09-06-ai-integration-design.md) apply. This is the third delivery, consuming the browser capture contract. It has no provider dependency and must work with AI off.
 
