@@ -1,11 +1,10 @@
 package wafme0w
 
 import (
-	"errors"
+	"context"
 	"io"
 	"math/rand"
 	"net/http"
-	"reflect"
 	"strconv"
 	"sync"
 	"time"
@@ -21,9 +20,7 @@ const (
 
 const requestsDelay = 50 * time.Millisecond
 
-var basicRequestsTypes = []string{"Normal", "NoUserAgent", "CentralAttack"}
-
-type RequestOpts struct {
+type requestOpts struct {
 	Method   string
 	Target   string
 	Path     string
@@ -33,238 +30,80 @@ type RequestOpts struct {
 	PostBody io.Reader
 }
 
-type RequestTypes struct {
-	Normal        RequestOpts
-	NoUserAgent   RequestOpts
-	NonExistent   RequestOpts
-	XssAttack     RequestOpts
-	XxeAttack     RequestOpts
-	LfiAttack     RequestOpts
-	CentralAttack RequestOpts
-	SqliAttack    RequestOpts
-	RceAttack     RequestOpts
-}
-
-func newTypeOptions(target string) RequestTypes {
-
-	//create random path
-	rand.Seed(time.Now().UnixNano())
-	minInt := 100000
-	maxInt := 1000000
-	randomInt := rand.Intn(maxInt-minInt+1) + minInt
-	randomPath := "/" + strconv.Itoa(randomInt) + ".html"
-
-	headersNoUA := make(map[string]string, 5)
+// newTypeOptions builds the existing ordered probe catalogue once per target.
+// An empty Path means the exact supplied path, not an appended slash.
+func newTypeOptions(target string) []requestOpts {
+	randomPath := "/" + strconv.Itoa(rand.Intn(900001)+100000) + ".html"
+	headersNoUA := make(map[string]string, len(defaultHeaders))
 	for key, value := range defaultHeaders {
-		if key == "User-Agent" {
-			continue
-		}
 		headersNoUA[key] = value
 	}
-
-	var normal = RequestOpts{
-		Method:  "GET",
-		Target:  target,
-		Path:    "/",
-		Headers: defaultHeaders,
-	}
-
-	var noUserAgent = RequestOpts{
-		Method:  "GET",
-		Target:  target,
-		Path:    "/",
-		Headers: headersNoUA,
-	}
-
-	var nonExistent = RequestOpts{
-		Method:  "GET",
-		Target:  target,
-		Path:    randomPath,
-		Headers: defaultHeaders,
-	}
-	var xssAttack = RequestOpts{
-		Method:  "GET",
-		Target:  target,
-		Path:    "/",
-		Params:  map[string]string{"p": xssString},
-		Headers: defaultHeaders,
-	}
-	var xxeAttack = RequestOpts{
-		Method:  "GET",
-		Target:  target,
-		Path:    "/",
-		Params:  map[string]string{"p": xxeString},
-		Headers: defaultHeaders,
-	}
-	var sqliAttack = RequestOpts{
-		Method:  "GET",
-		Target:  target,
-		Path:    "/",
-		Params:  map[string]string{"p": sqliString},
-		Headers: defaultHeaders,
-	}
-	var centralAttack = RequestOpts{
-		Method: "GET",
-		Target: target,
-		Path:   "/",
-		Params: map[string]string{
-			"l": lfiString,
-			"d": xssString,
-			"v": sqliString,
-		},
-		Headers: defaultHeaders,
-	}
-	var lfiAttack = RequestOpts{
-		Method:  "GET",
-		Target:  target,
-		Path:    "/",
-		Headers: defaultHeaders,
-		Params:  map[string]string{"p": lfiString},
-	}
-	var rceAttack = RequestOpts{
-		Method:  "GET",
-		Target:  target,
-		Path:    "/",
-		Params:  map[string]string{"p": rceString},
-		Headers: defaultHeaders,
-	}
-
-	return RequestTypes{
-		Normal:        normal,
-		NoUserAgent:   noUserAgent,
-		NonExistent:   nonExistent,
-		XssAttack:     xssAttack,
-		XxeAttack:     xxeAttack,
-		LfiAttack:     lfiAttack,
-		CentralAttack: centralAttack,
-		SqliAttack:    sqliAttack,
-		RceAttack:     rceAttack,
+	// An explicit empty value suppresses net/http's default wire User-Agent.
+	headersNoUA["User-Agent"] = ""
+	return []requestOpts{
+		{Method: "GET", Target: target, Headers: defaultHeaders, Type: "Normal"},
+		{Method: "GET", Target: target, Headers: headersNoUA, Type: "NoUserAgent"},
+		{Method: "GET", Target: target, Path: randomPath, Headers: defaultHeaders, Type: "NonExistent"},
+		{Method: "GET", Target: target, Params: map[string]string{"p": xssString}, Headers: defaultHeaders, Type: "XssAttack"},
+		{Method: "GET", Target: target, Params: map[string]string{"p": xxeString}, Headers: defaultHeaders, Type: "XxeAttack"},
+		{Method: "GET", Target: target, Params: map[string]string{"p": lfiString}, Headers: defaultHeaders, Type: "LfiAttack"},
+		{Method: "GET", Target: target, Params: map[string]string{"l": lfiString, "d": xssString, "v": sqliString}, Headers: defaultHeaders, Type: "CentralAttack"},
+		{Method: "GET", Target: target, Params: map[string]string{"p": sqliString}, Headers: defaultHeaders, Type: "SqliAttack"},
+		{Method: "GET", Target: target, Params: map[string]string{"p": rceString}, Headers: defaultHeaders, Type: "RceAttack"},
 	}
 }
 
-func (t RequestTypes) GetByType(requestType string) (*RequestOpts, error) {
-	reqOpts := &RequestOpts{}
-
-	s := reflect.ValueOf(&t).Elem()
-	typeField := s.FieldByName(requestType).Addr()
-
-	rv := reflect.ValueOf(&reqOpts).Elem()
-	rv.Set(typeField)
-
-	reqOpts.Type = requestType
-
-	return reqOpts, nil
-}
-
-func getResponseByType(responses *[]RequestResponse, requestType string) *RequestResponse {
-	for _, request := range *responses {
-		if request.Type == requestType {
-			return &request
-		}
+func sendRequests(ctx context.Context, target string, client *http.Client, config Config) []Evidence {
+	options := newTypeOptions(target)
+	if config.BaselineOnly {
+		options = options[:1]
+	} else if config.FastMode {
+		options = []requestOpts{options[0], options[1], options[6]}
 	}
-	return &RequestResponse{}
-}
-
-func sendBasicRequests(target string) []RequestResponse {
-	var wg sync.WaitGroup
-
-	client := NewHTTPClient()
-
-	basicRequestsLen := len(basicRequestsTypes)
-	responses := make([]RequestResponse, basicRequestsLen)
-	wg.Add(basicRequestsLen)
-
-	for i, requestType := range basicRequestsTypes {
-		if i != 0 {
-			time.Sleep(requestsDelay)
-		}
-		go func(i int, requestType string) {
-			defer wg.Done()
-			resp := sendRequest(target, requestType, client)
-			if requestType == "Normal" && resp.Data == nil {
-				errText := target + " does not seem to be alive"
-				err := errors.New(errText)
-				resp.Error = err
+	responses := make([]Evidence, len(options))
+	for i, option := range options {
+		responses[i].Role = option.Type
+	}
+	send := func(i int) {
+		requestCtx, cancel := context.WithTimeout(ctx, config.RequestTimeout)
+		defer cancel()
+		responses[i], _ = sendHTTP(requestCtx, options[i], client, config.MaxBodyBytes)
+	}
+	var pending sync.WaitGroup
+	for i := range options {
+		if config.FastMode && i != 0 {
+			timer := time.NewTimer(requestsDelay)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+			case <-timer.C:
 			}
-			responses[i] = resp
-		}(i, requestType)
-	}
-
-	wg.Wait()
-	return responses
-}
-
-func sendAllTypesRequests(target string) []RequestResponse {
-	var responses []RequestResponse
-
-	client := NewHTTPClient()
-	typeOpts := newTypeOptions(target)
-
-	val := reflect.ValueOf(&typeOpts).Elem()
-
-	for i := 0; i < val.NumField(); i++ {
-		typeName := val.Type().Field(i).Name
-		resp := sendRequest(target, typeName, client)
-		if typeName == "Normal" && resp.Data == nil {
-			errText := target + " does not seem to be alive"
-			err := errors.New(errText)
-			resp.Error = err
-			responses = []RequestResponse{resp}
+		}
+		if ctx.Err() != nil {
 			break
 		}
-		responses = append(responses, resp)
-	}
-
-	return responses
-}
-
-func sendRequest(target string, requestType string, client http.Client) RequestResponse {
-	typeOpts := newTypeOptions(target)
-	requestOpts, err := typeOpts.GetByType(requestType)
-	if err != nil {
-		return RequestResponse{Error: err}
-	}
-	httpRequest := NewHTTPRequest(*requestOpts, client)
-
-	resp, err := httpRequest.Send()
-	if err != nil {
-		return RequestResponse{Error: err}
-	}
-	resp.Type = requestType
-	return resp
-}
-
-// ConcurrentSendAllTypesRequests TODO may be implemented, very fast, very intrusive
-func concurrentSendAllTypesRequests(target string) []RequestResponse {
-	var responses []RequestResponse
-	var wg sync.WaitGroup
-
-	client := NewHTTPClient()
-	typeOpts := newTypeOptions(target)
-
-	val := reflect.ValueOf(&typeOpts).Elem()
-
-	for i := 0; i < val.NumField(); i++ {
-		wg.Add(1)
-		go func(val reflect.Value, i int) {
-			defer wg.Done()
-			typeName := val.Type().Field(i).Name
-			requestOpts, err := typeOpts.GetByType(typeName)
-			if err != nil {
-				return
+		if config.FastMode {
+			pending.Add(1)
+			go func(i int) {
+				defer pending.Done()
+				send(i)
+			}(i)
+		} else {
+			send(i)
+			if i == 0 && responses[i].StatusCode == 0 {
+				responses = responses[:1]
+				break
 			}
-			httpRequest := NewHTTPRequest(*requestOpts, client)
-
-			req, err := httpRequest.Send()
-			if err != nil {
-				return
-			}
-			req.Type = typeName
-
-			responses = append(responses, req)
-		}(val, i)
+		}
 	}
-	wg.Wait()
-
+	pending.Wait()
+	if err := ctx.Err(); err != nil {
+		for i := range responses {
+			if responses[i].StatusCode == 0 && responses[i].TransportError == "" {
+				responses[i].TransportError = err.Error()
+				responses[i].ErrorCode = acquisitionCode(err)
+			}
+		}
+	}
 	return responses
 }

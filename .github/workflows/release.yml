@@ -1,0 +1,194 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  native:
+    name: Test and package ${{ matrix.os }}/${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            os: linux
+            arch: amd64
+            suffix: ''
+            extension: tar.gz
+          - runner: macos-15
+            os: darwin
+            arch: arm64
+            suffix: ''
+            extension: tar.gz
+          - runner: windows-2022
+            os: windows
+            arch: amd64
+            suffix: .exe
+            extension: zip
+    env:
+      CGO_ENABLED: '0'
+      GOTOOLCHAIN: local
+      BINARY_SUFFIX: ${{ matrix.suffix }}
+      RELEASE_OS: ${{ matrix.os }}
+      RELEASE_ARCH: ${{ matrix.arch }}
+      RELEASE_EXTENSION: ${{ matrix.extension }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.26.x'
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Run native package tests
+        run: go test ./...
+      - name: Build native CLI with VCS identity
+        shell: bash
+        run: go build -trimpath -buildvcs=true -o "$RUNNER_TEMP/wafme0w$BINARY_SUFFIX" ./cmd/wafme0w
+      - name: Smoke the actual binary with synthetic offline evidence
+        shell: python {0}
+        run: |
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+
+          binary = Path(os.environ['RUNNER_TEMP']) / ('wafme0w' + os.environ['BINARY_SUFFIX'])
+          subprocess.run([str(binary), '--help'], check=True)
+          version = subprocess.check_output([str(binary), '--version'], text=True).strip()
+          print(version)
+          assert version.startswith('wafme0w ') and version != 'wafme0w devel', version
+          output = subprocess.check_output([
+              str(binary), '--evidence', 'assets/demo/captures.jsonl', '--jsonl',
+          ], text=True)
+          records = [json.loads(line) for line in output.splitlines()]
+          by_target = {record['target']: record for record in records}
+          assert len(records) == len(by_target) == 3, output
+          assert set(by_target) == {'synthetic-cloudflare', 'synthetic-clean', 'synthetic-truncated'}, output
+          cloudflare = by_target['synthetic-cloudflare']['outcome']
+          assert cloudflare['state'] == 'complete', cloudflare
+          assert {match['product'] for match in cloudflare.get('matches', [])} == {'Cloudflare (Cloudflare Inc.)'}, cloudflare
+          clean = by_target['synthetic-clean']['outcome']
+          assert clean['state'] == 'complete' and not clean.get('matches'), clean
+          truncated = by_target['synthetic-truncated']['outcome']
+          assert truncated['state'] == 'incomplete', truncated
+          for record in records:
+              assert record['provenance']['scan_mode'] == 'passive', record
+              assert 'wafme0w ' + record['provenance']['program_version'] == version, record
+          print(output, end='')
+      - name: Archive binary, license and synthetic captures
+        shell: python {0}
+        run: |
+          import os
+          from pathlib import Path
+          import re
+          import tarfile
+          import zipfile
+
+          tag = os.environ['GITHUB_REF_NAME']
+          if not re.fullmatch(r'v[0-9][0-9A-Za-z.+-]*', tag):
+              raise SystemExit('Release tags must be filename-safe versions, such as v0.3.0')
+          name = 'wafme0w' + os.environ['BINARY_SUFFIX']
+          files = [
+              (Path(os.environ['RUNNER_TEMP']) / name, name),
+              (Path('LICENSE.md'), 'LICENSE.md'),
+              (Path('assets/demo/captures.jsonl'), 'assets/demo/captures.jsonl'),
+          ]
+          dist = Path('dist')
+          dist.mkdir()
+          archive = dist / f"wafme0w_{tag}_{os.environ['RELEASE_OS']}_{os.environ['RELEASE_ARCH']}.{os.environ['RELEASE_EXTENSION']}"
+          if os.environ['RELEASE_EXTENSION'] == 'zip':
+              with zipfile.ZipFile(archive, 'x', compression=zipfile.ZIP_DEFLATED) as package:
+                  for source, destination in files:
+                      package.write(source, arcname=destination)
+          else:
+              with tarfile.open(archive, 'x:gz') as package:
+                  for source, destination in files:
+                      package.add(source, arcname=destination)
+          print(archive)
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ matrix.os }}-${{ matrix.arch }}
+          path: dist/wafme0w_${{ github.ref_name }}_${{ matrix.os }}_${{ matrix.arch }}.${{ matrix.extension }}
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: false
+
+  publish:
+    name: Publish tested release assets
+    needs: native
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+      - name: Generate checksums and release notes
+        shell: python3 {0}
+        run: |
+          import hashlib
+          import os
+          from pathlib import Path
+
+          tag = os.environ['RELEASE_TAG']
+          dist = Path('dist')
+          expected = {
+              f'wafme0w_{tag}_linux_amd64.tar.gz',
+              f'wafme0w_{tag}_darwin_arm64.tar.gz',
+              f'wafme0w_{tag}_windows_amd64.zip',
+          }
+          assert {path.name for path in dist.iterdir()} == expected, 'Missing or unexpected release archives'
+          with (dist / 'SHA256SUMS').open('x', encoding='utf-8', newline='\n') as checksums:
+              for name in sorted(expected):
+                  with (dist / name).open('rb') as archive:
+                      digest = hashlib.file_digest(archive, 'sha256').hexdigest()
+                  checksums.write(f'{digest}  {name}\n')
+          base = f"https://github.com/{os.environ['GH_REPO']}/blob/{tag}"
+          notes = f'''## wafme0w {tag}: pre-1.0 relaunch
+
+          Blazingfast, lightweight and AI Assisted WAF detector.
+
+          AI assisted development, not runtime detection: wafme0w uses static fingerprints, not an AI model or a hosted AI service.
+
+          This pre-1.0 relaunch includes breaking Go library and structured-output changes from older versions. Review the current library API and result records before upgrading integrations; do not assume old callers or output parsers remain compatible.
+
+          - [README: installation, CLI and Go library]({base}/README.md)
+          - [Offline CLI demo]({base}/assets/demo/demo.gif)
+          - [Synthetic demo captures]({base}/assets/demo/captures.jsonl)
+          - [Incomplete is not negative]({base}/docs/incomplete-is-not-negative.md)
+          - [Literal matching without changing semantics]({base}/docs/literal-matching.md)
+
+          Each archive includes the native CLI binary, LICENSE.md and assets/demo/captures.jsonl. Native package tests and binary help/version/offline-evidence smoke checks run on Linux x64, macOS ARM64 and Windows x64 before publication. SHA256SUMS covers all three archives. The binary reports its embedded build/VCS identity, which need not equal the release tag.
+
+          Demo captures are synthetic examples, not observations of deployed WAFs or evidence of detection accuracy. Use network scanning only where authorized.
+          '''
+          Path('release-notes.txt').write_text('\n'.join(line.strip() for line in notes.splitlines()) + '\n', encoding='utf-8')
+      - name: Create release without replacing existing assets
+        shell: bash
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; refusing to replace assets."
+            exit 1
+          fi
+          # Create refuses existing published releases and uploads before publication.
+          # Never use release upload --clobber or delete an existing release on retry.
+          gh release create "$RELEASE_TAG" dist/* \
+            --verify-tag --title "wafme0w $RELEASE_TAG" --notes-file release-notes.txt

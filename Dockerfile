@@ -1,9 +1,12 @@
-FROM golang:1.19.5-alpine as build-env
-RUN apk add build-base
-RUN go install -v github.com/Lu1sDV/wafme0w/cmd/wafme0w@latest
+FROM golang:1.27-alpine AS build
+RUN apk add --no-cache ca-certificates
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -trimpath -o /out/wafme0w ./cmd/wafme0w
 
-FROM alpine:3.17.1
-RUN apk add --no-cache bind-tools ca-certificates
-COPY --from=build-env /go/bin/wafme0w /usr/local/bin/wafme0w
+FROM scratch
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=build /out/wafme0w /usr/local/bin/wafme0w
 ENTRYPOINT ["wafme0w"]
-

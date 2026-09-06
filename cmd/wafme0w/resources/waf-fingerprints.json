@@ -91,19 +91,23 @@
 				"fingerprints": [
 					{
 						"type": "Content",
-						"pattern": "(?i)Please solve CAPTCHA"
+						"pattern": "(?i)Please solve CAPTCHA",
+						"attack": true
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)shieldon_captcha"
+						"pattern": "(?i)shieldon_captcha",
+						"attack": true
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)Unusual behavior detected"
+						"pattern": "(?i)Unusual behavior detected",
+						"attack": true
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)status-user-info"
+						"pattern": "(?i)status-user-info",
+						"attack": true
 					}
 				]
 			},
@@ -111,15 +115,18 @@
 				"fingerprints": [
 					{
 						"type": "Content",
-						"pattern": "(?i)Access denied"
+						"pattern": "(?i)Access denied",
+						"attack": true
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)The IP address you are using has been blocked."
+						"pattern": "(?i)The IP address you are using has been blocked.",
+						"attack": true
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)status-user-info"
+						"pattern": "(?i)status-user-info",
+						"attack": true
 					}
 				]
 			},
@@ -127,11 +134,13 @@
 				"fingerprints": [
 					{
 						"type": "Content",
-						"pattern": "(?i)Please line up"
+						"pattern": "(?i)Please line up",
+						"attack": true
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)This page is limiting the number of people online. Please wait a moment."
+						"pattern": "(?i)This page is limiting the number of people online. Please wait a moment.",
+						"attack": true
 					}
 				]
 			}
@@ -226,7 +235,7 @@
 				"fingerprints": [
 					{
 						"type": "Content",
-						"pattern": "(?i)\u003ctitle\u003eCloudbric.{0,5}?ERROR!"
+						"pattern": "(?i)<title>Cloudbric.{0,5}?ERROR!"
 					},
 					{
 						"type": "Content",
@@ -322,14 +331,24 @@
 		"name": "Yunjiasu (Baidu Cloud Computing)",
 		"schemas": [
 			{
+				"any": true,
 				"fingerprints": [
 					{
 						"type": "Header",
 						"header_key": "Server",
-						"header_value": "(?i)Yunjiasu(.+)?"
+						"header_value": "(?i)yunjiasu.*"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)href=\"/.well-known/yunjiasu-cgi/",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)document.cookie='yjs_use_ob=0",
+						"attack": true
 					}
-				],
-				"any": true
+				]
 			}
 		]
 	},
@@ -366,7 +385,7 @@
 				"fingerprints": [
 					{
 						"type": "Content",
-						"pattern": "(?i)\u003ctitle\u003eNinjaFirewall.{0,10}?\\d{3}.forbidden"
+						"pattern": "(?i)<title>NinjaFirewall.{0,10}?\\d{3}.forbidden"
 					},
 					{
 						"type": "Content",
@@ -499,13 +518,19 @@
 		"name": "Tencent Cloud Firewall (Tencent Technologies)",
 		"schemas": [
 			{
+				"any": true,
 				"fingerprints": [
 					{
 						"type": "Content",
-						"pattern": "(?i)waf\\.tencent\\-?cloud\\.com/"
+						"pattern": "(?i)waf\\.tencent\\-?cloud\\.com/",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)window\\.location\\.href.{1,3}?https?://waf.tencent(?:-?cloud)?.com/(?:403|501)page\\.html",
+						"attack": true
 					}
-				],
-				"any": true
+				]
 			}
 		]
 	},
@@ -527,14 +552,19 @@
 		"name": "Fastly (Fastly CDN)",
 		"schemas": [
 			{
+				"any": true,
 				"fingerprints": [
 					{
 						"type": "Header",
 						"header_key": "X-Fastly-Request-ID",
 						"header_value": "(?i)\\w+"
+					},
+					{
+						"type": "Header",
+						"header_key": "X-Served-By",
+						"header_value": "(?i)^cache-[a-z]{3}\\d+-[A-Z]{3}"
 					}
-				],
-				"any": true
+				]
 			}
 		]
 	},
@@ -593,7 +623,7 @@
 				"fingerprints": [
 					{
 						"type": "Content",
-						"pattern": "(?i)\u003ctitle\u003efw_error_www"
+						"pattern": "(?i)<title>fw_error_www"
 					},
 					{
 						"type": "Content",
@@ -634,7 +664,7 @@
 				"fingerprints": [
 					{
 						"type": "Content",
-						"pattern": "(?i)\u003ch\\d{1}\u003e\\d{3}.forbidden\u003c.h\\d{1}\u003e"
+						"pattern": "(?i)<h\\d{1}>\\d{3}.forbidden<.h\\d{1}>"
 					},
 					{
 						"type": "Content",
@@ -665,11 +695,11 @@
 				"fingerprints": [
 					{
 						"type": "Content",
-						"pattern": "(?i)\u003ctitle\u003eStackPath[^\u003c]+\u003c/title\u003e"
+						"pattern": "(?i)<title>StackPath[^<]+</title>"
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)Protected by \u003ca href=\"https?:\\/\\/(?:www\\.)?stackpath\\.com\\/\"[^\u003e]+\u003eStackPath"
+						"pattern": "(?i)Protected by <a href=\"https?:\\/\\/(?:www\\.)?stackpath\\.com\\/\"[^>]+>StackPath"
 					}
 				],
 				"any": true
@@ -1077,7 +1107,7 @@
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)\u003c(title|h\\d{1})\u003eWeb Site Blocked"
+						"pattern": "(?i)<(title|h\\d{1})>Web Site Blocked"
 					},
 					{
 						"type": "Content",
@@ -1146,20 +1176,22 @@
 		]
 	},
 	{
-		"name": "SiteGuard (Sakura Inc.)",
+		"name": "SiteGuard (EG Secure Solutions Inc.)",
 		"schemas": [
 			{
+				"any": true,
 				"fingerprints": [
 					{
 						"type": "Content",
-						"pattern": "(?i)Powered by SiteGuard"
+						"pattern": "(?i)Powered by SiteGuard",
+						"attack": true
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)The server refuse to browse the page"
+						"pattern": "(?i)The server refuse to browse the page",
+						"attack": true
 					}
-				],
-				"any": true
+				]
 			}
 		]
 	},
@@ -1170,7 +1202,7 @@
 				"fingerprints": [
 					{
 						"type": "Content",
-						"pattern": "(?i)\u003c(title|h\\d{1})\u003eSecuPress"
+						"pattern": "(?i)<(title|h\\d{1})>SecuPress"
 					}
 				],
 				"any": true
@@ -1376,7 +1408,7 @@
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)\u003ctitle\u003eUnauthorized Request Blocked"
+						"pattern": "(?i)<title>Unauthorized Request Blocked"
 					},
 					{
 						"type": "Content",
@@ -1413,7 +1445,7 @@
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)\u003ctitle\u003e403 Access Forbidden"
+						"pattern": "(?i)<title>403 Access Forbidden"
 					}
 				]
 			}
@@ -1483,7 +1515,7 @@
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)\u003ctitle\u003ecrawlprotect"
+						"pattern": "(?i)<title>crawlprotect"
 					},
 					{
 						"type": "Content",
@@ -1619,7 +1651,7 @@
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)\u003ctitle\u003eSucuri WebSite Firewall.{0,6}?(CloudProxy)?.{0,6}?Access Denied"
+						"pattern": "(?i)<title>Sucuri WebSite Firewall.{0,6}?(CloudProxy)?.{0,6}?Access Denied"
 					},
 					{
 						"type": "Content",
@@ -1654,7 +1686,7 @@
 				"fingerprints": [
 					{
 						"type": "Content",
-						"pattern": "(?i)\u003ctitle\u003eApplication Firewall Error"
+						"pattern": "(?i)<title>Application Firewall Error"
 					},
 					{
 						"type": "Content",
@@ -1712,7 +1744,7 @@
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)\u003c(title|h\\d{1})\u003eWTS\\-WAF"
+						"pattern": "(?i)<(title|h\\d{1})>WTS\\-WAF"
 					}
 				],
 				"any": true
@@ -1731,7 +1763,7 @@
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)\u003c(title|h\\d{1})\u003eGrey Wizard"
+						"pattern": "(?i)<(title|h\\d{1})>Grey Wizard"
 					},
 					{
 						"type": "Content",
@@ -1773,7 +1805,7 @@
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)\u003c(title|h\\d{1})\u003eCloudfloorDNS.{0,6}?Web Application Firewall Error"
+						"pattern": "(?i)<(title|h\\d{1})>CloudfloorDNS.{0,6}?Web Application Firewall Error"
 					},
 					{
 						"type": "Content",
@@ -1970,7 +2002,7 @@
 				"fingerprints": [
 					{
 						"type": "Content",
-						"pattern": "(?i)The current request was blocked.{0,8}?\u003eWebTotem"
+						"pattern": "(?i)The current request was blocked.{0,8}?>WebTotem"
 					}
 				],
 				"any": true
@@ -2030,19 +2062,23 @@
 				"fingerprints": [
 					{
 						"type": "Content",
-						"pattern": "(?i)error(s)?\\.aliyun(dun)?\\.(com|net)?"
-					},
-					{
-						"type": "Cookie",
-						"pattern": "(?i)^aliyungf_tc="
+						"pattern": "(?i)error(s)?\\.aliyun(dun)?\\.(com|net)?",
+						"attack": true
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)cdn\\.aliyun(cs)?\\.com"
+						"pattern": "(?i)alicdn\\.com\\/sd\\-base\\/static\\/\\d{1,2}\\.\\d{1,2}\\.\\d{1,2}\\/image\\/405\\.png",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Sorry, your request has been blocked as it may cause potential threats to the server\\'s security.",
+						"attack": true
 					},
 					{
 						"type": "Status",
-						"pattern": "405"
+						"pattern": "405",
+						"attack": true
 					}
 				]
 			}
@@ -2267,7 +2303,7 @@
 				"fingerprints": [
 					{
 						"type": "Content",
-						"pattern": "(?i)\u003ch1\u003eWhoops, this request has been blocked!"
+						"pattern": "(?i)<h1>Whoops, this request has been blocked!"
 					},
 					{
 						"type": "Content",
@@ -2292,7 +2328,7 @@
 				"fingerprints": [
 					{
 						"type": "Content",
-						"pattern": "(?i)\u003c(title|h2)\u003eError"
+						"pattern": "(?i)<(title|h2)>Error"
 					},
 					{
 						"type": "Content",
@@ -2322,7 +2358,7 @@
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)\u003clink.{0,10}?href=\\\"/eisoo\\-firewall\\-block\\.css"
+						"pattern": "(?i)<link.{0,10}?href=\\\"/eisoo\\-firewall\\-block\\.css"
 					},
 					{
 						"type": "Content",
@@ -2330,7 +2366,7 @@
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)\u0026copy; \\d{4} Eisoo Inc"
+						"pattern": "(?i)&copy; \\d{4} Eisoo Inc"
 					}
 				],
 				"any": true
@@ -2382,7 +2418,7 @@
 				"fingerprints": [
 					{
 						"type": "Content",
-						"pattern": "(?i)safeline|\u003c!\\-\\-\\sevent id:"
+						"pattern": "(?i)safeline|<!\\-\\-\\sevent id:"
 					}
 				],
 				"any": true
@@ -2454,6 +2490,7 @@
 		"name": "AWS Elastic Load Balancer (Amazon)",
 		"schemas": [
 			{
+				"any": true,
 				"fingerprints": [
 					{
 						"type": "Header",
@@ -2474,9 +2511,13 @@
 						"header_key": "Server",
 						"header_value": "(?i)aws.?elb",
 						"attack": true
+					},
+					{
+						"type": "Header",
+						"header_key": "X-Blocked-By-WAF",
+						"header_value": "(?i)Blocked_by_custom_response_for_AWSManagedRules.*"
 					}
-				],
-				"any": true
+				]
 			}
 		]
 	},
@@ -2500,7 +2541,7 @@
 				"fingerprints": [
 					{
 						"type": "Content",
-						"pattern": "(?i)\u003ctitle\u003eAccess to the requested URL was blocked"
+						"pattern": "(?i)<title>Access to the requested URL was blocked"
 					},
 					{
 						"type": "Content",
@@ -2632,7 +2673,7 @@
 				"fingerprints": [
 					{
 						"type": "Content",
-						"pattern": "(?i)\u003cstrong\u003ebarikode\u003c.strong\u003e"
+						"pattern": "(?i)<strong>barikode<.strong>"
 					}
 				],
 				"any": true
@@ -2666,11 +2707,11 @@
 				"fingerprints": [
 					{
 						"type": "Content",
-						"pattern": "(?i)\u003ch1.{0,10}?Forbidden"
+						"pattern": "(?i)<h1.{0,10}?Forbidden"
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)\u003cpre\u003eRequest.ID:.{0,10}?\\d{4}\\-(\\d{2})+.{0,35}?pre\u003e"
+						"pattern": "(?i)<pre>Request.ID:.{0,10}?\\d{4}\\-(\\d{2})+.{0,35}?pre>"
 					}
 				]
 			}
@@ -2806,19 +2847,26 @@
 				"fingerprints": [
 					{
 						"type": "Content",
-						"pattern": "(?i)the requested url was rejected"
+						"pattern": "(?i)the requested url was rejected",
+						"attack": true
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)please consult with your administrator"
+						"pattern": "(?i)please consult with your administrator",
+						"attack": true
 					}
 				]
 			},
 			{
+				"any": true,
 				"fingerprints": [
 					{
 						"type": "Cookie",
-						"pattern": "(?i)^TS.+?"
+						"pattern": "(?i)TS[a-fA-F0-9]{8}=.+"
+					},
+					{
+						"type": "Cookie",
+						"pattern": "(?i)TS[a-fA-F0-9]{6}=.+"
 					}
 				]
 			}
@@ -2864,17 +2912,22 @@
 		]
 	},
 	{
-		"name": "AzionCDN (AzionCDN)",
+		"name": "Azion Edge Firewall (Azion)",
 		"schemas": [
 			{
+				"any": true,
 				"fingerprints": [
 					{
 						"type": "Header",
-						"header_key": "Server",
-						"header_value": "(?i)Azion([-_]CDN)?"
+						"header_key": "x-azion-edge-pop",
+						"header_value": "(?i).+?"
+					},
+					{
+						"type": "Header",
+						"header_key": "x-azion-request-id",
+						"header_value": "(?i).+?"
 					}
-				],
-				"any": true
+				]
 			}
 		]
 	},
@@ -2984,7 +3037,7 @@
 		]
 	},
 	{
-		"name": "Cloud Protector (Rohde \u0026 Schwarz CyberSecurity)",
+		"name": "Cloud Protector (Rohde & Schwarz CyberSecurity)",
 		"schemas": [
 			{
 				"fingerprints": [
@@ -2994,7 +3047,7 @@
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)\u003ca href='https?:\\/\\/(?:www\\.)?cloudprotector\\.com\\/'\u003eR.{1,6}?S.Cloud Protector"
+						"pattern": "(?i)<a href='https?:\\/\\/(?:www\\.)?cloudprotector\\.com\\/'>R.{1,6}?S.Cloud Protector"
 					}
 				],
 				"any": true
@@ -3023,7 +3076,7 @@
 				"fingerprints": [
 					{
 						"type": "Content",
-						"pattern": "(?i)\u003c(title|h\\d{1})\u003erequested url cannot be found"
+						"pattern": "(?i)<(title|h\\d{1})>requested url cannot be found"
 					},
 					{
 						"type": "Content",
@@ -3092,7 +3145,7 @@
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)class=.(db[\\-_]?)?waf(.)?([\\-_]?row)?\u003e"
+						"pattern": "(?i)class=.(db[\\-_]?)?waf(.)?([\\-_]?row)?>"
 					}
 				],
 				"any": true
@@ -3115,17 +3168,19 @@
 		]
 	},
 	{
-		"name": "DenyALL (Rohde \u0026 Schwarz CyberSecurity)",
+		"name": "DenyALL (Rohde & Schwarz CyberSecurity)",
 		"schemas": [
 			{
 				"fingerprints": [
 					{
 						"type": "Status",
-						"pattern": "200"
+						"pattern": "200",
+						"attack": true
 					},
 					{
 						"type": "Reason",
-						"pattern": "(?i)Condition Intercepted"
+						"pattern": "Condition Intercepted",
+						"attack": true
 					}
 				]
 			}
@@ -3208,6 +3263,7 @@
 		"name": "ModSecurity (SpiderLabs)",
 		"schemas": [
 			{
+				"any": true,
 				"fingerprints": [
 					{
 						"type": "Header",
@@ -3216,40 +3272,33 @@
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)This error was generated by Mod.?Security"
+						"pattern": "(?i)This error was generated by Mod.?Security",
+						"attack": true
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)rules of the mod.security.module"
+						"pattern": "(?i)rules of the mod.security.module",
+						"attack": true
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)mod.security.rules triggered"
+						"pattern": "(?i)mod.security.rules triggered",
+						"attack": true
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)Protected by Mod.?Security"
+						"pattern": "(?i)Protected by Mod.?Security",
+						"attack": true
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)/modsecurity[\\-_]errorpage/"
+						"pattern": "(?i)/modsecurity[\\-_]errorpage/",
+						"attack": true
 					},
 					{
 						"type": "Content",
-						"pattern": "(?i)modsecurity iis"
-					}
-				],
-				"any": true
-			},
-			{
-				"fingerprints": [
-					{
-						"type": "Reason",
-						"pattern": "(?i)ModSecurity Action"
-					},
-					{
-						"type": "Status",
-						"pattern": "403"
+						"pattern": "(?i)modsecurity iis",
+						"attack": true
 					}
 				]
 			},
@@ -3257,11 +3306,27 @@
 				"fingerprints": [
 					{
 						"type": "Reason",
-						"pattern": "(?i)ModSecurity Action"
+						"pattern": "ModSecurity Action",
+						"attack": true
 					},
 					{
 						"type": "Status",
-						"pattern": "406"
+						"pattern": "403",
+						"attack": true
+					}
+				]
+			},
+			{
+				"fingerprints": [
+					{
+						"type": "Reason",
+						"pattern": "ModSecurity Action",
+						"attack": true
+					},
+					{
+						"type": "Status",
+						"pattern": "406",
+						"attack": true
 					}
 				]
 			}
@@ -3500,50 +3565,64 @@
 				"fingerprints": [
 					{
 						"type": "Status",
-						"pattern": "999"
+						"pattern": "999",
+						"attack": true
 					},
 					{
 						"type": "Reason",
-						"pattern": "(?i)No Hacking"
-					},
-					{
-						"type": "Status",
-						"pattern": "404"
-					},
-					{
-						"type": "Reason",
-						"pattern": "(?i)Hack Not Found"
+						"pattern": "No Hacking",
+						"attack": true
 					}
 				]
 			},
 			{
 				"fingerprints": [
 					{
-						"type": "Content",
-						"pattern": "(?i)WebKnight Application Firewall Alert"
+						"type": "Status",
+						"pattern": "404",
+						"attack": true
 					},
 					{
-						"type": "Content",
-						"pattern": "(?i)What is webknight\\?"
-					},
-					{
-						"type": "Content",
-						"pattern": "(?i)AQTRONIX WebKnight is an application firewall"
-					},
-					{
-						"type": "Content",
-						"pattern": "(?i)WebKnight will take over and protect"
-					},
-					{
-						"type": "Content",
-						"pattern": "(?i)aqtronix\\.com/WebKnight"
-					},
-					{
-						"type": "Content",
-						"pattern": "(?i)AQTRONIX.{0,10}?WebKnight"
+						"type": "Reason",
+						"pattern": "Hack Not Found",
+						"attack": true
 					}
-				],
-				"any": true
+				]
+			},
+			{
+				"any": true,
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)WebKnight Application Firewall Alert",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)What is webknight\\?",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)AQTRONIX WebKnight is an application firewall",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)WebKnight will take over and protect",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)aqtronix\\.com/WebKnight",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)AQTRONIX.{0,10}?WebKnight",
+						"attack": true
+					}
+				]
 			}
 		]
 	},
@@ -3626,6 +3705,387 @@
 					}
 				],
 				"any": true
+			}
+		]
+	},
+	{
+		"name": "Anubis (Techaro)",
+		"schemas": [
+			{
+				"any": true,
+				"fingerprints": [
+					{
+						"type": "Cookie",
+						"pattern": "(?i)-anubis-auth="
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)/\\.within\\.website/x/cmd/anubis/",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)<script id=\"anubis_version\"",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)<script id=\"anubis_challenge\"",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Protected by.*Anubis.*From.*Techaro",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)github\\.com/TecharoHQ/anubis",
+						"attack": true
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "Azure Application Gateway (Microsoft)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)<center>Microsoft-Azure-Application-Gateway/v2</center>",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)<h1>403 Forbidden</h1>",
+						"attack": true
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "Baffin Bay (Mastercard)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "server",
+						"header_value": "(?i)baffin-bay-inlet"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "Envoy (EnvoyProxy)",
+		"schemas": [
+			{
+				"any": true,
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "server",
+						"header_value": "(?i)envoy"
+					},
+					{
+						"type": "Header",
+						"header_key": "x-envoy-upstream-service-time",
+						"header_value": "(?i).+"
+					},
+					{
+						"type": "Header",
+						"header_key": "x-envoy-downstream-service-cluster",
+						"header_value": "(?i).+"
+					},
+					{
+						"type": "Header",
+						"header_key": "x-envoy-downstream-service-node",
+						"header_value": "(?i).+"
+					},
+					{
+						"type": "Header",
+						"header_key": "x-envoy-external-address",
+						"header_value": "(?i).+"
+					},
+					{
+						"type": "Header",
+						"header_key": "x-envoy-force-trace",
+						"header_value": "(?i).+"
+					},
+					{
+						"type": "Header",
+						"header_key": "x-envoy-internal",
+						"header_value": "(?i).+"
+					},
+					{
+						"type": "Header",
+						"header_key": "x-envoy-original-dst-host",
+						"header_value": "(?i).+"
+					},
+					{
+						"type": "Header",
+						"header_key": "x-envoy-original-path",
+						"header_value": "(?i).+"
+					},
+					{
+						"type": "Header",
+						"header_key": "x-envoy-local-overloaded",
+						"header_value": "(?i).+"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "FortiGate (Fortinet)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)//globalurl.fortinet.net",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)FortiGate Application Control",
+						"attack": true
+					}
+				]
+			},
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)Web Application Firewall",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)Event ID",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)//globalurl.fortinet.net",
+						"attack": true
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "FortiGuard (Fortinet)",
+		"schemas": [
+			{
+				"any": true,
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)FortiGuard Intrusion Prevention",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)//globalurl.fortinet.net",
+						"attack": true
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "Google Cloud App Armor (Google Cloud)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Via",
+						"header_value": "(?i)1.1 google"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "Kemp LoadMaster (Progress Software)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "X-ServedBy",
+						"header_value": "(?i)KEMP-LM"
+					},
+					{
+						"type": "Status",
+						"pattern": "403",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)<title>403 Forbidden</title>",
+						"attack": true
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "Link11 WAAP (Link11)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "server",
+						"header_value": "(?i)rhino-core-shield"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "360PanYun (360 Technologies)",
+		"schemas": [
+			{
+				"any": true,
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)panyun"
+					},
+					{
+						"type": "Header",
+						"header_key": "X-Panyun-Request-ID",
+						"header_value": "(?i).+?",
+						"attack": true
+					},
+					{
+						"type": "Header",
+						"header_key": "X-Panyun-Error-Reason",
+						"header_value": "(?i).+?",
+						"attack": true
+					},
+					{
+						"type": "Header",
+						"header_key": "X-Panyun-Error-Step",
+						"header_value": "(?i).+?",
+						"attack": true
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "Reflected Networks (Reflected Networks)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)<b>Request ID</b>",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)[0-9A-F]{8}-[0-9A-F]{18}-[0-9A-F]{6}",
+						"attack": true
+					},
+					{
+						"type": "Status",
+						"pattern": "403",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)content=\"Request is denied\"",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)<title>Forbidden</title>",
+						"attack": true
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "Scutum (Secure Sky Technology Inc.)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)Scutum"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "ThreatX (A10 Networks)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "X-Request-Id",
+						"header_value": "(?i).*"
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)^Forbidden - ID: ([a-fA-F0-9]{32})$",
+						"attack": true
+					},
+					{
+						"type": "Status",
+						"pattern": "403",
+						"attack": true
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "Variti (Variti)",
+		"schemas": [
+			{
+				"fingerprints": [
+					{
+						"type": "Header",
+						"header_key": "Server",
+						"header_value": "(?i)Variti(?:\\/[a-z0-9\\.\\-]+)?"
+					}
+				]
+			}
+		]
+	},
+	{
+		"name": "Vercel WAF (Vercel)",
+		"schemas": [
+			{
+				"any": true,
+				"fingerprints": [
+					{
+						"type": "Content",
+						"pattern": "(?i)<title>Vercel Security Checkpoint</title>",
+						"attack": true
+					},
+					{
+						"type": "Content",
+						"pattern": "(?i)/vercel/security/",
+						"attack": true
+					}
+				]
 			}
 		]
 	}

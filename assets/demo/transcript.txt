@@ -1,0 +1,24 @@
+Recorded from a development checkout. Synthetic evidence; network access disabled.
+Typing and pauses are paced for readability, not a speed benchmark.
+
+# wafme0w: saved evidence, zero network requests.
+
+$ wafme0w --evidence assets/demo/captures.jsonl
+/\_/\  wafme0w  v0.2.2-0.20241221164140-c974229ac3fe+dirty+c974229ac3fe8d98c0ee78e371cd3646822af0d0.dirty
+  HTTP evidence fingerprinting | active, baseline or saved capture
+
+FOUND  synthetic-cloudflare | Cloudflare (Cloudflare Inc.)
+NO MATCH  synthetic-clean | No known WAF fingerprint matched
+FOUND  synthetic-truncated | Cloudflare (Cloudflare Inc.) | partial scan
+WARN  synthetic-truncated | body truncated
+SUMMARY  3 targets
+  complete 2 | matched 2 | unnamed 1 | incomplete 1 | failed 0
+  generic 0 | diagnostics 1
+
+$ wafme0w --evidence assets/demo/captures.jsonl --jsonl --silent \
+  | jq -Mc '{target, state: .outcome.state, products: [.outcome.matches[]?.product]}'
+{"target":"synthetic-cloudflare","state":"complete","products":["Cloudflare (Cloudflare Inc.)"]}
+{"target":"synthetic-clean","state":"complete","products":[]}
+{"target":"synthetic-truncated","state":"incomplete","products":["Cloudflare (Cloudflare Inc.)"]}
+
+# Synthetic examples, not deployed-WAF accuracy or a speed benchmark.

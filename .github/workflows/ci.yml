@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ['1.26.x', '1.27.x']
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Verify formatting
+        shell: bash
+        run: |
+          unformatted=$(gofmt -l .)
+          if [[ -n "$unformatted" ]]; then
+            printf '%s\n' "$unformatted"
+            exit 1
+          fi
+      - name: Vet
+        run: go vet ./...
+      - name: Test with race detector
+        run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
+      - name: Export statement coverage
+        run: go tool cover -func=coverage.out > coverage-statements.txt
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: go-statement-coverage-${{ matrix.go }}
+          path: |
+            coverage.out
+            coverage-statements.txt
+          if-no-files-found: error
+          retention-days: 30
+      - name: Build
+        run: go build ./cmd/wafme0w
+      - uses: actions/setup-python@v7
+        if: matrix.go == '1.27.x'
+        with:
+          python-version: '3.12'
+      - name: Run offline detector coverage metric
+        if: matrix.go == '1.27.x'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes bubblewrap
+          python -m venv .offlinebench-venv
+          .offlinebench-venv/bin/pip install --requirement tools/offlinebench/requirements.txt
+          python -m unittest discover -s tools/offlinebench -p '*_test.py'
+          go run ./cmd/offlinebench \
+            -wafw00f-python "$PWD/.offlinebench-venv/bin/python" \
+            -output offlinebench-results \
+            -iterations 25 \
+            -blocks 4 \
+            -min-coverage 1 \
+            -min-accuracy 1
+          go run ./cmd/offlinebench -verify-run offlinebench-results >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: always() && matrix.go == '1.27.x'
+        with:
+          name: offline-semantic-coverage-and-profiles
+          path: offlinebench-results
+          if-no-files-found: error
+          retention-days: 30
+      - name: Docker build and help smoke test
+        if: matrix.go == '1.27.x'
+        run: |
+          docker build -t wafme0w:ci .
+          docker run --rm --network none wafme0w:ci --help

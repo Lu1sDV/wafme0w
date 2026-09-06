@@ -1,62 +1,54 @@
 package wafme0w
 
-import (
-	"fmt"
-	strutil "github.com/Lu1sDV/wafme0w/pkg/utils/strings"
-	"strings"
-)
+import "fmt"
 
-var genericWAFHeaders = []string{"X-WAF-Protection",
-	"X-Web-Application-Firewall"}
+var genericWAFHeaders = []string{"X-WAF-Protection", "X-Web-Application-Firewall"}
 
 type GenericDetection struct {
-	Reason                string
-	Mode                  GenericDetectionMode
-	BeforeStatus          int
-	AfterStatus           int
-	BeforeHeader          string
-	AfterHeader           string
-	RequestType           string
-	GenericWAFHeader      string
-	GenericWAFHeaderValue string
+	Reason                string               `json:"reason,omitempty"`
+	Mode                  GenericDetectionMode `json:"mode"`
+	BeforeStatus          int                  `json:"before_status,omitempty"`
+	AfterStatus           int                  `json:"after_status,omitempty"`
+	BeforeHeader          string               `json:"before_header,omitempty"`
+	AfterHeader           string               `json:"after_header,omitempty"`
+	RequestType           string               `json:"request_type,omitempty"`
+	GenericWAFHeader      string               `json:"generic_waf_header,omitempty"`
+	GenericWAFHeaderValue string               `json:"generic_waf_header_value,omitempty"`
 }
 
-type GenericDetectionMode int
+// An empty mode means no generic anomaly was observed.
+type GenericDetectionMode string
 
 const (
-	ChangeInHeader GenericDetectionMode = iota
-	ChangeInStatus
-	WAFHeaderDetected
+	ChangeInHeader    GenericDetectionMode = "change_in_header"
+	ChangeInStatus    GenericDetectionMode = "change_in_status"
+	WAFHeaderDetected GenericDetectionMode = "waf_header_detected"
 )
 
 func (g GenericDetectionMode) String() string {
-	return [...]string{"header changed",
-		"status changed",
-		"generic WAF header detected"}[g]
+	switch g {
+	case "":
+		return "none"
+	case ChangeInHeader:
+		return "header changed"
+	case ChangeInStatus:
+		return "status changed"
+	case WAFHeaderDetected:
+		return "generic WAF header detected"
+	default:
+		return "unknown"
+	}
 }
 
 func (g *GenericDetection) generateReason() {
-
-	var tmplTxt string
-
-	//prettify RequestType for output
-	//eg. From XssAttack to Xss Attack
-	splitRequestType := strutil.SplitAtUpperCases(g.RequestType)
-	prettyRequestType := strings.Join(splitRequestType, " ")
-
 	switch g.Mode {
 	case ChangeInHeader:
-		tmplTxt = fmt.Sprintf(`The server header is different when the following request was tried: %s
-Normal Server header is: "%s" while response's header is: "%s"`, prettyRequestType, g.BeforeHeader, g.AfterHeader)
-
+		g.Reason = fmt.Sprintf("Server header changed from %q to %q for %q", g.BeforeHeader, g.AfterHeader, g.RequestType)
 	case ChangeInStatus:
-		tmplTxt = fmt.Sprintf(`Server returned a different response when the following request was tried: %s
-Normal response code is "%d" while response's status code is "%d"`, prettyRequestType, g.BeforeStatus, g.AfterStatus)
-
+		g.Reason = fmt.Sprintf("status changed from %d to %d for %q", g.BeforeStatus, g.AfterStatus, g.RequestType)
 	case WAFHeaderDetected:
-		tmplTxt = fmt.Sprintf(`The Web Application has a Generic WAF header when the following request was tried: %s
-The header is: "%s" and its value is: "%s"`, prettyRequestType, g.GenericWAFHeader, g.GenericWAFHeaderValue)
-
+		g.Reason = fmt.Sprintf("generic marker %q=%q observed for %q", g.GenericWAFHeader, g.GenericWAFHeaderValue, g.RequestType)
+	default:
+		g.Reason = ""
 	}
-	g.Reason = tmplTxt
 }

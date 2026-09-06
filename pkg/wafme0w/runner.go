@@ -3,254 +3,243 @@ package wafme0w
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	httputil "github.com/Lu1sDV/wafme0w/pkg/utils/http"
-	strutils "github.com/Lu1sDV/wafme0w/pkg/utils/strings"
-	"github.com/logrusorgru/aurora/v4"
 	"io"
-	"os"
-	"path/filepath"
+	"runtime/debug"
+	"slices"
 	"strings"
 	"sync"
+	"time"
+
+	httputil "github.com/Lu1sDV/wafme0w/pkg/utils/http"
 )
 
-type Runner struct {
-	Options *Options
-	Wafs    []WAF
-	Aurora  *aurora.Aurora
+const ResultSchemaVersion = 1
+
+var programVersion = func() string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return "devel"
+	}
+	version := info.Main.Version
+	if version == "" || version == "(devel)" {
+		version = "devel"
+	}
+	var revision string
+	var dirty bool
+	for _, setting := range info.Settings {
+		switch setting.Key {
+		case "vcs.revision":
+			revision = setting.Value
+		case "vcs.modified":
+			dirty = setting.Value == "true"
+		}
+	}
+	if revision != "" {
+		version += "+" + revision
+	}
+	if dirty {
+		version += ".dirty"
+	}
+	return version
+}()
+
+// Version reports embedded module/VCS identity, or devel when unavailable.
+func Version() string { return programVersion }
+
+type ScanSettings struct {
+	Concurrency                int           `json:"concurrency"`
+	FastMode                   bool          `json:"fast_mode"`
+	BaselineOnly               bool          `json:"baseline_only"`
+	Passive                    bool          `json:"passive"`
+	ExcludeGeneric             bool          `json:"exclude_generic"`
+	MaxBodyBytes               int64         `json:"max_body_bytes"`
+	RequestTimeout             time.Duration `json:"request_timeout"`
+	TargetTimeout              time.Duration `json:"target_timeout"`
+	MaxRequests                int           `json:"max_requests"`
+	MaxConnections             int           `json:"max_connections"`
+	RequestsPerSecond          float64       `json:"requests_per_second"`
+	PerOriginRequestsPerSecond float64       `json:"per_origin_requests_per_second"`
+	MaxRedirects               int           `json:"max_redirects"`
+	RedirectPolicy             string        `json:"redirect_policy"`
+	AllowedOrigins             []string      `json:"allowed_origins,omitempty"`
 }
 
-func NewRunner(options *Options) *Runner {
-	return &Runner{Options: options, Aurora: aurora.New(aurora.WithColors(false))}
+type ResultProvenance struct {
+	ProgramVersion  string       `json:"program_version"`
+	CatalogueSHA256 string       `json:"catalogue_sha256"`
+	ScanMode        string       `json:"scan_mode"`
+	Settings        ScanSettings `json:"settings"`
 }
 
 type Result struct {
-	Target      string
-	FingerPrint []FingerPrintDetection
-	Generic     GenericDetection
-	Errors      []error
+	SchemaVersion int               `json:"schema_version"`
+	Target        string            `json:"target"`
+	Origin        string            `json:"origin"`
+	Provenance    ResultProvenance  `json:"provenance"`
+	Evidence      []EvidenceSummary `json:"evidence"`
+	Outcome       Outcome           `json:"outcome"`
+	Generic       GenericDetection  `json:"generic"`
 }
 
-func (r *Runner) Scan() ([]Result, error) {
-	var results []Result
-
-	if r.Options.InputFile == "" && r.Options.Target == "" && r.Options.Inputs == nil {
-		return results, errors.New("no target provided")
+func makeResult(engine *Engine, target, origin string, evidence []Evidence, config Config) Result {
+	mode := "active"
+	if config.Passive {
+		mode = "passive"
+	} else if config.BaselineOnly {
+		mode = "baseline"
+	} else if config.FastMode {
+		mode = "fast"
 	}
-
-	if r.Options.HeadersFile != "" {
-		var headers []string
-		headersFileName := r.Options.HeadersFile
-
-		headersFile, err := os.Open(headersFileName)
-		if err != nil {
-			return []Result{}, err
-		}
-
-		scanner := bufio.NewScanner(headersFile)
-		for scanner.Scan() {
-			headers = append(headers, scanner.Text())
-		}
-		r.Options.Headers = headers
+	result := Result{
+		SchemaVersion: ResultSchemaVersion, Target: target, Origin: origin, Outcome: engine.Classify(evidence),
+		Evidence: make([]EvidenceSummary, len(evidence)),
+		Provenance: ResultProvenance{
+			ProgramVersion: Version(), CatalogueSHA256: engine.Digest(), ScanMode: mode,
+			Settings: ScanSettings{
+				Concurrency: config.Concurrency, FastMode: config.FastMode, BaselineOnly: config.BaselineOnly,
+				Passive: config.Passive, ExcludeGeneric: config.ExcludeGeneric, MaxBodyBytes: config.MaxBodyBytes,
+				RequestTimeout: config.RequestTimeout, TargetTimeout: config.TargetTimeout,
+				MaxRequests: config.MaxRequests, MaxConnections: config.MaxConnections,
+				RequestsPerSecond: config.RequestsPerSecond, PerOriginRequestsPerSecond: config.PerOriginRequestsPerSecond,
+				MaxRedirects: config.MaxRedirects, RedirectPolicy: config.RedirectPolicy,
+				AllowedOrigins: slices.Clone(config.AllowedOrigins),
+			},
+		},
 	}
-
-	if err := r.getWAFsFromFingerPrints(); err != nil {
-		return []Result{}, err
-	}
-
-	if r.Options.Concurrency > 1 {
-		//concurrent
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		urls := urlStream(ctx, r.Options.Inputs)
-
-		workers := make([]<-chan Result, r.Options.Concurrency)
-		for i := 0; i < r.Options.Concurrency; i++ {
-			workers[i] = concurrentScan(ctx, urls, i, &r.Wafs, r.Options)
-		}
-
-		for result := range mergeResults(ctx, workers...) {
-			if !r.Options.Silent {
-				r.outputResult(result)
-			}
-			results = append(results, result)
-		}
-	} else {
-		//non concurrent
-		scanner := bufio.NewScanner(r.Options.Inputs)
-		for scanner.Scan() {
-			target := scanner.Text()
-			result := sequentialFingerPrint(target, r.Wafs, r.Options.FastMode, !r.Options.ExcludeGeneric)
-			if !r.Options.Silent {
-				r.outputResult(result)
-			}
-			results = append(results, result)
+	for i, observation := range evidence {
+		result.Evidence[i] = EvidenceSummary{
+			Index: i, Role: observation.Role, RequestURL: observation.RequestURL,
+			EffectiveURL: observation.EffectiveURL, RedirectChain: slices.Clone(observation.RedirectChain),
+			StatusCode: observation.StatusCode, BodyTruncated: observation.BodyTruncated, ErrorCode: observation.ErrorCode,
 		}
 	}
-
-	//Eventually, write results to output
-	if r.Options.OutputFile != "" && len(results) > 0 {
-		var output []byte
-		fileExt := strings.ToLower(filepath.Ext(r.Options.OutputFile))
-
-		if fileExt == ".json" {
-			var err error
-			output, err = prepareJSONOutput(results)
-			if err != nil {
-				return []Result{}, err
-			}
-		} else {
-			output = prepareTXTOutput(results)
-		}
-		if len(output) != 0 {
-			err := os.WriteFile(r.Options.OutputFile, output, 0644)
-			if err != nil {
-				return []Result{}, err
-			}
-		}
+	if !config.ExcludeGeneric {
+		result.Generic = GenericDetect(evidence)
 	}
-	return results, nil
+	return result
 }
 
-func (r *Runner) getWAFsFromFingerPrints() error {
-	var wafs []WAF
-
-	if r.Options.FingerPrints == nil {
-		return errors.New("no JSON-formatted fingerprints provided")
+// Run streams one result per nonblank input line to emit, serially in completion
+// order. Target failures are results; configuration, input, context, and sink
+// failures are returned. Input lines are bounded by bufio.MaxScanTokenSize and
+// both work queues are unbuffered. Run never closes inputs or retains results.
+//
+// A blocking reader requires Config.CancelInput (or independent caller wakeup).
+// Cancellation, including private sink-failure cancellation, invokes that callback.
+// No input scanner goroutine is abandoned. Emit must also return for shutdown.
+func Run(ctx context.Context, engine *Engine, inputs io.Reader, config Config, emit func(Result) error) error {
+	if ctx == nil || engine == nil || inputs == nil || emit == nil {
+		return errors.New("context, engine, inputs, and result callback are required")
 	}
-
-	byt, err := io.ReadAll(r.Options.FingerPrints)
-	if err != nil {
+	config = config.normalized()
+	if err := config.validate(); err != nil {
 		return err
 	}
-	if err := json.Unmarshal(byt, &wafs); err != nil {
+	if config.Passive {
+		return errors.New("passive configuration requires RunCaptured")
+	}
+	var inputWake sync.Once
+	wakeInput := func() {
+		inputWake.Do(func() {
+			if config.CancelInput != nil {
+				config.CancelInput()
+			}
+		})
+	}
+	if err := ctx.Err(); err != nil {
+		wakeInput()
 		return err
 	}
-	r.Wafs = wafs
-	return nil
-}
-
-// GetAllWAFs gets all wafs and returns a map waf=>manufacturer
-func (r *Runner) GetAllWAFs() (map[string]string, error) {
-
-	r.getWAFsFromFingerPrints()
-	result := make(map[string]string, len(r.Wafs))
-
-	for _, waf := range r.Wafs {
-		wafName := strings.Split(waf.Name, " (")[0]
-		manufacturer := strutils.SubStringBetweenDelimiters(waf.Name, "(", ")")
-		result[wafName] = manufacturer
-	}
-	return result, nil
-}
-
-func (r *Runner) outputResult(result Result) {
-	if !r.Options.SuppressWarnings {
-		if len(result.Errors) > 0 {
-			for _, err := range result.Errors {
-				PrintWarning(err.Error(), r.Aurora)
-			}
+	workCtx, cancel := context.WithCancel(ctx)
+	inputWoken := make(chan struct{})
+	stopWake := context.AfterFunc(workCtx, func() {
+		wakeInput()
+		close(inputWoken)
+	})
+	defer func() {
+		if !stopWake() {
+			<-inputWoken
 		}
-	}
-	printResult(result, r.Aurora)
-}
-
-func sequentialFingerPrint(target string, wafs []WAF, fastMode bool, withGeneric bool) Result {
-
-	var fingErrors []error
-	var responses []RequestResponse
-	var generic = GenericDetection{}
-
-	if !httputil.IsValidHTTPURL(target) {
-		err := fmt.Errorf("invalid url: %v", target)
-		fingErrors = append(fingErrors, err)
-		return Result{Target: target, Errors: fingErrors}
-	}
-
-	parsedUrl, _ := httputil.ParseURI(target)
-	urlNoPath := parsedUrl.Scheme + "://" + parsedUrl.Host
-
-	if fastMode {
-		responses = sendBasicRequests(parsedUrl.String())
-	} else {
-		responses = sendAllTypesRequests(parsedUrl.String())
-	}
-
-	for _, resp := range responses {
-		if resp.Error != nil {
-			fingErrors = append(fingErrors, resp.Error)
-		}
-	}
-	identify := NewIdentifier(responses, wafs)
-	results := identify.DoAll()
-
-	if withGeneric && len(results) == 0 {
-		generic = identify.GenericDetect()
-	}
-
-	return Result{Target: urlNoPath, FingerPrint: results, Generic: generic, Errors: fingErrors}
-}
-
-// read urls from buffered file and send them to channel
-func urlStream(ctx context.Context, reader io.Reader) <-chan string {
-
-	scanner := bufio.NewScanner(reader)
-	stream := make(chan string)
-	go func() {
-		for scanner.Scan() {
-			uri := scanner.Text()
-			select {
-			case <-ctx.Done():
-				return
-			case stream <- uri:
-			}
-		}
-		close(stream)
+		cancel()
 	}()
-	return stream
-}
-
-func concurrentScan(ctx context.Context, urls <-chan string, workerID int, wafs *[]WAF, options *Options) <-chan Result {
-
+	policy := newOutboundPolicy(config)
+	targets := make(chan string)
 	results := make(chan Result)
+	sinkErrors := make(chan error, 1)
 	go func() {
-		for url := range urls {
-			result := sequentialFingerPrint(url, *wafs, options.FastMode, !options.ExcludeGeneric)
-			select {
-			case <-ctx.Done():
-				return
-			case results <- result:
+		var sinkErr error
+		for result := range results {
+			if sinkErr == nil && workCtx.Err() == nil {
+				if err := emit(result); err != nil {
+					sinkErr = fmt.Errorf("emit result: %w", err)
+					cancel()
+				}
 			}
 		}
-		close(results)
+		sinkErrors <- sinkErr
 	}()
-	return results
+	var workers sync.WaitGroup
+	workers.Add(config.Concurrency)
+	for range config.Concurrency {
+		go func() {
+			defer workers.Done()
+			for {
+				select {
+				case <-workCtx.Done():
+					return
+				case target, ok := <-targets:
+					if !ok || workCtx.Err() != nil {
+						return
+					}
+					result := classifyTarget(workCtx, engine, target, config, policy)
+					select {
+					case <-workCtx.Done():
+						return
+					case results <- result:
+					}
+				}
+			}
+		}()
+	}
+	scanner := bufio.NewScanner(inputs)
+	for workCtx.Err() == nil && scanner.Scan() {
+		target := strings.TrimSpace(scanner.Text())
+		if target == "" {
+			continue
+		}
+		select {
+		case <-workCtx.Done():
+		case targets <- target:
+		}
+	}
+	close(targets)
+	var inputErr error
+	if err := scanner.Err(); err != nil {
+		inputErr = fmt.Errorf("read targets: %w", err)
+		wakeInput()
+	}
+	workers.Wait()
+	close(results)
+	return errors.Join(inputErr, <-sinkErrors, ctx.Err())
 }
 
-func mergeResults(ctx context.Context, channels ...<-chan Result) <-chan Result {
-	var wg sync.WaitGroup
-
-	wg.Add(len(channels))
-	outgoingResults := make(chan Result)
-	multiplex := func(c <-chan Result) {
-		defer wg.Done()
-		for i := range c {
-			select {
-			case <-ctx.Done():
-				return
-			case outgoingResults <- i:
-			}
-		}
+func classifyTarget(ctx context.Context, engine *Engine, target string, config Config, policy *outboundPolicy) Result {
+	u, err := httputil.ParseURI(target)
+	if err != nil {
+		result := makeResult(engine, target, "", nil, config)
+		result.Outcome = Outcome{State: Failed, Diagnostics: []Diagnostic{{Code: "invalid_target", Evidence: -1, Message: err.Error()}}}
+		return result
 	}
-	for _, c := range channels {
-		go multiplex(c)
+	origin := normalizedOrigin(u)
+	if !policy.allowed(origin) {
+		result := makeResult(engine, target, origin, nil, config)
+		result.Outcome = Outcome{State: Failed, Diagnostics: []Diagnostic{{Code: "target_scope", Evidence: -1, Message: "starting URL is outside permitted origins"}}}
+		return result
 	}
-	go func() {
-		wg.Wait()
-		close(outgoingResults)
-	}()
-	return outgoingResults
+	targetCtx, cancel := context.WithTimeout(ctx, config.TargetTimeout)
+	defer cancel()
+	evidence := sendRequests(targetCtx, u.String(), policy.client(origin), config)
+	return makeResult(engine, target, origin, evidence, config)
 }

@@ -1,0 +1,2732 @@
+{
+  "schema_version": 2,
+  "policy": "Reviewed identity inventory. Each existing baseline-untested hash is acknowledged but not tested. Never regenerate this file from detector output or relabel changed/new rules baseline-untested. New/changed rules require human-reviewed positive and negative local fixture links and updated identity; fixture changes/removals require explicit review of truth and both adapter expectations. Product/schema denominators are always the entire current catalogue, never the shared subset. Schema coverage is not per-fingerprint branch coverage or catalogue-wide accuracy. Provenance scope distinguishes synthetic-conformance from reviewed-real. Historical synthetic review dates and reviewer identities remain unknown. Real captures require source identity, collection date, authorization and sanitization assertions, and dated identified independent review; linked reviewed-real rule coverage must use only such captures. Provenance-only migration preserves prior evidence, truth, adapter expectations and rule identities.",
+  "fixtures": {
+    "aws-header": "229176f7a7bb044711b97ef29e1d292d4ca4039470b7e091f82d744ec4c27e4d",
+    "cloudflare-repeated-header": "44e965ee6d0ddf1ef1c0e32992ede437870d2342f82b340beebd899460d92556",
+    "cloudflare-server": "6dcc27563659a9d778acddb48e148a42b01621c85c3c45c16e2edeaa1cd966c3",
+    "fastly-request-id": "4e2d765717d518a85a9b1f08e9bec09dc7daede571d5f753e202106411955e81",
+    "modsecurity-body": "d594bbb6697254116314d112128b3d22f3c20420f5c912f70b4e8c09cdcf7a72",
+    "modsecurity-reason-status": "b6e010cb9cb4d5a14e6765caf0da527a1facc570ccd584b732fbfa100efe8d0a",
+    "known-empty": "ac6fde89ed152eabf2c558d580b68efc2b37902f892f8a683d5c9f1fac5b09d9",
+    "missing-all": "01533da150fddccccbbba325aee6fa2364b15e11c9c92174dc2fa3201675f6f0",
+    "normal-only": "9fbb630bb2f9724988ddfdd1666f781ceb4df5ec4d088931f56641d784081bab",
+    "transport-error-no-metadata": "8cfe0e8c58a34dbee74f595e2209b4aa6e9680f81c98916b588299030689374b",
+    "truncated-content": "289ea1376bb08c8014fbf01f5256dc30ee56bdb73c120b3458ac35f893c3a65c",
+    "body-read-error-preserves-header": "8c82a637ace20f4ac08185bf41312d6d7f8462a00f3a714cecd529a7b69cb97c",
+    "truncated-body-header-only-positives": "622a4993666159861ece837d4452bfb05337dde3c38c6d02c023b0f0b8de63e4",
+    "body-error-status-reason-positive": "2106e82d3caf1057d6de9e082b89fc0635e703865476597b79e8690fc387c57c",
+    "unknown-truth-complete": "74cf2e5dc6b9b082ed0f93e0abfe8b87aa5007c57d2b6ba9e1a1cdaf3e09a74e",
+    "near-miss-product-headers": "31a7b537d41c11357ae320f546fe451ff495d82028316d346b30a29101ce66c3",
+    "near-miss-modsecurity-content": "2fcb30ea8ac35a1e34f1afec0e74abc8845a4e730b8e706db178141e04f8f767",
+    "modsecurity-reason-wrong-status": "fb561c97b32cab009fa8f667b63e519093af27f87014da1bbd7cc30ff589f68e",
+    "modsecurity-status-wrong-reason": "12ab9d33d7283315b1e66415722da85cc093214def1067d31acbcaee6af6eba8",
+    "modsecurity-reason-status-406": "27bd26b1aa53e77da9e060d4d2c3a021e13494e0f2aacf9dd04cf8124a65a693",
+    "anubis-cookie": "10107931c8d0d2e84484672b54f018747ca3c58f9e0902a053816ed1bc775fd8",
+    "anubis-negative": "f00437747695871c263e1de6a039fd85cfb3a3881dc3ecd743ae9b3a330aa6c3",
+    "azure-positive": "cd8d10fc67461607ca5c20a25af1c88e98846355acf3568f437f0d2d7b403ac1",
+    "azure-missing-title": "b872f11f9648b8f7e407e9eb0ed0f24dcbb7a5f04e6a0c37a45129ed004e0f6f",
+    "baffin-positive": "34bab304cea983f10eddaeba86879446b7dd2f489e6cc7a89e5b29bc1531f529",
+    "baffin-negative": "c5269c6c98da57464b82707a6e363419d39998f6bac0d754c7af04b74e0083bb",
+    "envoy-positive-server": "3831ce0e712bd93b4384ea9900abd8f3d755d7961c22904a68846c1a1109fae9",
+    "envoy-negative": "fa1ec5d8b222be4c8ec09d43c7c02cb2043ad1ada377ce419d4803e3d3e23893",
+    "fortigate-schema1": "ff3878cbbb915b0cefbc006242447b9163cd91f2c97a6bbd6e9ed69e894824f3",
+    "fortigate-schema2": "007a8593d357a151bd1326d2248ca659a632bd847d2aa7bc79d1767f5315b4a5",
+    "fortigate-negative": "e720e4f4add5d921288ef49c24776f1725dfc74c7b9a377e2f6b2a8d5538069e",
+    "fortiguard-positive": "b4bdd6037f4f4668548757aa4e6646a0e11d79f0572d8b84ee0a1a8fb9987070",
+    "fortiguard-negative": "7a92541965011d3afe5fa37bd6f076127fd5ed8bbc1a8c596f8756f4d2b407a0",
+    "gcparmor-positive": "9d744a4d413ead8807990357102f85c3276079a8d0d84f066ed77d905c8cd67d",
+    "gcparmor-negative": "da9c0843ce113ffee866c1497419138493c5cd1f9ab7b3f3eb9e40c39e0ef28e",
+    "kemp-positive": "a406560335f438fab820e9af6b28f78f518c23a7fcdfa5aa341db62429e22f83",
+    "kemp-negative": "6823a00c2b5bd33f01d5386eef7db044794420d9c740bc2814ab9c4e25835894",
+    "link11-positive": "a85addc0cbbd1e912c20491d3e48cdf1ae17295d956f4a339db1828ff02c5ecf",
+    "link11-negative": "dd891112da1754d14298b3486ea14391dc022d6876edd75e554ae1962985450d",
+    "panyun-positive": "2b9d3370154b80f65de29b8bc779ad057af2a0c8853d95531df449cc6b7191ff",
+    "panyun-negative": "7b4bc12acbd47024832ee58007ae1a92132f139f34699cf98262cbb199f40a8d",
+    "reflected-positive": "ca67db8413a3a4f23e676438740489779b56fc62d4efaaf29ca572233609165e",
+    "reflected-negative": "1ed2b57acb97aebd428528bc4b25609818c4f6462e4cc43e8535cedd098b9e98",
+    "scutum-positive": "ded0a8f0bb3184466081e1a98d9587b5f59b77c2f9bcf318ea13bb08a038a4cd",
+    "scutum-negative": "6c07027ff27bc52e8e26a84d3ff76fa8bc198f04be6fdda1395f9cb38f9ac52f",
+    "threatx-positive": "deedc888dc7aae46f31430a9ad96188afdcd1f5f00facf822fb1870313fb1209",
+    "threatx-negative": "3bcbe106418983dc1fc4cb15937e6513025ca60e9114d5f2bd7d946d0269ae13",
+    "variti-positive": "9c255db54d5f145522708f6ef0c73740227295f2d63c46284f670e04d0ced682",
+    "variti-negative": "e55eef410811b202cd643024c56cdc153919d9e169ad913a7087dcba463f0ad1",
+    "vercel-positive": "407256afcf915f81fd9048a70b2936d6a7abca012aaecc5221ac48e67d2b3c04",
+    "vercel-negative": "7b2367663eaccadfba98d303724274cc0320df2cb10777857e366ddfccd58a33",
+    "aws-blocked-header": "3d9342a04228fab847565ec934b48fc91399c2072fb06e2ca22b15636789c211",
+    "aws-blocked-header-near-miss": "e5b480df48276c63b086fe28db8da9f48d9e726e2a3d0b8f4a34cd77eb6edbaa",
+    "aliyundun-four-way-and": "291872c9834888db5ced2286468d56f60f518bb19a73eb77a6ef3a6142b13ecc",
+    "aliyundun-missing-image": "bbb45e49a457fc8d044cade23bf6b73e08187c576a1272b77a0b9d57f166056c",
+    "aliyundun-wrong-status": "181b0439f631de0832a604a381f0225f11dcb3b75a3603ee4f9b47c9e303e04e",
+    "azion-pop": "a81c2871acaf39ffdc06792c11ddefb73700d6d85a671cd9f09a2d67c6f9fbdb",
+    "azion-request": "313eb1bfd19d82309c961046ebf4c8b65695a0c0694093ffc6a52d6f83c9e2fa",
+    "azion-stale-server": "b7dec34c5ebae6e470f89fac9ec147c7966f0368bbc5a22daf71d189415cf342",
+    "fastly-served-by": "7ccfd5ed43ad185d30b88a0f4c15cf3453f29691dfa9c545f65010bcf22bf75e",
+    "fastly-served-by-near-miss": "a6621496c129eb605ceee4ead0e27f1e0aeae96a431c34895ba9bdfc40122c57",
+    "shieldon-schema-1": "12146b477bef411d471b087ef088aeeabc8303c48706e04e9a598565e2c78cd6",
+    "shieldon-schema-1-missing-term": "7d2974a1393134039994edd58f110b402890126b9e92db453c19c2258deb4402",
+    "shieldon-schema-2": "7982f5551efb177c9f6c0b4c1851452b6305a10644022a7ca741b62a91455c48",
+    "shieldon-schema-2-missing-term": "f947ce7daa7a84fe1b0ab7c7429bc68023edb9c9c6b28414c9814a7b8bff59de",
+    "shieldon-schema-3": "005eae79c8534e821177d3f7434e2942fc397f7be3518426ec54df91cdee9ef0",
+    "shieldon-schema-3-missing-term": "e7914345650faf45112f35bd15ba28e3fd247f51c8ef02775c7083d0052b42c7",
+    "shieldon-literal-header-key": "7a050c27104bb10545c52b06a94d35cb400f4e0ae68b078959dbd2dd35d45c23",
+    "siteguard-powered": "80a1e3a65d9441a9f66c557d58791e0959026b29766e23860f6d7a063d7fb7ff",
+    "siteguard-refusal": "5d9bbddcff898c91383f140002aaef5f011bfeb4dd52a029bbc79b253cf314f3",
+    "siteguard-near-miss": "380c8641857823572af870eebee5d567a7dbeedc3ed817a302cd097fc297adf8",
+    "tencent-redirect": "1050c6ec147b312513463b1f5b104b26a40e83dc2f00ab8de9f6b578f95b6af5",
+    "tencent-redirect-near-miss": "e9e824373824715f82746118e0bd256b29aeceb0ec1f56739298475b5035de04",
+    "yunjiasu-server": "b3b502b0dc64bf8829e28d033d87a911b5949ae426859cce0ac83f8eb4f296a8",
+    "yunjiasu-link": "e215d944ea0e49138daf0b001374a2c7af2287e9c5c5fd332cf371664066aa59",
+    "yunjiasu-cookie-script": "ec10766c39886a5eaa3d86054eaa9ce7b7751c386a68626f71c5e5b0d20c7a47",
+    "yunjiasu-near-miss": "e0ed7abaa90400a9bcce76907be6e482b22912bcd91893a0a63e68b9a5b795db",
+    "bigip-content-and": "636af66f680a6759227139aef0055149bb7145b8226d777fc6acc04319420b35",
+    "bigip-content-missing-term": "2a41db88e1792293dd03f6dbde8aec8d338a0f663ee4ba08033de51fee9bfe06",
+    "bigip-cookie-hex8": "cdde061162f416a1517eeaef5fe88972aa18ca859c3a0fa05b7afe8d6ca310cb",
+    "bigip-cookie-hex6": "1946f971ffb1d58c8cba57d30ca85aee882ed48dc37fbf7ff3acc8d0436a1bb5",
+    "bigip-cookie-seven-digits": "7279a83209bbd947c0d97b2fd404bc2e1c0b1ed032d555ad9cc172f58fb47ba6",
+    "denyall-reason-exact": "da6b1b8005807f85ba149e80eb2d01085c6d1b0cb2ee125f79409d148fa6ed29",
+    "denyall-reason-prefix": "2342034b9fe9d0e5187c51342e3fbb767d92a854dcc102530d7e155df08a1cac",
+    "modsecurity-reason-case": "efe4cf2207308af79e197cc4fa7b72e18b568c4cbc475a0d2123dcde872bf02c",
+    "webknight-999-reason": "ab13e0c3cf585205dfcb6dbe0274475ec2967556bb3c92da7d7f10b9caf2c2c9",
+    "webknight-404-reason": "5393486d01c7e8ce9168e6bbedfee45613d7a45439292438cf8711cfe329c4ab",
+    "webknight-reason-case": "2179c55365b039936b67c3935249050f2e867f4cbb92c1f472f4f65e7dc3e443",
+    "webknight-content": "d1f8fcef7a350181cd379b223886fc6899e18c7872fef22459f4e2a530c17ffe",
+    "threatx-empty-header": "4cefa655104e6fd964ed17538cf310ce75dd396b2f594cc3f7bdd6e4ea4b8dc0",
+    "fastly-repeated-header-anchor": "1e5436f6321fc03d2021ac3d4f3f261db8a6a972ae1f9b0ec1969d584d1100e1",
+    "bigip-malformed-cookie": "80be41ab868cb6a0f4cf0ea3e5083cc3ba19357a12003f7a3b7f453f22f5e2c1",
+    "fastly-attack-only-header": "9546c8c42119d38d8886a20c1be5b4322950616a4938686427ca60e27cde3860",
+    "azion-header-name-case": "eb449e6c82add8a84681dbd71c908b498bed3adc0b15b6f05f9e43b30c9d2d08",
+    "azion-repeated-empty-header-values": "7d3c4c6611fd2222ac9d5d07ca6e6af31b9d6cdccf32e16c65b978ae7438fc40",
+    "aws-request-id-whitespace": "506f330ce30d15ddc7e2f700035eb8dd913c3edae57ef93429f0747b9441e0aa",
+    "aws-quoted-cookie": "99922e3aaab8e24261738eaec35ad0fe86fc877191ed3db964459520bed6eb9c",
+    "aws-malformed-cookie-name-space": "7849987f8a04d8365b73fc73dd908f3d486f44705ed194248a7fb6db6d8a58c9",
+    "cloudflare-bare-cookie-token": "fd573bfb3cd2f0906be61460553f38494f9a48640308535dfd2eadf06ab71f6e",
+    "denyall-reason-trailing-space": "da6e12996c9ce10c6f04918d6032a3ead8f2250fcb5c10c3618c75d52d75c8dd",
+    "modsecurity-normal-only-reason-status": "e7165a277a0eff9cac1e4571c1ece1a46c6ea6468321b30850782a6fbdbb4f1a",
+    "modsecurity-cross-response-reason-status": "2ceef5d173daea785f172072598ff1aaa31fda254e925872a782d7ac6f6f09f5",
+    "aliyundun-conjunction-cross-role": "d31cafbc3f29d22f27c1890c2bc3b3b49ba8eb37f3080cb9a55278a00ad30a0a",
+    "reflected-conjunction-cross-role": "124538edb27ea7e0092b3ab2fd5331c870a981b2a861f6028dc4df20b753b333",
+    "kemp-cross-role-header-body": "269501643d711beaebac4d3d29f0aecf8f06d2ccc26dae6605ca0cdb3543910c",
+    "webknight-status-reason-cross-role": "c7ad34d9aaf8da45fbd7e5fde2101feefea2768183fbd80d45a57e6caaa31171",
+    "fortigate-cross-role-overlap": "58ebc3f06fec46235785a5b795bf70851a12c47f571eb4fca21fe0eda041816c",
+    "modsecurity-body-survives-wrong-metadata": "53c3adbe8e61bbe0cf39b989ebfd2256ae87f07b88e3f0525a998c8b7b35b86f",
+    "azure-auxiliary-role-conjunction": "8b86192e259a2936664553899630d44caaae6dd6e85ab49a858320b2a4670f61",
+    "cloudflare-fastly-multi-product": "97fdfe267a9e1a73b3de03830987f53bca6973b2af0269b006eda06aff0571d6",
+    "status-opens-unknown-aliyundun-conjunction": "f1b2ae21290310cc7de9c7075f0369f106b1b9e209273117d18a41b3206cbbe4",
+    "anubis-cookie-survives-unavailable-body": "0ef1692a19c2192429b523e9f3eb9420661e47e0e9a6d8970e27c12a50fb919f",
+    "unavailable-normal-body-complete-attack-negative": "ee7adc18aca724e792d3b3887924415aa8cb414b95950b9de232a774a7b3d42a"
+  },
+  "rules": [
+    {
+      "product": "Expression Engine (EllisLab)",
+      "schema": 1,
+      "sha256": "a61832f7a2ad615c6283ab30853c45d4ae7b71edb50710119254ed1dc6de04a0",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:a61832f7a2ad615c6283ab30853c45d4ae7b71edb50710119254ed1dc6de04a0",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "NetScaler AppFirewall (Citrix Systems)",
+      "schema": 1,
+      "sha256": "1fb0675c0d6f312d91ab282f4630b0503a0c3b2fbda46f0d159e263985fccb04",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:1fb0675c0d6f312d91ab282f4630b0503a0c3b2fbda46f0d159e263985fccb04",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Beluga CDN (Beluga)",
+      "schema": 1,
+      "sha256": "d19e1fee225334f7268f8b001d1e23d30c7280aa805e055d050b62400d1fff13",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:d19e1fee225334f7268f8b001d1e23d30c7280aa805e055d050b62400d1fff13",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Shieldon Firewall (Shieldon.io)",
+      "schema": 1,
+      "sha256": "436ee37d14fd1a6c9e412387a1aa40ba3a5cc376d7bbd6d4c48f6240747ccd21",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "shieldon-schema-1"
+      ],
+      "negative": [
+        "shieldon-schema-1-missing-term",
+        "shieldon-literal-header-key"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:436ee37d14fd1a6c9e412387a1aa40ba3a5cc376d7bbd6d4c48f6240747ccd21",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Shieldon Firewall (Shieldon.io)",
+      "schema": 2,
+      "sha256": "32d6b8976bf0ca8a981db123010eed56218917d64fb076aa9f53b287483cec9c",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "shieldon-schema-2"
+      ],
+      "negative": [
+        "shieldon-schema-2-missing-term",
+        "shieldon-literal-header-key"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:32d6b8976bf0ca8a981db123010eed56218917d64fb076aa9f53b287483cec9c",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Shieldon Firewall (Shieldon.io)",
+      "schema": 3,
+      "sha256": "6521bd91057296bc08e95dc67034bcd5439484cb259b1b68c009f0ebf2cb6b22",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "shieldon-schema-3"
+      ],
+      "negative": [
+        "shieldon-schema-3-missing-term",
+        "shieldon-literal-header-key"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:6521bd91057296bc08e95dc67034bcd5439484cb259b1b68c009f0ebf2cb6b22",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "RequestValidationMode (Microsoft)",
+      "schema": 1,
+      "sha256": "2695428444ad06782b4c9d0968dc1894592cb73982cbeb0531f37a7ee2017f04",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:2695428444ad06782b4c9d0968dc1894592cb73982cbeb0531f37a7ee2017f04",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "URLMaster SecurityCheck (iFinity/DotNetNuke)",
+      "schema": 1,
+      "sha256": "f651e0e9447edd7e22ae7cae49eab6558c5cf089832b2a84c35a2ea41d21165b",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:f651e0e9447edd7e22ae7cae49eab6558c5cf089832b2a84c35a2ea41d21165b",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "URLMaster SecurityCheck (iFinity/DotNetNuke)",
+      "schema": 2,
+      "sha256": "2d1cd341e86024362ba04d4ad69f53c3173c8083129b09bea43c9011cc6006e8",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:2d1cd341e86024362ba04d4ad69f53c3173c8083129b09bea43c9011cc6006e8",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Teros (Citrix Systems)",
+      "schema": 1,
+      "sha256": "56e9ec4a2c6a6d3871bc3a51a6ec49bcef78c511eb2789d2020d79a8e70d628f",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:56e9ec4a2c6a6d3871bc3a51a6ec49bcef78c511eb2789d2020d79a8e70d628f",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "CdnNS Application Gateway (CdnNs/WdidcNet)",
+      "schema": 1,
+      "sha256": "f1c51ec241503f1f520713ad650a8cad5bef008d43868ea958b3bb8f0232376f",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:f1c51ec241503f1f520713ad650a8cad5bef008d43868ea958b3bb8f0232376f",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Cloudbric (Penta Security)",
+      "schema": 1,
+      "sha256": "7af9cdccab41a1ff992e7ef52530bb377f784f2f55d0d9bae6ff006933a19333",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:7af9cdccab41a1ff992e7ef52530bb377f784f2f55d0d9bae6ff006933a19333",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Incapsula (Imperva Inc.)",
+      "schema": 1,
+      "sha256": "53262a2e5c2d399b539c292b30e64a6a771a38ad3e9c69ed50a65923a72656e8",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:53262a2e5c2d399b539c292b30e64a6a771a38ad3e9c69ed50a65923a72656e8",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Reblaze (Reblaze)",
+      "schema": 1,
+      "sha256": "006f71adf2bdfc60c201a44d605ab4c0d10b256ef7808b7261a60a828ec121d6",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:006f71adf2bdfc60c201a44d605ab4c0d10b256ef7808b7261a60a828ec121d6",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Reblaze (Reblaze)",
+      "schema": 2,
+      "sha256": "8336c6033a2485c98b4eee765aef96df4cd08725d35d508cc83387733570be99",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:8336c6033a2485c98b4eee765aef96df4cd08725d35d508cc83387733570be99",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Yunjiasu (Baidu Cloud Computing)",
+      "schema": 1,
+      "sha256": "15a57c1e4893499ca4fc20ac1d5e5ae23877c4eb826f71e1a171a2ded44923d0",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "yunjiasu-server",
+        "yunjiasu-link",
+        "yunjiasu-cookie-script"
+      ],
+      "negative": [
+        "yunjiasu-near-miss"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:15a57c1e4893499ca4fc20ac1d5e5ae23877c4eb826f71e1a171a2ded44923d0",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Sitelock (TrueShield)",
+      "schema": 1,
+      "sha256": "d4f621ab26866204a41463eecaad64c5b90c03483f370c89c47af6078ecca0c2",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:d4f621ab26866204a41463eecaad64c5b90c03483f370c89c47af6078ecca0c2",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "NinjaFirewall (NinTechNet)",
+      "schema": 1,
+      "sha256": "c4548620dd9bc176fdccc199f1c9df05cb47d9f05beb6a2a3df5d5473066e57d",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:c4548620dd9bc176fdccc199f1c9df05cb47d9f05beb6a2a3df5d5473066e57d",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "eEye SecureIIS (BeyondTrust)",
+      "schema": 1,
+      "sha256": "e475d7a28d47d55fca6c358e320ed67b735ffc7c23372e36d0ff0a34cbca1b03",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:e475d7a28d47d55fca6c358e320ed67b735ffc7c23372e36d0ff0a34cbca1b03",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Secure Entry (United Security Providers)",
+      "schema": 1,
+      "sha256": "25a806f221e8eee2c679b85f72e607e58bd29bbbb84f03d23081fd75290616f2",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:25a806f221e8eee2c679b85f72e607e58bd29bbbb84f03d23081fd75290616f2",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Jiasule (Jiasule)",
+      "schema": 1,
+      "sha256": "4ffa73955d08b1f9f893355d7079927fd75f3d680c54db534db69146ca5b9ef5",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:4ffa73955d08b1f9f893355d7079927fd75f3d680c54db534db69146ca5b9ef5",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "DDoS-GUARD (DDOS-GUARD CORP.)",
+      "schema": 1,
+      "sha256": "146c89cae47af777637bd3fa8d8a04fee8a3b2c2dfdf36fa9d93394ce844f4db",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:146c89cae47af777637bd3fa8d8a04fee8a3b2c2dfdf36fa9d93394ce844f4db",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "TransIP Web Firewall (TransIP)",
+      "schema": 1,
+      "sha256": "8cf21e49aebeadebfb0dd36628cd2f7625ed8b829af0821389b77e5a15142ac7",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:8cf21e49aebeadebfb0dd36628cd2f7625ed8b829af0821389b77e5a15142ac7",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Tencent Cloud Firewall (Tencent Technologies)",
+      "schema": 1,
+      "sha256": "42cd43742a875f9221cad1e73a5a8c3664be115c7c127230defd2bbe2ea8515b",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "tencent-redirect"
+      ],
+      "negative": [
+        "tencent-redirect-near-miss"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:42cd43742a875f9221cad1e73a5a8c3664be115c7c127230defd2bbe2ea8515b",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "NetContinuum (Barracuda Networks)",
+      "schema": 1,
+      "sha256": "75f5a29dcc4211582ab95ffb3cdfa9295469e1e98e30551ba28a0f001b81e684",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:75f5a29dcc4211582ab95ffb3cdfa9295469e1e98e30551ba28a0f001b81e684",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Fastly (Fastly CDN)",
+      "schema": 1,
+      "sha256": "329fb655786abb5c8c39c1a4a7cd0409244053f15eb364e1ad5b20e497fa9f9b",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "fastly-served-by"
+      ],
+      "negative": [
+        "fastly-served-by-near-miss"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:329fb655786abb5c8c39c1a4a7cd0409244053f15eb364e1ad5b20e497fa9f9b",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Astra (Czar Securities)",
+      "schema": 1,
+      "sha256": "13f029b7d020df717046b2e69b1ffab9edf50025eb2544e28af6a3d615094990",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:13f029b7d020df717046b2e69b1ffab9edf50025eb2544e28af6a3d615094990",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "ASP.NET Generic (Microsoft)",
+      "schema": 1,
+      "sha256": "4a91b0672380ab669113baeb8709cbe993dfbfb898fd175e90dccecc688d3234",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:4a91b0672380ab669113baeb8709cbe993dfbfb898fd175e90dccecc688d3234",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Oracle Cloud (Oracle)",
+      "schema": 1,
+      "sha256": "d2b3ae3f3375b894f3ebdc4d920ea58a91388e95ab630a8abd96492da9027b9c",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:d2b3ae3f3375b894f3ebdc4d920ea58a91388e95ab630a8abd96492da9027b9c",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Trafficshield (F5 Networks)",
+      "schema": 1,
+      "sha256": "bd18fcaec26d55230fd7350e9d143c795a1d6a2bbb7cec09ec003798100f779e",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:bd18fcaec26d55230fd7350e9d143c795a1d6a2bbb7cec09ec003798100f779e",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Shadow Daemon (Zecure)",
+      "schema": 1,
+      "sha256": "ff557375b07519d9f5f53554dcb3ecc8551871d8d4c016bf82bf104c85342b4d",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:ff557375b07519d9f5f53554dcb3ecc8551871d8d4c016bf82bf104c85342b4d",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "ISA Server (Microsoft)",
+      "schema": 1,
+      "sha256": "b91c51b5eaf2953a1380d6db9d3658370f9625129b51c45a5b8be9ea43d9f2be",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:b91c51b5eaf2953a1380d6db9d3658370f9625129b51c45a5b8be9ea43d9f2be",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "StackPath (StackPath)",
+      "schema": 1,
+      "sha256": "ae926af01e8f7247b65a5d4e22fddf9b9cc50ef1408a0fdc4880233fa817b166",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:ae926af01e8f7247b65a5d4e22fddf9b9cc50ef1408a0fdc4880233fa817b166",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "StackPath (StackPath)",
+      "schema": 2,
+      "sha256": "2b3500743d92d1f7005afd39853c6927ea46c037284676b5ff49bd860591d7b5",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:2b3500743d92d1f7005afd39853c6927ea46c037284676b5ff49bd860591d7b5",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "HyperGuard (Art of Defense)",
+      "schema": 1,
+      "sha256": "4e12688403871073aa990808d0eebee8d52c42892fb6e3bd707b7acacd81aba9",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:4e12688403871073aa990808d0eebee8d52c42892fb6e3bd707b7acacd81aba9",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Qrator (Qrator)",
+      "schema": 1,
+      "sha256": "6df48fe5d7c454bc8990a28c1ddf85723c090e651ad5c0b31e7c2be615538eb3",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:6df48fe5d7c454bc8990a28c1ddf85723c090e651ad5c0b31e7c2be615538eb3",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "SecKing (SecKing)",
+      "schema": 1,
+      "sha256": "769e6df2ce71647077e621b28645ec5252899dd6b185da95f43c10b9327cf63d",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:769e6df2ce71647077e621b28645ec5252899dd6b185da95f43c10b9327cf63d",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "WebARX (WebARX Security Solutions)",
+      "schema": 1,
+      "sha256": "9a1ee8fc7c15c9e845d017666f6a8024ff805ca92dc3c04157a788d7ea74f017",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:9a1ee8fc7c15c9e845d017666f6a8024ff805ca92dc3c04157a788d7ea74f017",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "BIG-IP AP Manager (F5 Networks)",
+      "schema": 1,
+      "sha256": "f26fa0b05744a271697c291fe5b00b1d80aef886b93f2aa2586a530a7a0f5f79",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:f26fa0b05744a271697c291fe5b00b1d80aef886b93f2aa2586a530a7a0f5f79",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "BIG-IP AP Manager (F5 Networks)",
+      "schema": 2,
+      "sha256": "7d86c2f89ccf7af6cc7064b39a69f1c085ef03d98b787bd444f140e8f309ae64",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:7d86c2f89ccf7af6cc7064b39a69f1c085ef03d98b787bd444f140e8f309ae64",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "BIG-IP AP Manager (F5 Networks)",
+      "schema": 3,
+      "sha256": "749657bc8dfaefad16313a9ee4929b027f930bcc4e1287f4b42523dd8c60d301",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:749657bc8dfaefad16313a9ee4929b027f930bcc4e1287f4b42523dd8c60d301",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Qcloud (Tencent Cloud)",
+      "schema": 1,
+      "sha256": "488b312b5e72d7a02da2f93f4408f3ffdcc9f845d40691d59b6c80327a67c9e4",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:488b312b5e72d7a02da2f93f4408f3ffdcc9f845d40691d59b6c80327a67c9e4",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "NevisProxy (AdNovum)",
+      "schema": 1,
+      "sha256": "b7c0c6b37e13f09fa44ff99cb659111e370f627b3941d837ca29eff58dd65b4d",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:b7c0c6b37e13f09fa44ff99cb659111e370f627b3941d837ca29eff58dd65b4d",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Comodo cWatch (Comodo CyberSecurity)",
+      "schema": 1,
+      "sha256": "25aa78d6d7fd8a3357c61b250ad0fc2f5e902241f5b7963221c9dc0a35014918",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:25aa78d6d7fd8a3357c61b250ad0fc2f5e902241f5b7963221c9dc0a35014918",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "NexusGuard Firewall (NexusGuard)",
+      "schema": 1,
+      "sha256": "db14fc1552601a01509a163b6580976eb9db3ecc8eadb837c0347f4b4975cc3e",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:db14fc1552601a01509a163b6580976eb9db3ecc8eadb837c0347f4b4975cc3e",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Chuang Yu Shield (Yunaq)",
+      "schema": 1,
+      "sha256": "0e803be44535b4ec5d71b86272a68c2f44d29e57d14be4ba4cc4fbf867344536",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:0e803be44535b4ec5d71b86272a68c2f44d29e57d14be4ba4cc4fbf867344536",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Safedog (SafeDog)",
+      "schema": 1,
+      "sha256": "6637da58d13de179424d63b28dae420d91ef63a7a360522441865f6ec53bc3f7",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:6637da58d13de179424d63b28dae420d91ef63a7a360522441865f6ec53bc3f7",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Approach (Approach)",
+      "schema": 1,
+      "sha256": "2b5244e766dba75dc104a33a2e1a58e7f159a29f892b738f01eac546d3c4a3b9",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:2b5244e766dba75dc104a33a2e1a58e7f159a29f892b738f01eac546d3c4a3b9",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Azure Front Door (Microsoft)",
+      "schema": 1,
+      "sha256": "8352afac5cdc5c619423fbeda179bf3da5a82d8b114821c298b640f0290b6516",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:8352afac5cdc5c619423fbeda179bf3da5a82d8b114821c298b640f0290b6516",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "BlockDoS (BlockDoS)",
+      "schema": 1,
+      "sha256": "ae09f7c14df01ed759d7d212d4d36c85daae8e879e6b2df2e678baefc778d6d8",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:ae09f7c14df01ed759d7d212d4d36c85daae8e879e6b2df2e678baefc778d6d8",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "SEnginx (Neusoft)",
+      "schema": 1,
+      "sha256": "8664ee5bbbd5752157a49ec13d9d9f85e77ed612ff6c59f5de767cc519012bca",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:8664ee5bbbd5752157a49ec13d9d9f85e77ed612ff6c59f5de767cc519012bca",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "UEWaf (UCloud)",
+      "schema": 1,
+      "sha256": "9f71f0ab86a0cb877ec99b3da72579f8acfe614ee0f018c6c45125e7517ba244",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:9f71f0ab86a0cb877ec99b3da72579f8acfe614ee0f018c6c45125e7517ba244",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "URLScan (Microsoft)",
+      "schema": 1,
+      "sha256": "06bb063a602b8bf8975d59437cb5c646409035e7f85a6dce57cffd92c942bb6f",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:06bb063a602b8bf8975d59437cb5c646409035e7f85a6dce57cffd92c942bb6f",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "NAXSI (NBS Systems)",
+      "schema": 1,
+      "sha256": "b032739c1a7aa28eb27e173705f54613c5ee99c346d7bafd1fe40b71484190ea",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:b032739c1a7aa28eb27e173705f54613c5ee99c346d7bafd1fe40b71484190ea",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "ACE XML Gateway (Cisco)",
+      "schema": 1,
+      "sha256": "94bc6a69168bfba77ac9659559063b1db75bb27cacf9fa1e953a7b41544ffdc9",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:94bc6a69168bfba77ac9659559063b1db75bb27cacf9fa1e953a7b41544ffdc9",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "SonicWall (Dell)",
+      "schema": 1,
+      "sha256": "1f8bf6f294acac800de8f56130b89ee31efad96c2b40c0b9b17532cc7acfaf30",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:1f8bf6f294acac800de8f56130b89ee31efad96c2b40c0b9b17532cc7acfaf30",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Squarespace (Squarespace)",
+      "schema": 1,
+      "sha256": "5270d68ecf7e691472ec3f6d4ed820d6d083a6d79324801b19dffb23c16bc9d7",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:5270d68ecf7e691472ec3f6d4ed820d6d083a6d79324801b19dffb23c16bc9d7",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "VirusDie (VirusDie LLC)",
+      "schema": 1,
+      "sha256": "21ae756fc405991450af7b484cab3157c36997b1132a5b30ea2fd02d18e39f15",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:21ae756fc405991450af7b484cab3157c36997b1132a5b30ea2fd02d18e39f15",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "SiteGuard (EG Secure Solutions Inc.)",
+      "schema": 1,
+      "sha256": "dab721353d31c0583da0bccb852cd0926231f67a88ca884e9956c1a97640b5b7",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "siteguard-powered",
+        "siteguard-refusal"
+      ],
+      "negative": [
+        "siteguard-near-miss"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:dab721353d31c0583da0bccb852cd0926231f67a88ca884e9956c1a97640b5b7",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "SecuPress WP Security (SecuPress)",
+      "schema": 1,
+      "sha256": "add0096aa79f1e65d78eeeb8285f32d91d963c35cfd7f508ed8374ebd2c8e816",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:add0096aa79f1e65d78eeeb8285f32d91d963c35cfd7f508ed8374ebd2c8e816",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "GoDaddy Website Protection (GoDaddy)",
+      "schema": 1,
+      "sha256": "0110ed80a2f22a72e293ca07fe39ed2d7f54665f9be6d3611c758d5e45f931ab",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:0110ed80a2f22a72e293ca07fe39ed2d7f54665f9be6d3611c758d5e45f931ab",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Varnish (OWASP)",
+      "schema": 1,
+      "sha256": "d65c64cf770c57f824542230f481f7d48af06569c4006822b5edbb1b3268dcd8",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:d65c64cf770c57f824542230f481f7d48af06569c4006822b5edbb1b3268dcd8",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Airlock (Phion/Ergon)",
+      "schema": 1,
+      "sha256": "ec9e488603616810360e30c61a2cc49e653b6d1ef1f0464e41263a1f5a5ee661",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:ec9e488603616810360e30c61a2cc49e653b6d1ef1f0464e41263a1f5a5ee661",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "SquidProxy IDS (SquidProxy)",
+      "schema": 1,
+      "sha256": "6309d46e81c1f5e854dc6cc2a7e249bfd15f1b683a89d7ed45a74b3815362d9e",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:6309d46e81c1f5e854dc6cc2a7e249bfd15f1b683a89d7ed45a74b3815362d9e",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Huawei Cloud Firewall (Huawei)",
+      "schema": 1,
+      "sha256": "ec09067bbe51dcdae36a4ef3204dc3fa2dca01b1318c254f66a3574efa2a61f9",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:ec09067bbe51dcdae36a4ef3204dc3fa2dca01b1318c254f66a3574efa2a61f9",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Profense (ArmorLogic)",
+      "schema": 1,
+      "sha256": "0fcb69312c4a0aae4829eec033fb7555fdbc5c6d8c09131af7a00ef2a42f1834",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:0fcb69312c4a0aae4829eec033fb7555fdbc5c6d8c09131af7a00ef2a42f1834",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "LiteSpeed (LiteSpeed Technologies)",
+      "schema": 1,
+      "sha256": "a70e8149cad7465cf0ec3fa0bdceaa710fdf734887fea77f57f275cac17e3024",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:a70e8149cad7465cf0ec3fa0bdceaa710fdf734887fea77f57f275cac17e3024",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "LiteSpeed (LiteSpeed Technologies)",
+      "schema": 2,
+      "sha256": "f2c1bf9ff2656b1a272cabd8e6eefa7a987b71990a39e8ee02d930a8a7e4f742",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:f2c1bf9ff2656b1a272cabd8e6eefa7a987b71990a39e8ee02d930a8a7e4f742",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "KeyCDN (KeyCDN)",
+      "schema": 1,
+      "sha256": "aa118b2f0d20e4c343b1745936b7f7889614d06fb3fd165a8df160e7e4341d85",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:aa118b2f0d20e4c343b1745936b7f7889614d06fb3fd165a8df160e7e4341d85",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Yunsuo (Yunsuo)",
+      "schema": 1,
+      "sha256": "9daf7a5f484c186ef668f75b6cf4637538a02c403d32f75312efd54b5ab1a5ac",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:9daf7a5f484c186ef668f75b6cf4637538a02c403d32f75312efd54b5ab1a5ac",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "AppWall (Radware)",
+      "schema": 1,
+      "sha256": "9c33185de60b03a5dc973585f9c12536665245a3aad123ac85db9c0f34e2b4e7",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:9c33185de60b03a5dc973585f9c12536665245a3aad123ac85db9c0f34e2b4e7",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "AppWall (Radware)",
+      "schema": 2,
+      "sha256": "dc4c4484aa2e5d53cce4e63871812e6e047658f40fd522b195f86e64f168db4a",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:dc4c4484aa2e5d53cce4e63871812e6e047658f40fd522b195f86e64f168db4a",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "WP Cerber Security (Cerber Tech)",
+      "schema": 1,
+      "sha256": "7b86abc8186a2e3c57f6a571ffd9bbfc6ce48efaec87ef49a6873d031de4f8e5",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:7b86abc8186a2e3c57f6a571ffd9bbfc6ce48efaec87ef49a6873d031de4f8e5",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "ChinaCache Load Balancer (ChinaCache)",
+      "schema": 1,
+      "sha256": "a4e8c2b3b73b4ddbb2b6c1b379701c98067f87f879a63c848d1ebb236f66d3f0",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:a4e8c2b3b73b4ddbb2b6c1b379701c98067f87f879a63c848d1ebb236f66d3f0",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "BIG-IP Local Traffic Manager (F5 Networks)",
+      "schema": 1,
+      "sha256": "a958c3b69244d596e79e1a8d9284ffe4876f82bf1547a04bb9d482036178d401",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:a958c3b69244d596e79e1a8d9284ffe4876f82bf1547a04bb9d482036178d401",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "AnYu (AnYu Technologies)",
+      "schema": 1,
+      "sha256": "7a494df65fb79b1c3232e6395a506fce17843db280ecc1202ddd2887c252b9eb",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:7a494df65fb79b1c3232e6395a506fce17843db280ecc1202ddd2887c252b9eb",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "CrawlProtect (Jean-Denis Brun)",
+      "schema": 1,
+      "sha256": "de0d071ca5455be3ccca486298ba838e15f9c8b7cc4395b61c6ca93ca4c52811",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:de0d071ca5455be3ccca486298ba838e15f9c8b7cc4395b61c6ca93ca4c52811",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "WebLand (WebLand)",
+      "schema": 1,
+      "sha256": "573699472da255a1b410565cb845fbc94eef57b3f83ebcf4a5f4bcecdfb004ac",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:573699472da255a1b410565cb845fbc94eef57b3f83ebcf4a5f4bcecdfb004ac",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Open-Resty Lua Nginx (FLOSS)",
+      "schema": 1,
+      "sha256": "86dbe643634a775fb5cc0831a0970a481f024b3c58271812c1e153cae3ac6ca6",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:86dbe643634a775fb5cc0831a0970a481f024b3c58271812c1e153cae3ac6ca6",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Open-Resty Lua Nginx (FLOSS)",
+      "schema": 2,
+      "sha256": "5f278c9f5dc2ba705b025d8d547c0d388f8a0f197e93238909e0c4990535c6f8",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:5f278c9f5dc2ba705b025d8d547c0d388f8a0f197e93238909e0c4990535c6f8",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Kona SiteDefender (Akamai)",
+      "schema": 1,
+      "sha256": "8ba6eaa949899c9a9a90ac73d714573a09ab954367b8f392d4d35c5afd0cafab",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:8ba6eaa949899c9a9a90ac73d714573a09ab954367b8f392d4d35c5afd0cafab",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Wordfence (Defiant)",
+      "schema": 1,
+      "sha256": "06c9433070ebf53b93f1ebfd6bac9b3b1d324149ed107818494d81b3c081602f",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:06c9433070ebf53b93f1ebfd6bac9b3b1d324149ed107818494d81b3c081602f",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Sucuri CloudProxy (Sucuri Inc.)",
+      "schema": 1,
+      "sha256": "58c6a910ee72cab90f70843fdd1becd691ad21f02a9854a02ca17cf3b4cfb4df",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:58c6a910ee72cab90f70843fdd1becd691ad21f02a9854a02ca17cf3b4cfb4df",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Sabre Firewall (Sabre)",
+      "schema": 1,
+      "sha256": "7d00e544fe424d67222246e6385f22505b5caa5ad0753e94bb1d109754ed46da",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:7d00e544fe424d67222246e6385f22505b5caa5ad0753e94bb1d109754ed46da",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Sabre Firewall (Sabre)",
+      "schema": 2,
+      "sha256": "0c63b15bf082993f4a4f1833418e21b979ac070ca3cc6f2f9fdcd3061aa6da93",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:0c63b15bf082993f4a4f1833418e21b979ac070ca3cc6f2f9fdcd3061aa6da93",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Bekchy (Faydata Technologies Inc.)",
+      "schema": 1,
+      "sha256": "f03c15958bb2ac950e26b4847a82c02f925a90afc53dcda3706443a01e90a33d",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:f03c15958bb2ac950e26b4847a82c02f925a90afc53dcda3706443a01e90a33d",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "BitNinja (BitNinja)",
+      "schema": 1,
+      "sha256": "e23c32df005a9e75cd849f421b77693991793901535a91f1cbe561384f957f99",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:e23c32df005a9e75cd849f421b77693991793901535a91f1cbe561384f957f99",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "WTS-WAF (WTS)",
+      "schema": 1,
+      "sha256": "7ab147be52f9b9115b7182e452979323be60b7f5145b4e3c877441b3629a3cf0",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:7ab147be52f9b9115b7182e452979323be60b7f5145b4e3c877441b3629a3cf0",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Greywizard (Grey Wizard)",
+      "schema": 1,
+      "sha256": "e36cf201ee15f405e1eba5f29b30d950e5cd63680c502947e3c18a1b0a51683a",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:e36cf201ee15f405e1eba5f29b30d950e5cd63680c502947e3c18a1b0a51683a",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Puhui (Puhui)",
+      "schema": 1,
+      "sha256": "7a5edac3a3bad60995abb9c82ab99eb68fbd7e03e3583913bf55f6e5b1707bc1",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:7a5edac3a3bad60995abb9c82ab99eb68fbd7e03e3583913bf55f6e5b1707bc1",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Cloudfloor (Cloudfloor DNS)",
+      "schema": 1,
+      "sha256": "b3a9df6b0392533031be4f2f9bb90c037f8ed6d8c3e295c07aa95705bc6fefc3",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:b3a9df6b0392533031be4f2f9bb90c037f8ed6d8c3e295c07aa95705bc6fefc3",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "RSFirewall (RSJoomla!)",
+      "schema": 1,
+      "sha256": "0a17f1e84136b8b48155b3a41d047f60032c71f92bd600e4a9ce060e1712f902",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:0a17f1e84136b8b48155b3a41d047f60032c71f92bd600e4a9ce060e1712f902",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Safe3 Web Firewall (Safe3)",
+      "schema": 1,
+      "sha256": "f92ec1ccaeb295a772a765c05a872414961bc781ffb54d6a0b142cab9801811a",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:f92ec1ccaeb295a772a765c05a872414961bc781ffb54d6a0b142cab9801811a",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Zenedge (Zenedge)",
+      "schema": 1,
+      "sha256": "6362478f7227f2cfbdf11980df013422c105f86b053295282c3a9bbd8fc8a813",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:6362478f7227f2cfbdf11980df013422c105f86b053295282c3a9bbd8fc8a813",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Newdefend (NewDefend)",
+      "schema": 1,
+      "sha256": "1f0e9813f4bbf6af13b2e44c47bd7e062e8c7044de6bcc078278d4e2b6d64cde",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:1f0e9813f4bbf6af13b2e44c47bd7e062e8c7044de6bcc078278d4e2b6d64cde",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "pkSecurity IDS (pkSec)",
+      "schema": 1,
+      "sha256": "b1a8ac2e774a1bcc5a19dff54eac00e59160767b96a853b6c26162dbd4941cb8",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:b1a8ac2e774a1bcc5a19dff54eac00e59160767b96a853b6c26162dbd4941cb8",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "pkSecurity IDS (pkSec)",
+      "schema": 2,
+      "sha256": "364c95cf13b508943046253074ee2790a055f4ff9ace911f1743117818c15c86",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:364c95cf13b508943046253074ee2790a055f4ff9ace911f1743117818c15c86",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "DOSarrest (DOSarrest Internet Security)",
+      "schema": 1,
+      "sha256": "39da56a7605959988c7277b659f718e9adc0f20c59c7e05a8d8057b313891d99",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:39da56a7605959988c7277b659f718e9adc0f20c59c7e05a8d8057b313891d99",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Qiniu (Qiniu CDN)",
+      "schema": 1,
+      "sha256": "0b49887e92e60211eb42236db3c1a3a8da7f1ea9a9c917850a27bc7c31b525c2",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:0b49887e92e60211eb42236db3c1a3a8da7f1ea9a9c917850a27bc7c31b525c2",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "BinarySec (BinarySec)",
+      "schema": 1,
+      "sha256": "ba14a1f30684e72868f94e040fcebcf5f77e96eaddf6bbede8f474215f9f8921",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:ba14a1f30684e72868f94e040fcebcf5f77e96eaddf6bbede8f474215f9f8921",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "WebTotem (WebTotem)",
+      "schema": 1,
+      "sha256": "590348fa583e1f7e4f543628f554d8cfd3bd8b1734f99a9fffaadf092bc19380",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:590348fa583e1f7e4f543628f554d8cfd3bd8b1734f99a9fffaadf092bc19380",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Imunify360 (CloudLinux)",
+      "schema": 1,
+      "sha256": "e7007da515e89273ed02d6784c13426f36643293537d9de05d3789df1f749be3",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:e7007da515e89273ed02d6784c13426f36643293537d9de05d3789df1f749be3",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Anquanbao (Anquanbao)",
+      "schema": 1,
+      "sha256": "83ab1c4649b2df2d7751f3dadb1d371c9ee09b86b1b29b6b89b7ea77b4b612c2",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:83ab1c4649b2df2d7751f3dadb1d371c9ee09b86b1b29b6b89b7ea77b4b612c2",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "AliYunDun (Alibaba Cloud Computing)",
+      "schema": 1,
+      "sha256": "2dd1867b324dd938d8e8e4b5279172bd8b71b960609f7ba0cd4f0987f8a3fad7",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "aliyundun-four-way-and"
+      ],
+      "negative": [
+        "aliyundun-missing-image",
+        "aliyundun-wrong-status"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:2dd1867b324dd938d8e8e4b5279172bd8b71b960609f7ba0cd4f0987f8a3fad7",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "PowerCDN (PowerCDN)",
+      "schema": 1,
+      "sha256": "f3810c6558916252f34cf5567d37651d51a85a819c74e24a2d4285ec6fa8e7bb",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:f3810c6558916252f34cf5567d37651d51a85a819c74e24a2d4285ec6fa8e7bb",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Distil (Distil Networks)",
+      "schema": 1,
+      "sha256": "7d5c9c1f2512a1a81796d143769b2336e90579ff2bc4f106a3a17501f8040d74",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:7d5c9c1f2512a1a81796d143769b2336e90579ff2bc4f106a3a17501f8040d74",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "West263 CDN (West263CDN)",
+      "schema": 1,
+      "sha256": "0a396764ea35c32bd550bc0152cb0f5679a630ec0855d43184f8e9d75e58b38f",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:0a396764ea35c32bd550bc0152cb0f5679a630ec0855d43184f8e9d75e58b38f",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Instart DX (Instart Logic)",
+      "schema": 1,
+      "sha256": "df2aee5fd4188af9b152b5c21db1b368149df4da4887806021a7defeaad7d616",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:df2aee5fd4188af9b152b5c21db1b368149df4da4887806021a7defeaad7d616",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Instart DX (Instart Logic)",
+      "schema": 2,
+      "sha256": "2922df779906858fa9848f985eff51b27066252e321b05480c655f8485ef2bd7",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:2922df779906858fa9848f985eff51b27066252e321b05480c655f8485ef2bd7",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "PerimeterX (PerimeterX)",
+      "schema": 1,
+      "sha256": "ffcb7fc2d4fb2913c3b158a8c2be3096f90fdfb7e84dc3d26b68180046edbff1",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:ffcb7fc2d4fb2913c3b158a8c2be3096f90fdfb7e84dc3d26b68180046edbff1",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "XLabs Security WAF (XLabs)",
+      "schema": 1,
+      "sha256": "3ce8039551f7c81976f92e4171ef4c8cee310c746e6a42cad03157630072ef14",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:3ce8039551f7c81976f92e4171ef4c8cee310c746e6a42cad03157630072ef14",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "YXLink (YxLink Technologies)",
+      "schema": 1,
+      "sha256": "7b22162cb3e07246ce9f465479d0756bc473aa3a5aed03e3c748e354c37603ed",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:7b22162cb3e07246ce9f465479d0756bc473aa3a5aed03e3c748e354c37603ed",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Armor Defense (Armor)",
+      "schema": 1,
+      "sha256": "a6e86ba9f7d44de5f5314467c4291f9c97617c3cdac93cf4fe56c670bee58bf7",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:a6e86ba9f7d44de5f5314467c4291f9c97617c3cdac93cf4fe56c670bee58bf7",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "wpmudev WAF (Incsub)",
+      "schema": 1,
+      "sha256": "91033644bc6f1f3f9010dd654d9bd4ea4085f9d6e62f3d0fd82aecd877ab7c8a",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:91033644bc6f1f3f9010dd654d9bd4ea4085f9d6e62f3d0fd82aecd877ab7c8a",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "wpmudev WAF (Incsub)",
+      "schema": 2,
+      "sha256": "fcbff220e5f7c775b71b647e23754cc959b3e5374afdcd525af4144c9b0649df",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:fcbff220e5f7c775b71b647e23754cc959b3e5374afdcd525af4144c9b0649df",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "SecureSphere (Imperva Inc.)",
+      "schema": 1,
+      "sha256": "1f7157dec807425da8ec6f0502a87d654343d86ef3cfe9b98edb745c95d256e0",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:1f7157dec807425da8ec6f0502a87d654343d86ef3cfe9b98edb745c95d256e0",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Eisoo Cloud Firewall (Eisoo)",
+      "schema": 1,
+      "sha256": "c272a85e7903ff4bd166814462868a011981d4929cc714f3f0ed257d63f5636b",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:c272a85e7903ff4bd166814462868a011981d4929cc714f3f0ed257d63f5636b",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "DataPower (IBM)",
+      "schema": 1,
+      "sha256": "7f75098e48c6458d445e66e93f1786cdabd0c4e69e7afe7bc526ce942d96b4a9",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:7f75098e48c6458d445e66e93f1786cdabd0c4e69e7afe7bc526ce942d96b4a9",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "WatchGuard (WatchGuard Technologies)",
+      "schema": 1,
+      "sha256": "8a45b180dfba506866bef2346a79c9d69229d5bec35572d6436c7a92e0e937b0",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:8a45b180dfba506866bef2346a79c9d69229d5bec35572d6436c7a92e0e937b0",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Safeline (Chaitin Tech.)",
+      "schema": 1,
+      "sha256": "7fdf1a250d15ca37102322f99e1a496df54cc0fab302115c7ec6a49142fab7ec",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:7fdf1a250d15ca37102322f99e1a496df54cc0fab302115c7ec6a49142fab7ec",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Mission Control Shield (Mission Control)",
+      "schema": 1,
+      "sha256": "fffb63f4966b562b6f89146a85497f5b6a6a2b0653dc620ce98b5b88e83850b2",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:fffb63f4966b562b6f89146a85497f5b6a6a2b0653dc620ce98b5b88e83850b2",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "AireeCDN (Airee)",
+      "schema": 1,
+      "sha256": "06181fdc9270861b697fcd263adec4915d0a87028aaeca4d12a591f633c961b9",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:06181fdc9270861b697fcd263adec4915d0a87028aaeca4d12a591f633c961b9",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Viettel (Cloudrity)",
+      "schema": 1,
+      "sha256": "612819be075a50524a505b90fd9b3dea58aef4e44f1532b5d4579802867d318c",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:612819be075a50524a505b90fd9b3dea58aef4e44f1532b5d4579802867d318c",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "AWS Elastic Load Balancer (Amazon)",
+      "schema": 1,
+      "sha256": "6064652d2d12fef60818033c60dec524b1721604dd7f5deaedd4df6f37304b8f",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "aws-blocked-header"
+      ],
+      "negative": [
+        "aws-blocked-header-near-miss"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:6064652d2d12fef60818033c60dec524b1721604dd7f5deaedd4df6f37304b8f",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "UTM Web Protection (Sophos)",
+      "schema": 1,
+      "sha256": "fa1c0ca82439bb48f2f742aff7712c556062e5c7d3e93366ede67103b3bf9198",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:fa1c0ca82439bb48f2f742aff7712c556062e5c7d3e93366ede67103b3bf9198",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "UTM Web Protection (Sophos)",
+      "schema": 2,
+      "sha256": "2ed15a3881bb36ff812e013bf75f2f04f0b4a829dcaf0b1d5e808e15f7c986e8",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:2ed15a3881bb36ff812e013bf75f2f04f0b4a829dcaf0b1d5e808e15f7c986e8",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Malcare (Inactiv)",
+      "schema": 1,
+      "sha256": "78d26baf92f2e9c580b0554794960a60702be7f5bcfdaff032ba8be5142bed57",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:78d26baf92f2e9c580b0554794960a60702be7f5bcfdaff032ba8be5142bed57",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "NullDDoS Protection (NullDDoS)",
+      "schema": 1,
+      "sha256": "39000cb0ac9b336acb15b33e824a4df054ad9e0687eadb63ef845cb3abcd1faa",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:39000cb0ac9b336acb15b33e824a4df054ad9e0687eadb63ef845cb3abcd1faa",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Bluedon (Bluedon IST)",
+      "schema": 1,
+      "sha256": "ccc22ec75e4874fa1515e74c908cd79976d7228491c9137313ba3f42df60eeb7",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:ccc22ec75e4874fa1515e74c908cd79976d7228491c9137313ba3f42df60eeb7",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Shield Security (One Dollar Plugin)",
+      "schema": 1,
+      "sha256": "55e53994aacd2baed6280e68c9c002a8fca448b317080b82fa01a8c3357cbebb",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:55e53994aacd2baed6280e68c9c002a8fca448b317080b82fa01a8c3357cbebb",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Cloudflare (Cloudflare Inc.)",
+      "schema": 1,
+      "sha256": "d76b567439eec8bf2aec94aed4dac50b34eb3e0e314b47af1f934d2d889c0c18",
+      "status": "reviewed",
+      "review": "Locally reviewed schema-level conformance: positive marker and meaningful negative boundary. OR-schema coverage does not claim every alternative fingerprint was exercised.",
+      "positive": [
+        "cloudflare-server",
+        "cloudflare-repeated-header"
+      ],
+      "negative": [
+        "near-miss-product-headers"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:d76b567439eec8bf2aec94aed4dac50b34eb3e0e314b47af1f934d2d889c0c18",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Barikode (Ethic Ninja)",
+      "schema": 1,
+      "sha256": "5208c550cb4c555a7a52a22a878a5ab1a2f471cb3269f25cc2dc05dc0424d9f0",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:5208c550cb4c555a7a52a22a878a5ab1a2f471cb3269f25cc2dc05dc0424d9f0",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "DynamicWeb Injection Check (DynamicWeb)",
+      "schema": 1,
+      "sha256": "e0c75b4c3a385bad88448f33ad29c6daa186634d1351108d32f51ab69d30780d",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:e0c75b4c3a385bad88448f33ad29c6daa186634d1351108d32f51ab69d30780d",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "PT Application Firewall (Positive Technologies)",
+      "schema": 1,
+      "sha256": "420582adf324654a5aaad5ae2d8d177473740c6ec5f53dc1e406902d2fab71f9",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:420582adf324654a5aaad5ae2d8d177473740c6ec5f53dc1e406902d2fab71f9",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "OnMessage Shield (BlackBaud)",
+      "schema": 1,
+      "sha256": "0749277fbd130b375b9aee352a0aa1cda7db93bec042f82cdd3ccaa86724b37e",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:0749277fbd130b375b9aee352a0aa1cda7db93bec042f82cdd3ccaa86724b37e",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "LimeLight CDN (LimeLight)",
+      "schema": 1,
+      "sha256": "9c267e5eb3941aeefca9faf0bb30dac1e4f766f15a2dd3a45e0d5588c286bc67",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:9c267e5eb3941aeefca9faf0bb30dac1e4f766f15a2dd3a45e0d5588c286bc67",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Janusec Application Gateway (Janusec)",
+      "schema": 1,
+      "sha256": "45673f8617349cf1527cab23daadb8982931b7e335e4c997b38ae2877bd68fb3",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:45673f8617349cf1527cab23daadb8982931b7e335e4c997b38ae2877bd68fb3",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "WebSEAL (IBM)",
+      "schema": 1,
+      "sha256": "58005d86c8964b3eb45b028e4e47355c68733aebe7955bdb5e9c70e3378b3389",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:58005d86c8964b3eb45b028e4e47355c68733aebe7955bdb5e9c70e3378b3389",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Palo Alto Next Gen Firewall (Palo Alto Networks)",
+      "schema": 1,
+      "sha256": "78615a8c25ff03e06dc96e3c6f85fa77b5c183e3beeb7ca416bfdf232cf8431a",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:78615a8c25ff03e06dc96e3c6f85fa77b5c183e3beeb7ca416bfdf232cf8431a",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "PentaWAF (Global Network Services)",
+      "schema": 1,
+      "sha256": "d2436df64204f6912b69cdbc74d674ee7955b52788fe5a84dbcc56e3c85676f2",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:d2436df64204f6912b69cdbc74d674ee7955b52788fe5a84dbcc56e3c85676f2",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "BIG-IP AppSec Manager (F5 Networks)",
+      "schema": 1,
+      "sha256": "f09b47bea8929d050cc5bb8a1c90701f410ef1caacbe534ae008ebd42dd55f70",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "bigip-content-and"
+      ],
+      "negative": [
+        "bigip-content-missing-term",
+        "bigip-cookie-hex8",
+        "bigip-cookie-hex6",
+        "bigip-cookie-seven-digits"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:f09b47bea8929d050cc5bb8a1c90701f410ef1caacbe534ae008ebd42dd55f70",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "BIG-IP AppSec Manager (F5 Networks)",
+      "schema": 2,
+      "sha256": "54f680482c4fa1cc4e7790b775a704cea703ba1b47d5a67822afee9139b9c787",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "bigip-cookie-hex8",
+        "bigip-cookie-hex6"
+      ],
+      "negative": [
+        "bigip-content-and",
+        "bigip-content-missing-term",
+        "bigip-cookie-seven-digits"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:54f680482c4fa1cc4e7790b775a704cea703ba1b47d5a67822afee9139b9c787",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "ZScaler (Accenture)",
+      "schema": 1,
+      "sha256": "cb1fe87c6170755e353d955a7e9dff8526878a92f6e8e0973c46fc4048960fa7",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:cb1fe87c6170755e353d955a7e9dff8526878a92f6e8e0973c46fc4048960fa7",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Azion Edge Firewall (Azion)",
+      "schema": 1,
+      "sha256": "708a7a73d497f1884a3a46f6c67590ea19be3b31cbddf6351f68dd049409cd67",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "azion-pop",
+        "azion-request"
+      ],
+      "negative": [
+        "azion-stale-server"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:708a7a73d497f1884a3a46f6c67590ea19be3b31cbddf6351f68dd049409cd67",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "BulletProof Security Pro (AITpro Security)",
+      "schema": 1,
+      "sha256": "d5f7d8b20cd45e7fcc052f0605885207d2bfa606276847ba67f3eb4b65c58fd7",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:d5f7d8b20cd45e7fcc052f0605885207d2bfa606276847ba67f3eb4b65c58fd7",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "FortiWeb (Fortinet)",
+      "schema": 1,
+      "sha256": "8feef2658a7a19e27ea71875638f10b27ce28c288e494f080018f35efcad9333",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:8feef2658a7a19e27ea71875638f10b27ce28c288e494f080018f35efcad9333",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "FortiWeb (Fortinet)",
+      "schema": 2,
+      "sha256": "55799fdc154d5bb52f2ef3d4ed04d6aceb2dcd93b452b842dd1191e162ef5038",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:55799fdc154d5bb52f2ef3d4ed04d6aceb2dcd93b452b842dd1191e162ef5038",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "DotDefender (Applicure Technologies)",
+      "schema": 1,
+      "sha256": "da4919f733ddff161462a890aa130735ce28dc491d7400eb80cb78d8ffd5fa89",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:da4919f733ddff161462a890aa130735ce28dc491d7400eb80cb78d8ffd5fa89",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "KS-WAF (KnownSec)",
+      "schema": 1,
+      "sha256": "ec06d11dfe667dd1a6710d2868ce7f907515be20cf2a790fce3808198f2fa1ec",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:ec06d11dfe667dd1a6710d2868ce7f907515be20cf2a790fce3808198f2fa1ec",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Cloud Protector (Rohde & Schwarz CyberSecurity)",
+      "schema": 1,
+      "sha256": "a96b7731d43a76daabb49b753fcf30fcdad122ffb6ede9ea9cce83994d02ccd4",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:a96b7731d43a76daabb49b753fcf30fcdad122ffb6ede9ea9cce83994d02ccd4",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "ServerDefender VP (Port80 Software)",
+      "schema": 1,
+      "sha256": "4ce4b3b7e7b822c6add747128988f10344dad4e2a5e8efd7366aa9bd40e817e5",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:4ce4b3b7e7b822c6add747128988f10344dad4e2a5e8efd7366aa9bd40e817e5",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Alert Logic (Alert Logic)",
+      "schema": 1,
+      "sha256": "9b9f27375a437a36559fe18f9e1afea095b47121b20183f72c8a538d213dfc45",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:9b9f27375a437a36559fe18f9e1afea095b47121b20183f72c8a538d213dfc45",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Cloudfront (Amazon)",
+      "schema": 1,
+      "sha256": "cb8585b8c456a40d034491e47c42363f16f8de41bc8c51280a81217325680e19",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:cb8585b8c456a40d034491e47c42363f16f8de41bc8c51280a81217325680e19",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Xuanwudun (Xuanwudun)",
+      "schema": 1,
+      "sha256": "ba8dae397b938654ca0654b4e98e7cfb2e6261cdb4df00a637a4d97e023b7d1b",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:ba8dae397b938654ca0654b4e98e7cfb2e6261cdb4df00a637a4d97e023b7d1b",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Wallarm (Wallarm Inc.)",
+      "schema": 1,
+      "sha256": "dea71a30277fc109173a60c7b8f81902bce3caed8c4dd5a4972d9f85411edfc2",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:dea71a30277fc109173a60c7b8f81902bce3caed8c4dd5a4972d9f85411edfc2",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "DenyALL (Rohde & Schwarz CyberSecurity)",
+      "schema": 1,
+      "sha256": "e7868b6cd6044f22e36c6b0e5cde158026bd586777daea1781756f92b5bf4e21",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "denyall-reason-exact"
+      ],
+      "negative": [
+        "denyall-reason-prefix"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:e7868b6cd6044f22e36c6b0e5cde158026bd586777daea1781756f92b5bf4e21",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Yundun (Yundun)",
+      "schema": 1,
+      "sha256": "21e9131834f0dc10ac19ffd85936397c651537254f10f257967fa2a403633cb8",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:21e9131834f0dc10ac19ffd85936397c651537254f10f257967fa2a403633cb8",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "360WangZhanBao (360 Technologies)",
+      "schema": 1,
+      "sha256": "f861b27d6fa9499875eec858794a8e34311e5050da4af5b8991fe8d90eea39a0",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:f861b27d6fa9499875eec858794a8e34311e5050da4af5b8991fe8d90eea39a0",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "ModSecurity (SpiderLabs)",
+      "schema": 1,
+      "sha256": "8f42e9d81303b88b4316dc6e2fbc01ab859211c6c09bb2e19f7218a1122bbf22",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "modsecurity-body"
+      ],
+      "negative": [
+        "modsecurity-reason-case"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:8f42e9d81303b88b4316dc6e2fbc01ab859211c6c09bb2e19f7218a1122bbf22",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "ModSecurity (SpiderLabs)",
+      "schema": 2,
+      "sha256": "98fd71332d75c7a447c24848f1a92464453bce5429ffb5f38ff6ffb9b8e3e5b4",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "modsecurity-reason-status"
+      ],
+      "negative": [
+        "modsecurity-reason-case"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:98fd71332d75c7a447c24848f1a92464453bce5429ffb5f38ff6ffb9b8e3e5b4",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "ModSecurity (SpiderLabs)",
+      "schema": 3,
+      "sha256": "fc974d010eeaefc91ee32ee9eafaf982076493a93b2d8ec2742d2870568694c6",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "modsecurity-reason-status-406"
+      ],
+      "negative": [
+        "modsecurity-reason-case"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:fc974d010eeaefc91ee32ee9eafaf982076493a93b2d8ec2742d2870568694c6",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "RayWAF (WebRay Solutions)",
+      "schema": 1,
+      "sha256": "9e1284399969913ea8421a4537002fed90c202d60a964582ff1e1456f2abc86d",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:9e1284399969913ea8421a4537002fed90c202d60a964582ff1e1456f2abc86d",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Barracuda (Barracuda Networks)",
+      "schema": 1,
+      "sha256": "74918359ee82de2dfdda382153a1c45fbac01014ab66a981eb6465912bc65a36",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:74918359ee82de2dfdda382153a1c45fbac01014ab66a981eb6465912bc65a36",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "aeSecure (aeSecure)",
+      "schema": 1,
+      "sha256": "fe3995abb86cb154301bd2036053fa256c35ba55e15d642101f9e791ae58a5e0",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:fe3995abb86cb154301bd2036053fa256c35ba55e15d642101f9e791ae58a5e0",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "FirePass (F5 Networks)",
+      "schema": 1,
+      "sha256": "a88fc252194019efab21105a681ae6c2fbecf09369b54be0bf512b454327d9c2",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:a88fc252194019efab21105a681ae6c2fbecf09369b54be0bf512b454327d9c2",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "FirePass (F5 Networks)",
+      "schema": 2,
+      "sha256": "bbb797047d4431d718bfac02279840eb0cb2c6fa5bb7393e407cc8b6ec4a984f",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:bbb797047d4431d718bfac02279840eb0cb2c6fa5bb7393e407cc8b6ec4a984f",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "CacheWall (Varnish)",
+      "schema": 1,
+      "sha256": "3ddf2a0db300e592f34d831d36ff38c8020d61875e08ab63d7bccfea5e6c8016",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:3ddf2a0db300e592f34d831d36ff38c8020d61875e08ab63d7bccfea5e6c8016",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "ASPA Firewall (ASPA Engineering Co.)",
+      "schema": 1,
+      "sha256": "020a8a734d36c6f8835b9bbc65932bcd90e7d288c247e568688dfee9ceeaae43",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:020a8a734d36c6f8835b9bbc65932bcd90e7d288c247e568688dfee9ceeaae43",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Nemesida (PentestIt)",
+      "schema": 1,
+      "sha256": "68f82a8d86e4755fc217257b4e9261aeb026f922b23fc1516c9eb795d1939e4e",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:68f82a8d86e4755fc217257b4e9261aeb026f922b23fc1516c9eb795d1939e4e",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Edgecast (Verizon Digital Media)",
+      "schema": 1,
+      "sha256": "bc9982c7e07f9a35302d75bdbc9a75e2a29d62c9ba9f318e6c30d9ef2702e765",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:bc9982c7e07f9a35302d75bdbc9a75e2a29d62c9ba9f318e6c30d9ef2702e765",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "CacheFly CDN (CacheFly)",
+      "schema": 1,
+      "sha256": "a2d064785821eaef447672919a6a0ad189acb02671a505ff8babd2a14e1eecfb",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:a2d064785821eaef447672919a6a0ad189acb02671a505ff8babd2a14e1eecfb",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "WebKnight (AQTRONIX)",
+      "schema": 1,
+      "sha256": "5d8b13f94250924ae65cd1c612bade4af03325835627842f927f032d255a453a",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "webknight-999-reason"
+      ],
+      "negative": [
+        "webknight-reason-case",
+        "webknight-content"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:5d8b13f94250924ae65cd1c612bade4af03325835627842f927f032d255a453a",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "WebKnight (AQTRONIX)",
+      "schema": 2,
+      "sha256": "1669ac51afce70ce54ae563486c02867c3c320c069177f99a13cbf96c8b5b26e",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "webknight-404-reason"
+      ],
+      "negative": [
+        "webknight-reason-case",
+        "webknight-content"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:1669ac51afce70ce54ae563486c02867c3c320c069177f99a13cbf96c8b5b26e",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "WebKnight (AQTRONIX)",
+      "schema": 3,
+      "sha256": "269efe45b9277c883803ab02d43dc84ad6754b055942814f11c193c6591a364d",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "webknight-content"
+      ],
+      "negative": [
+        "webknight-reason-case"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:269efe45b9277c883803ab02d43dc84ad6754b055942814f11c193c6591a364d",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "ArvanCloud (ArvanCloud)",
+      "schema": 1,
+      "sha256": "026d1e94271bb6680907f1ffc86ef2c9e9bb1408f99513a6991aa7c64d3c40fb",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:026d1e94271bb6680907f1ffc86ef2c9e9bb1408f99513a6991aa7c64d3c40fb",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "MaxCDN (MaxCDN)",
+      "schema": 1,
+      "sha256": "5a8162cd4b1f095fb4d5acb219dba5fdb44eebc99ec8fe70d9ec95f73695109b",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:5a8162cd4b1f095fb4d5acb219dba5fdb44eebc99ec8fe70d9ec95f73695109b",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "SiteGround (SiteGround)",
+      "schema": 1,
+      "sha256": "2efe890431f274af9144e58091768488348adacbb3b4a2f4e7547ca82b20b903",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:2efe890431f274af9144e58091768488348adacbb3b4a2f4e7547ca82b20b903",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "NSFocus (NSFocus Global Inc.)",
+      "schema": 1,
+      "sha256": "5e34951a74529f263e531d41ca25e85c4923679a12d9f7a60d998f6585b943a3",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:5e34951a74529f263e531d41ca25e85c4923679a12d9f7a60d998f6585b943a3",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "IndusGuard (Indusface)",
+      "schema": 1,
+      "sha256": "7b2bae76668b5b918bf7e5d6a9a297d08ee9f55dde0cb20bfa9abbfa8214b4f0",
+      "status": "baseline-untested",
+      "provenance": {
+        "scope": "unreviewed",
+        "source_id": "wafme0w:catalogue-rule/sha256:7b2bae76668b5b918bf7e5d6a9a297d08ee9f55dde0cb20bfa9abbfa8214b4f0",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Anubis (Techaro)",
+      "schema": 1,
+      "sha256": "edd6567a443da564060b721cc808c36afd903421da667951d03a930641c4add1",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "anubis-cookie"
+      ],
+      "negative": [
+        "anubis-negative"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:edd6567a443da564060b721cc808c36afd903421da667951d03a930641c4add1",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Azure Application Gateway (Microsoft)",
+      "schema": 1,
+      "sha256": "66373e1e70bcea64ae84aa05c6a369b84460f6fea19aa5530e2cbd7000896a47",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "azure-positive"
+      ],
+      "negative": [
+        "azure-missing-title"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:66373e1e70bcea64ae84aa05c6a369b84460f6fea19aa5530e2cbd7000896a47",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Baffin Bay (Mastercard)",
+      "schema": 1,
+      "sha256": "89e92340037e80fa34cf5ba9c69baaeda13282e929c178e1e2787b318fe65ae2",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "baffin-positive"
+      ],
+      "negative": [
+        "baffin-negative"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:89e92340037e80fa34cf5ba9c69baaeda13282e929c178e1e2787b318fe65ae2",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Envoy (EnvoyProxy)",
+      "schema": 1,
+      "sha256": "c5095c1eea4ec364799ce720d1968f673b2e94f46de2be3f0ff1e9b413578477",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "envoy-positive-server"
+      ],
+      "negative": [
+        "envoy-negative"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:c5095c1eea4ec364799ce720d1968f673b2e94f46de2be3f0ff1e9b413578477",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "FortiGate (Fortinet)",
+      "schema": 1,
+      "sha256": "6842153033e7575aa1d697225c36262f99587dc626687bb73451d557bb04362a",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "fortigate-schema1"
+      ],
+      "negative": [
+        "fortigate-schema2",
+        "fortigate-negative"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:6842153033e7575aa1d697225c36262f99587dc626687bb73451d557bb04362a",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "FortiGate (Fortinet)",
+      "schema": 2,
+      "sha256": "7f12afee6bcbcbb06a2129893c391ed169740445d7242ac002c68f0e71a32203",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "fortigate-schema2"
+      ],
+      "negative": [
+        "fortigate-schema1",
+        "fortigate-negative"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:7f12afee6bcbcbb06a2129893c391ed169740445d7242ac002c68f0e71a32203",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "FortiGuard (Fortinet)",
+      "schema": 1,
+      "sha256": "879419c1b220e879f93daddb853eca451465d28fc5d68aeb80f03813d4695fea",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "fortiguard-positive"
+      ],
+      "negative": [
+        "fortiguard-negative"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:879419c1b220e879f93daddb853eca451465d28fc5d68aeb80f03813d4695fea",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Google Cloud App Armor (Google Cloud)",
+      "schema": 1,
+      "sha256": "95d365412dfce48ef68b522ec080fe51452ccbaa0c98ad5ec88ed70efc45c221",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "gcparmor-positive"
+      ],
+      "negative": [
+        "gcparmor-negative"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:95d365412dfce48ef68b522ec080fe51452ccbaa0c98ad5ec88ed70efc45c221",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Kemp LoadMaster (Progress Software)",
+      "schema": 1,
+      "sha256": "12d15dcad6d215a354b1596790a4b642abb51771c1247303311506c6b509c923",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "kemp-positive"
+      ],
+      "negative": [
+        "kemp-negative"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:12d15dcad6d215a354b1596790a4b642abb51771c1247303311506c6b509c923",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Link11 WAAP (Link11)",
+      "schema": 1,
+      "sha256": "929d6f17dc70219ab54d675bd95d7142d7abca429d85d349afe17bb0c8590196",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "link11-positive"
+      ],
+      "negative": [
+        "link11-negative"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:929d6f17dc70219ab54d675bd95d7142d7abca429d85d349afe17bb0c8590196",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "360PanYun (360 Technologies)",
+      "schema": 1,
+      "sha256": "66387a589683e30f80d380bc2d338f61fb1b8c68480d0a04279086c44fb4b5da",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "panyun-positive"
+      ],
+      "negative": [
+        "panyun-negative"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:66387a589683e30f80d380bc2d338f61fb1b8c68480d0a04279086c44fb4b5da",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Reflected Networks (Reflected Networks)",
+      "schema": 1,
+      "sha256": "43b146e4cfbda5c7382cd1fe4ffb02e293a06d722bac9b314fdffc5086aa62aa",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "reflected-positive"
+      ],
+      "negative": [
+        "reflected-negative"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:43b146e4cfbda5c7382cd1fe4ffb02e293a06d722bac9b314fdffc5086aa62aa",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Scutum (Secure Sky Technology Inc.)",
+      "schema": 1,
+      "sha256": "3bfdc9174ee6f0bf1c64ac99a764f82051ad78c014fa1ce85321415e05957d3d",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "scutum-positive"
+      ],
+      "negative": [
+        "scutum-negative"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:3bfdc9174ee6f0bf1c64ac99a764f82051ad78c014fa1ce85321415e05957d3d",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "ThreatX (A10 Networks)",
+      "schema": 1,
+      "sha256": "d4c4a8a32b91dd58cef79ffaa81c64d53d908cd6205dda649ec8c64363eb3d15",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "threatx-positive"
+      ],
+      "negative": [
+        "threatx-negative"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:d4c4a8a32b91dd58cef79ffaa81c64d53d908cd6205dda649ec8c64363eb3d15",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Variti (Variti)",
+      "schema": 1,
+      "sha256": "8ae9d92587fdef42e47216a3062835bf17b2c145965f8c39caa47f70b5f39f77",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "variti-positive"
+      ],
+      "negative": [
+        "variti-negative"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:8ae9d92587fdef42e47216a3062835bf17b2c145965f8c39caa47f70b5f39f77",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    },
+    {
+      "product": "Vercel WAF (Vercel)",
+      "schema": 1,
+      "sha256": "657cbc5ef3e23e7828a4cd4f987d0e1158f2b1eb599cb5869b225ecc0b4a8238",
+      "status": "reviewed",
+      "review": "Reviewed against pinned wafw00f 2.4.2 source control flow and helper semantics. Linked synthetic positive/negative evidence was independently authored; Attack remains native metadata. Schema coverage does not assert every OR branch or real-world accuracy.",
+      "positive": [
+        "vercel-positive"
+      ],
+      "negative": [
+        "vercel-negative"
+      ],
+      "provenance": {
+        "scope": "synthetic-conformance",
+        "source_id": "wafme0w:catalogue-rule/sha256:657cbc5ef3e23e7828a4cd4f987d0e1158f2b1eb599cb5869b225ecc0b4a8238",
+        "reviewed_on": "unknown",
+        "reviewer": "unknown"
+      }
+    }
+  ]
+}

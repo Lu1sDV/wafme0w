@@ -1,119 +1,108 @@
 package wafme0w
 
 import (
+	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/logrusorgru/aurora/v4"
+	"io"
+	"strconv"
 	"strings"
 )
 
-func printResult(result Result, au *aurora.Aurora) {
-	var wafs []string
-	var foundBrackets = "[" + au.Bold(au.BrightGreen("+")).String() + "]"
-	var informativeBrackets = "[" + au.Bold(au.BrightBlue("*")).String() + "]"
-	var notFoundBrackets = "[" + au.Bold(au.Yellow("~")).String() + "]"
-	var colouredTarget = au.BrightCyan(result.Target).Hyperlink(result.Target).String()
-	//var line string
-
-	for _, finger := range result.FingerPrint {
-		if finger.WafName != "" {
-			colouredWafName := au.Bold(au.BrightMagenta(finger.WafName)).String()
-			wafs = append(wafs, colouredWafName)
-		}
-	}
-
-	if len(wafs) > 0 {
-		fingerResult := colouredTarget + " is behind " + strings.Join(wafs, " AND ")
-		line := foundBrackets + " " + fingerResult
-		fmt.Println(line)
-	}
-
-	if result.Generic.Reason != "" {
-		formattedReason := strings.Replace(result.Generic.Reason, "\n", "\n    ", -1)
-		genericResult := foundBrackets + " " + colouredTarget + " seems to be behind a WAF or some sort of security solution"
-		genericReason := informativeBrackets + " Reason: " + formattedReason
-		line := genericResult + "\n" + genericReason
-		fmt.Println(line)
-	}
-
-	if len(wafs) == 0 && result.Generic.Reason == "" {
-		line := notFoundBrackets + " " + colouredTarget + " no WAFs have been found"
-		fmt.Println(line)
-	}
+// ResultWriter serializes all results, including complete no-matches and failures.
+// Call Close to finish JSON framing; Close never closes the caller's writer.
+// Write and Close are serial operations. The first write error is retained.
+type ResultWriter struct {
+	writer io.Writer
+	format string
+	csv    *csv.Writer
+	json   *json.Encoder
+	wrote  bool
+	closed bool
+	err    error
 }
 
-func prepareJSONOutput(results []Result) ([]byte, error) {
-	var validResults []Result
-	var jsonOutput []byte
-
-	for _, res := range results {
-		if res.Generic.Reason != "" || len(res.FingerPrint) != 0 {
-			validResults = append(validResults, res)
-		}
+// NewResultWriter accepts json, jsonl, csv, or txt (case-insensitive, optional
+// leading dot). File extension selection and publication belong to the caller.
+func NewResultWriter(writer io.Writer, format string) (*ResultWriter, error) {
+	if writer == nil {
+		return nil, errors.New("output writer is required")
 	}
-
-	if len(validResults) == 0 {
-		return jsonOutput, nil
+	out := &ResultWriter{writer: writer, format: strings.ToLower(strings.TrimPrefix(format, "."))}
+	switch out.format {
+	case "json":
+		out.json = json.NewEncoder(writer)
+		_, out.err = io.WriteString(writer, "[")
+	case "jsonl":
+		out.json = json.NewEncoder(writer)
+	case "csv":
+		out.csv = csv.NewWriter(writer)
+		out.err = out.csv.Write([]string{"target", "state", "matches", "generic", "incomplete_products", "diagnostics", "schema_version", "origin", "provenance", "evidence"})
+		out.csv.Flush()
+		out.err = errors.Join(out.err, out.csv.Error())
+	case "txt":
+	default:
+		return nil, fmt.Errorf("unsupported output format %q", format)
 	}
-
-	jsonOutput, err := json.MarshalIndent(validResults, "", "\t")
-	if err != nil {
-		return nil, err
+	if out.err != nil {
+		return nil, out.err
 	}
-
-	return jsonOutput, nil
+	return out, nil
 }
 
-func prepareTXTOutput(results []Result) []byte {
-	var output string
-	var emptyGeneric = GenericDetection{}
-
-	for _, res := range results {
-		var line = res.Target
-
-		fingerPrintsFound := len(res.FingerPrint)
-		var fingerPrints []string
-
-		if fingerPrintsFound == 0 && res.Generic == emptyGeneric {
-			continue
-		}
-		if fingerPrintsFound > 0 {
-			for _, f := range res.FingerPrint {
-				fingerPrints = append(fingerPrints, f.WafName)
-			}
-			line = line + ":" + strings.Join(fingerPrints, ", ")
-		}
-
-		if res.Generic != emptyGeneric {
-			genericNoNewline := strings.Replace(res.Generic.Reason, "\n", " ", -1)
-			line = line + ":" + genericNoNewline
-		}
-
-		line = line + "\n"
-		output = output + line
+func (out *ResultWriter) Write(result Result) error {
+	if out.err != nil {
+		return out.err
 	}
-
-	return []byte(output)
-}
-
-func PrintError(error string, au *aurora.Aurora) {
-	var errorBrackets = "[" + au.Bold(au.BrightRed("!!")).String() + "]"
-	line := errorBrackets + " " + error
-	fmt.Println(line)
-}
-
-func PrintWarning(warning string, au *aurora.Aurora) {
-	var warningBrackets = "[" + au.Bold(au.BrightYellow("!")).String() + "]"
-	line := warningBrackets + " " + warning
-	fmt.Println(line)
-}
-
-func PrintAllWafs(wafs map[string]string, au *aurora.Aurora) {
-	for waf, manufacturer := range wafs {
-		colouredWaf := au.Bold(au.BrightMagenta(waf)).String()
-		colouredManufacturer := au.BrightCyan(manufacturer).String()
-
-		line := "\t" + colouredWaf + " BY " + colouredManufacturer
-		fmt.Println(line)
+	if out.closed {
+		return errors.New("result writer is closed")
 	}
+	if out.format == "jsonl" {
+		out.err = out.json.Encode(result)
+		return out.err
+	}
+	if out.format == "json" {
+		if out.wrote {
+			_, out.err = io.WriteString(out.writer, ",")
+		}
+		if out.err == nil {
+			out.err = out.json.Encode(result)
+		}
+		out.wrote = true
+		return out.err
+	}
+	row := []string{result.Target, string(result.Outcome.State)}
+	for _, value := range []any{
+		result.Outcome.Matches, result.Generic, result.Outcome.IncompleteProducts,
+		result.Outcome.Diagnostics, result.SchemaVersion, result.Origin,
+		result.Provenance, result.Evidence,
+	} {
+		encoded, err := json.Marshal(value)
+		if err != nil {
+			out.err = err
+			return err
+		}
+		row = append(row, string(encoded))
+	}
+	if out.format == "csv" {
+		out.err = out.csv.Write(row)
+		out.csv.Flush()
+		out.err = errors.Join(out.err, out.csv.Error())
+	} else {
+		_, out.err = fmt.Fprintf(out.writer, "%s\tstate=%s\tmatches=%s\tgeneric=%s\tincomplete_products=%s\tdiagnostics=%s\tschema_version=%s\torigin=%s\tprovenance=%s\tevidence=%s\n",
+			strconv.QuoteToGraphic(row[0]), strconv.QuoteToGraphic(row[1]), row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9])
+	}
+	return out.err
+}
+
+func (out *ResultWriter) Close() error {
+	if out.closed || out.err != nil {
+		return out.err
+	}
+	out.closed = true
+	if out.format == "json" {
+		_, out.err = io.WriteString(out.writer, "]\n")
+	}
+	return out.err
 }

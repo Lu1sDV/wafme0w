@@ -1,0 +1,3 @@
+{"target":"synthetic-cloudflare","evidence":[{"role":"Normal","status_code":200,"reason":"OK","headers":[{"name":"Server","value":"cloudflare"}],"body":"b3JkaW5hcnk="}]}
+{"target":"synthetic-clean","evidence":[{"role":"Normal","status_code":200,"reason":"OK","headers":[],"body":"b3JkaW5hcnk="}]}
+{"target":"synthetic-truncated","evidence":[{"role":"Normal","status_code":200,"reason":"OK","headers":[{"name":"Server","value":"cloudflare"}],"body":"b3JkaW5hcnk=","body_truncated":true}]}
