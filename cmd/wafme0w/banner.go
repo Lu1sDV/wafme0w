@@ -28,7 +28,7 @@ func printBanner(writer io.Writer, au *aurora.Aurora) error {
 }
 
 // Escape controls and invisible formatting before strings enter a terminal.
-// Only trusted labels receive ANSI styling; response and catalogue data do not.
+// Escape untrusted text before applying trusted ANSI styling.
 func terminalText(value string) string {
 	var out strings.Builder
 	for i := 0; i < len(value); {
@@ -113,6 +113,11 @@ func printResult(stdout, stderr io.Writer, result wafme0w.Result, suppressWarnin
 				description = "redirect outside allowed scope"
 			}
 			group.WriteString(terminalText(description))
+			if diagnostic.Code == "redirect_scope" && diagnostic.Evidence >= 0 && diagnostic.Evidence < len(result.Evidence) {
+				if destination := result.Evidence[diagnostic.Evidence].BlockedRedirectURL; destination != "" {
+					fmt.Fprintf(&group, ": %s", au.Italic(au.BrightBlack(terminalText(destination))))
+				}
+			}
 		}
 		group.WriteByte('\n')
 		if _, err := io.WriteString(stderr, group.String()); err != nil {

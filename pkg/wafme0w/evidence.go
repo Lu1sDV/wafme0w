@@ -27,6 +27,8 @@ type EvidenceSummary struct {
 	StatusCode    int      `json:"status_code"`
 	BodyTruncated bool     `json:"body_truncated,omitempty"`
 	ErrorCode     string   `json:"error_code,omitempty"`
+	// BlockedRedirectURL is the resolved Location of a scope-rejected redirect.
+	BlockedRedirectURL string `json:"blocked_redirect_url,omitempty"`
 }
 
 type Header struct {

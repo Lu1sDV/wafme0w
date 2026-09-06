@@ -192,6 +192,8 @@ JSON is an array; JSONL is one result per line. CSV columns are `target,state,ma
 
 The terminal leads with the finding: `FOUND`, `NO MATCH`, `INCONCLUSIVE` or `ERROR`. Confirmed matches from limited evaluations carry a `partial scan` note. Internal product-check and repeated-warning counts stay out of per-target output; warnings are grouped by cause. `NO MATCH` means no known fingerprint matched, not proof that a WAF is absent. Use `--output results.json` or `--jsonl` for full diagnostics, evidence references and incomplete-product lists. Untrusted control characters are escaped; color is disabled on redirected output, `--no-colors` or nonempty `NO_COLOR`.
 
+Out-of-scope redirect warnings include the resolved destination URI, gray and italicized when terminal styling is enabled and plain otherwise.
+
 </details>
 
 ### Errors, cancellation and publication

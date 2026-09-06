@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"runtime/debug"
 	"slices"
 	"strings"
@@ -113,6 +114,19 @@ func makeResult(engine *Engine, target, origin string, evidence []Evidence, conf
 			Index: i, Role: observation.Role, RequestURL: observation.RequestURL,
 			EffectiveURL: observation.EffectiveURL, RedirectChain: slices.Clone(observation.RedirectChain),
 			StatusCode: observation.StatusCode, BodyTruncated: observation.BodyTruncated, ErrorCode: observation.ErrorCode,
+		}
+		if observation.ErrorCode == "redirect_scope" {
+			base, err := url.Parse(observation.EffectiveURL)
+			if err == nil {
+				for _, header := range observation.Headers {
+					if strings.EqualFold(header.Name, "Location") {
+						if destination, err := base.Parse(header.Value); err == nil {
+							result.Evidence[i].BlockedRedirectURL = destination.String()
+						}
+						break
+					}
+				}
+			}
 		}
 	}
 	if !config.ExcludeGeneric {
