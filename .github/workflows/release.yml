@@ -3,12 +3,21 @@ name: Release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to build and publish
+        required: true
+        type: string
 
 permissions:
   contents: read
 
+env:
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -44,6 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: refs/tags/${{ env.RELEASE_TAG }}
           persist-credentials: false
       - uses: actions/setup-go@v7
         with:
@@ -96,7 +106,7 @@ jobs:
           import tarfile
           import zipfile
 
-          tag = os.environ['GITHUB_REF_NAME']
+          tag = os.environ['RELEASE_TAG']
           if not re.fullmatch(r'v[0-9][0-9A-Za-z.+-]*', tag):
               raise SystemExit('Release tags must be filename-safe versions, such as v0.3.0')
           name = 'wafme0w' + os.environ['BINARY_SUFFIX']
@@ -120,7 +130,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: release-${{ matrix.os }}-${{ matrix.arch }}
-          path: dist/wafme0w_${{ github.ref_name }}_${{ matrix.os }}_${{ matrix.arch }}.${{ matrix.extension }}
+          path: dist/wafme0w_${{ env.RELEASE_TAG }}_${{ matrix.os }}_${{ matrix.arch }}.${{ matrix.extension }}
           if-no-files-found: error
           compression-level: 0
           overwrite: false
@@ -134,7 +144,6 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
-      RELEASE_TAG: ${{ github.ref_name }}
     steps:
       - uses: actions/download-artifact@v7
         with:
