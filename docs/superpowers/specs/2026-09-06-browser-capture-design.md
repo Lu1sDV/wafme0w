@@ -1,8 +1,8 @@
 # Browser capture subsystem design
 
-**Status:** written design set approved for planning on 2026-09-06. Browser-capture implementation planning is authorized; application implementation is not.
+**Status:** browser/screenshot capture remains an active planned feature, independently of disabled AI (`soon`). Browser-capture implementation planning is approved; application implementation is not authorized.
 
-[Shared contracts, budgets and acceptance ownership](2026-09-06-ai-integration-design.md) are normative for this subsystem. Delivery order is browser capture, AI enrichment, then controlled-edge TLS comparison; this document does not remove the later features.
+[Shared contracts, budgets and acceptance ownership](2026-09-06-ai-integration-design.md) are normative for this subsystem. Browser/screenshot capture stays in active scope; AI is retained as `soon` and disabled, while controlled-edge TLS comparison remains a separate later delivery.
 
 ## Responsibility and non-goals
 
@@ -14,7 +14,7 @@ Use Rod directly, following the capture-only boundary already confirmed. Do not 
 
 ## Inputs, outputs and integration
 
-**Proposed configuration:** `--browser=off|navigate|screenshot`, `--browser-path`, `--browser-timeout`, `--browser-settle`, `--artifacts`, `--save-screenshots DIR`, plus explicit caller-supplied resource origins/destination policy. Both browser and AI remain off by default. Screenshot-saving requires screenshot mode; it does not select that mode implicitly.
+**Proposed configuration:** `--browser=off|navigate|screenshot`, `--browser-path`, `--browser-timeout`, `--browser-settle`, `--artifacts`, `--save-screenshots DIR`, plus explicit caller-supplied resource origins/destination policy. Browser capture remains opt-in and off by default; AI is disabled, not selectable. Screenshot-saving requires screenshot mode; it does not select that mode implicitly.
 
 CLI resolves a configured existing browser binary and artifact destinations; the library receives values and policy. Never download Chromium during a scan. Invalid selected configuration is rejected before acquisition; help/list and browser-off operation do not discover or require Chromium. Stage-one browser-only operation needs no provider key or TLS observation service.
 
@@ -88,14 +88,14 @@ Use LSP references before exported-symbol changes and migrate affected callers/t
 
 Use owned fixtures and launch the actual CLI/Chromium surface; no arbitrary public-site probing.
 
-1. **Independence:** browser off causes no Chromium activity; browser-only needs no key; help/non-network listings need neither. Explicit provider-model discovery belongs to the AI delivery and must not launch Chromium. Every admitted input occurrence is attempted despite HTTP match/failure. Verify duplicate handling, cancellation and serial output.
+1. **Independence:** browser off causes no Chromium activity; browser-only needs no key or provider login; help/non-network listings need neither. AI provider/model discovery remains disabled and outside browser delivery. Every admitted input occurrence is attempted despite HTTP match/failure. Verify duplicate handling, cancellation and serial output.
 2. **Identity/provenance:** a fixture returns different Go HTTP and browser-rendered content. Preserve case-sensitive URL path/query/escaping, actual browser headers and document IDs. Visually confirm the screenshot describes its browser document, not the original HTTP response.
 3. **Containment:** observe blocked origins, resolution/destination restrictions, redirects, workers/new contexts and denied channels outside Chromium, not just in event logs. Verify TLS certificate failure, sandbox operation and selected runtime resource restrictions. Unsupported enforcement fails before claiming a successful supported capture.
 4. **Readiness:** delayed JavaScript, visible images and fonts appear in the initial viewport; a scroll-only asset is not requested. Continuous mutation and slow/broken assets yield bounded timeout or explicit restriction. Navigation mode produces no image.
 5. **Lifecycle/privacy:** exercise launch failure, timeout and cancellation; verify no orphaned processes/profiles or leaked child-environment secrets. Inspect actual sanitized artifacts and confirm raw HTTP inputs are unchanged.
 6. **Saving/output:** saving off produces no image artifact/bundle; saving on with AI off publishes a private sanitized image and truthful reference. Exercise write/sink errors, empty reports and cancellation through actual JSON/CSV/TXT and terminal paths. Preserve journaling and aggregate atomic replacement.
 
-Passing this gate completes browser capture only. AI and TLS acceptance remain separate. No runtime checks above have been performed for this design-only change.
+Passing this gate completes browser capture independently of AI. AI acceptance is deferred while the feature is disabled; TLS acceptance remains separate. No runtime checks above have been performed for this design-only change.
 
 ## Research references
 

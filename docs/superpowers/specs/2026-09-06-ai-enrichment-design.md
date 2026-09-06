@@ -1,8 +1,12 @@
 # AI enrichment subsystem design
 
-**Status:** written design set approved for planning on 2026-09-06, with subsequently approved provider-model discovery and test-driven development requirements. This remains the second delivery; only browser-capture implementation planning is currently authorized. No application implementation is authorized.
+**Status: soon — disabled.** Preserve the previously approved design and TDD requirements below for later. AI is not implemented, selectable or authorized for activation; browser/screenshot capture remains independently in active scope.
 
-[Shared contracts, budgets and acceptance ownership](2026-09-06-ai-integration-design.md) define the common boundaries. This is the second delivery, after browser capture, but text-only assessment and saved-plan replay must not acquire a browser implicitly.
+<!-- soon -->
+
+This is not an off-by-default feature with an opt-in. Do not implement or register AI flags, provider/model discovery, credential or Codex-login access, provider clients/calls, generation/replay, or AI reports/columns in the active browser delivery. The remaining sections are retained future requirements, subject to an explicit reactivation request and review.
+
+[Shared contracts, budgets and acceptance ownership](2026-09-06-ai-integration-design.md) define the common boundaries. This is a deferred design, not a required second delivery or a prerequisite for screenshots. If reactivated, text-only assessment and saved-plan replay must not acquire a browser implicitly.
 
 ## Responsibility and non-goals
 
@@ -20,7 +24,7 @@ Correct optional collection is sufficient for functional acceptance. Improved id
 
 CLI resolves only the selected provider's credential: `OPENAI_API_KEY` for OpenAI or `ANTHROPIC_API_KEY` for Anthropic. The library receives resolved credentials through the existing native-provider boundary; it does not read environment variables or another application's login store. Selection does not require a discovery preflight: an explicit ID can be used even when the account cannot list models.
 
-**Approved discovery interface, not yet implemented:**
+**Retained discovery interface — soon; disabled and not implemented:**
 
 ```sh
 wafme0w --ai-provider openai --ai-list-models
@@ -39,7 +43,7 @@ Discovery uses the selected provider's separate verified-HTTPS client, no redire
 
 ## Routing and per-target flow
 
-**Proposed scan flags:** `--ai=off|undetected|always`, `--ai-provider`, `--ai-model`, `--ai-generate-headers`, `--ai-k`, and explicit saved-plan replay with separately selected reassessment. The standalone discovery operation above is separate from this per-target routing. CLI resolves provider-specific environment keys, not command-line secrets. Library configuration receives resolved credentials and decoded inputs.
+**Retained future scan flags (disabled):** `--ai=off|undetected|always`, `--ai-provider`, `--ai-model`, `--ai-generate-headers`, `--ai-k`, and explicit saved-plan replay with separately selected reassessment. The standalone discovery operation above is separate from this per-target routing. If reactivated, CLI resolves provider-specific environment keys, not command-line secrets; library configuration receives resolved credentials and decoded inputs.
 
 During a scan, `off` invokes no provider or generation. `undetected` uses the confirmed predicate: deterministic state `Complete`, zero named matches and zero diagnostics. A generic anomaly neither opens nor closes this gate. `always` is a proposed explicit analysis mode that permits named/incomplete results only when usable HTTP evidence exists, with limitations retained; it is not an override for scope, refusal, privacy or evidence requirements.
 
@@ -138,6 +142,8 @@ Implementation ownership stays within existing configuration, runner, acquisitio
 
 ## Independent acceptance gate
 
+This gate is deferred while AI is disabled and is not required for screenshot delivery.
+
 Browser acquisition itself is a dependency already verified by its own gate; test integration without treating browser/provider mocks as runtime proof.
 
 1. **Gates and state transitions:** exercise all table rows, generic anomalies, generated matches/errors/truncation and selected capture failure. Observe actual provider counts. A closed AI gate or refusal never suppresses selected capture or erases matches.
@@ -150,7 +156,7 @@ Browser acquisition itself is a dependency already verified by its own gate; tes
 
 ### Test-driven implementation requirement
 
-**Confirmed development method:** implement this AI delivery with red → green → refactor TDD. Before changing production behavior, write a focused test of its observable contract, run it and observe the intended failure; implement the smallest change that passes, then refactor while it remains green. Record the actual focused commands and red/green results during implementation. A compile-only scaffold, source-text assertion or provider mock that merely echoes supplied fields is not behavioral proof.
+**Retained development method for reactivation:** implement this AI delivery with red → green → refactor TDD. Before changing production behavior, write a focused test of its observable contract, run it and observe the intended failure; implement the smallest change that passes, then refactor while it remains green. Record the actual focused commands and red/green results during implementation. A compile-only scaffold, source-text assertion or provider mock that merely echoes supplied fields is not behavioral proof.
 
 Start discovery/selection with these behavior boundaries, using the existing Go test and CLI harness conventions and controlled native-protocol responders:
 

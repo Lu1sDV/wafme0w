@@ -2,7 +2,7 @@
 
 **Status:** plan drafted after written-design approval on 2026-09-06; application implementation is not authorized. The user approved preparing this browser-only plan, not executing it.
 
-**Authority:** [shared contracts](../specs/2026-09-06-ai-integration-design.md) and [browser design](../specs/2026-09-06-browser-capture-design.md). AI enrichment and controlled-edge TLS comparison remain required later deliveries, not tasks in this plan.
+**Authority:** [shared contracts](../specs/2026-09-06-ai-integration-design.md) and [browser design](../specs/2026-09-06-browser-capture-design.md). Screenshot capture remains in active scope. AI enrichment is retained as `soon` and disabled, not a required delivery or a task in this plan. Controlled-edge TLS comparison remains a separate later delivery.
 
 **Planning method:** `writing-plans` was unavailable in the installed skill registry and checked local skill paths. This is a direct repository-grounded plan; no skill was installed. No browser feature, dependency compatibility, containment profile or runtime acceptance check has been implemented or demonstrated by writing it.
 
@@ -10,7 +10,7 @@
 
 Deliver independently selected, bounded initial browser observations for every valid admitted input occurrence. Support metadata/DOM-only navigation and one viewport screenshot, with explicit local saving, honest limitations and the existing deterministic result preserved.
 
-Keep browser-off execution and offline `RunCaptured` independent of Chromium. Do not add providers, header generation/replay, TLS observation parsing, crawling, stealth, challenge interaction, TLS identity manipulation, browser pooling or a generic browser-engine interface. Do not change catalogue rules or matching behavior.
+Keep browser-off execution and offline `RunCaptured` independent of Chromium. Keep AI disabled: no AI flags, credential/login access, providers, model discovery, generation/replay or AI reports/columns. Do not add TLS observation parsing, crawling, stealth, challenge interaction, TLS identity manipulation, browser pooling or a generic browser-engine interface. Do not change catalogue rules or matching behavior.
 
 The smallest complete supported deployment is the existing application plus an optional Linux browser image and one concrete isolation helper. A normal container or CDP interception alone cannot meet the destination boundary. Establish that boundary first; do not ship a host-browser fallback if it fails.
 
@@ -222,4 +222,4 @@ The implementation handoff must contain exact runtime evidence and the supported
 
 Before implementation, review this plan's concrete static address-pin policy and Linux namespace/private-tunnel profile. If either cannot meet the approved browser contract, request an explicit design change rather than quietly dropping the gate. Otherwise implement Tasks 1–7 in dependency order and require every mapped gate before calling browser capture complete.
 
-**Current stopping point:** written plan review. Creating this plan does not authorize application implementation, install dependencies, launch a target browser, change AI/TLS scope or establish runtime compatibility. No application code was changed and no browser runtime acceptance checks were run for this planning deliverable.
+**Current stopping point:** written plan review. Creating or updating this plan does not authorize application implementation, install dependencies, launch a target browser or establish runtime compatibility. Screenshot capture remains an active planned feature; AI is retained as `soon` and disabled, and TLS scope is unchanged. No application code was changed and no browser runtime acceptance checks were run for this planning deliverable.

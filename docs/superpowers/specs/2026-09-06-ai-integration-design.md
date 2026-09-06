@@ -1,26 +1,28 @@
 # Browser-first AI integration: shared design contracts
 
-**Status:** written design set approved for planning on 2026-09-06. Browser-capture implementation planning is authorized; application implementation is not.
+**Status:** browser/screenshot capture remains in active scope. AI is retained as **soon — disabled**, not merely off by default. Browser-capture implementation planning is approved; application implementation is not authorized.
 
 ## Purpose and authority
 
-Extend wafme0w with independently selected browser acquisition, optional AI enrichment, and controlled-edge TLS comparison. Preserve the deterministic classifier and its offline API. All confirmed interview features remain in scope; sequencing is not removal or an indefinite deferral.
+Extend wafme0w with independently selected browser acquisition and controlled-edge TLS comparison. Retain AI enrichment as a disabled future feature (`soon`), not a current delivery requirement. Preserve the deterministic classifier and its offline API.
 
 This index and the three linked subsystem designs replace the monolithic architecture as the working design. The original interviews, corrections and scoring remain in the local historical record `.omc/specs/deep-interview-wafme0w-ai-integration.md`; they are not implementation-readiness measurements. This design set is self-contained and does not require that local record to build or review it.
 
 **Confirmed** denotes an interview decision. **Proposed** denotes an engineering choice in the approved planning baseline, including numerical defaults, rather than an existing capability or measured result. Written-design approval authorizes browser-first planning; it does not adopt the alternative partial-evidence fallback or authorize code changes.
 
+**Current scope override:** keep the AI design and its TDD requirements for later, but do not expose AI flags, provider/model discovery, credential or Codex-login access, provider calls, generation/replay, or AI reports/columns. There is no AI opt-in while this feature is disabled. AI-specific contracts below are retained future requirements, not work required to complete screenshot capture. Reactivation requires a separate explicit request and review. Screenshot capture remains independently selectable in the browser plan; neither subsystem is implemented by this scope update.
+
 ## Delivery boundaries
 
-| Order | Focused design | Owns | Dependencies and independent completion |
+| Status | Focused design | Owns | Dependencies and independent completion |
 |---|---|---|---|
-| 1 | [Browser capture](2026-09-06-browser-capture-design.md) | Rod/Chromium acquisition, containment, readiness, provenance, local artifacts and browser reporting | Existing HTTP/classification/runner boundaries only; works with AI off and no TLS instrumentation |
-| 2 | [AI enrichment](2026-09-06-ai-enrichment-design.md) | Native OpenAI/Anthropic, explicit provider/model selection and discovery, bounded projections, routing, hypotheses, header-only generation and replay | Existing HTTP evidence plus the capture contract when browser mode is selected; text-only operation needs no Chromium; standalone model discovery needs only the selected provider's credential |
-| 3 | [Controlled-edge TLS comparison](2026-09-06-tls-comparison-design.md) | Attributable service observations, local prior-capture import and comparison | Browser response/provenance contract and operator-supplied TLS-edge observations; no AI dependency |
+| Active | [Browser capture](2026-09-06-browser-capture-design.md) | Rod/Chromium acquisition, containment, readiness, provenance, local artifacts and browser reporting | Existing HTTP/classification/runner boundaries only; works with AI disabled and no TLS instrumentation |
+| soon — disabled | [AI enrichment](2026-09-06-ai-enrichment-design.md) | Retained future native providers, model selection/discovery, projections, routing, hypotheses, generation and replay | No active implementation, credentials, provider calls or browser-delivery dependency |
+| Later | [Controlled-edge TLS comparison](2026-09-06-tls-comparison-design.md) | Attributable service observations, local prior-capture import and comparison | Browser response/provenance contract and operator-supplied TLS-edge observations; no AI dependency |
 
-Each subsystem gets its own reviewed implementation plan, implementation and acceptance cycle. Browser capture is first because acquisition, isolation and readiness can be proved independently of model interpretation. Native providers, generation/replay and TLS comparison are still required by the complete design; a browser-only milestone is not completion of the whole request.
+Each active subsystem gets its own reviewed implementation plan, implementation and acceptance cycle. Browser capture is first because acquisition, isolation and readiness can be proved independently of model interpretation. AI planning and implementation are paused; its acceptance gates do not block screenshot delivery. Controlled-edge TLS comparison remains a separate later delivery.
 
-Delivery order is not per-target execution order. Once all selected features exist, retain:
+Delivery order is not per-target execution order. The retained future flow below applies only after each subsystem is separately activated; while AI is disabled, omit its steps entirely and do not make browser work wait for them:
 
 1. Existing selected HTTP acquisition and deterministic/generic classification.
 2. Eligible, explicitly selected header generation; validated execution; reclassification of the actual combined HTTP evidence.
@@ -59,7 +61,7 @@ Requested, acquired, transmitted and saved modalities are distinct. Browser DOM,
 
 **Confirmed:** browser acquisition can operate with AI off; AI never implicitly selects a browser. Every admitted supplied URL occurrence, including duplicates, receives the selected bounded browser attempt. No crawling of discovered pages. Invalid/out-of-scope input is explicitly not attempted. Cancellation and input/sink failure retain existing `Run` semantics; there is no promise to process unread input after cancellation.
 
-**Proposed controls:** `--browser=off|navigate|screenshot` and `--ai=off|undetected|always`, both defaulting off. Screenshot mode includes one navigation, not a second visit. Saving and provider transmission require their own opt-ins. Validate only selected capabilities before acquisition: browser-only needs no key, text-only AI needs no Chromium, and help/non-network listings need neither. The approved standalone `--ai-list-models` operation is different: it needs the selected provider's key but no model, target, evidence or Chromium, and never performs inference. Screenshot-only options require screenshot mode instead of selecting it silently.
+**Active proposed controls:** `--browser=off|navigate|screenshot`, defaulting off. Screenshot mode includes one navigation, not a second visit. Saving requires its own opt-in, and screenshot-only options require screenshot mode instead of selecting it silently. Browser-only needs no provider key or login; help/non-network listings need no Chromium. AI assessment, provider/model selection, model discovery and replay controls remain disabled future interfaces in the AI design, not selectable options for this delivery.
 
 Caller scope and code-enforced budgets govern acquisition; provider content refusal does not authorize targets. Redirects, subresources, new contexts and address resolution do not expand authority. Current HTTP origin policy is not an IP/network sandbox; the browser design owns its additional containment boundary. Never use a Go-fetched substitute and call its handshake browser TLS.
 
@@ -81,7 +83,7 @@ No new overall per-target timeout flag is introduced by this design. The enhance
 
 ## Shared initial resource proposals
 
-These are starting limits, not measured optima, hard renderer-memory limits or dollar-cost promises. Report effective limits and shortfalls; validate inputs before allocating.
+These are starting limits, not measured optima, hard renderer-memory limits or dollar-cost promises. Report effective limits and shortfalls; validate inputs before allocating. AI entries are retained future proposals only: do not allocate AI resources or perform AI work while the feature is disabled.
 
 | Resource | Proposed allowance / owner |
 |---|---|
@@ -116,7 +118,7 @@ Browser delivery adds optional `Result.browser`; AI delivery later adds optional
 
 ## Acceptance ownership
 
-The original fourteen acceptance areas remain required; each is assigned here rather than lost in the split. Subsystem documents specify observable checks, not claims of passing runtime work.
+Keep the original fourteen acceptance areas below for traceability. Browser obligations remain active; AI-specific obligations are deferred while AI is disabled and do not block screenshot completion. TLS retains its separate later gate. Subsystem documents specify observable checks, not claims of passing runtime work.
 
 | Original area | Primary owner / shared obligation |
 |---|---|
@@ -141,6 +143,6 @@ Verification uses saved captures, synthetic evidence and owned/authorized fixtur
 
 The user approved this shared contract and the three subsystem designs for planning on 2026-09-06. Enhanced-mode timeout ownership, first supported browser runtime, retained strict modality-failure policy, defaults, staged CSV cutovers and the explicit TLS observation-only workflow are the planning baseline. None changes the confirmed no-stealth, independent-mode, evidence, privacy or authorization boundaries.
 
-The subsequently approved AI refinement adds explicit authenticated provider-model discovery and red → green → refactor TDD to the AI delivery. API-exposed Codex models remain ordinary OpenAI selections, not a separate authentication or agent-execution feature. This specification approval does not change browser-first sequencing or authorize application implementation.
+The previous AI refinement for explicit authenticated provider-model discovery and red → green → refactor TDD remains preserved for reactivation. The user's subsequent `soon` instruction disables AI and supersedes its earlier required-delivery status. It does not disable screenshot capture, select a Codex login/backend, or authorize application implementation.
 
-The requested `writing-plans` skill was unavailable in the installed registry and checked local skill paths. A direct repository-grounded [browser-capture implementation plan](../plans/2026-09-06-browser-capture-implementation-plan.md) records the next steps without installing a skill. That plan requires review before application implementation; AI and TLS planning remain later deliveries.
+The requested `writing-plans` skill was unavailable in the installed registry and checked local skill paths. A direct repository-grounded [browser-capture implementation plan](../plans/2026-09-06-browser-capture-implementation-plan.md) records the next steps without installing a skill. That plan requires review before application implementation. AI planning is paused; TLS remains a later delivery.
