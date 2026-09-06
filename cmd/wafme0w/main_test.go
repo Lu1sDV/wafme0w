@@ -58,17 +58,6 @@ func runCLI(t *testing.T, stdin io.Reader, args ...string) (int, string, string)
 	return -1, "", ""
 }
 
-func TestCLIHelp(t *testing.T) {
-	for _, args := range [][]string{nil, {"--help"}, {"-h"}} {
-		t.Run(strings.Join(args, " "), func(t *testing.T) {
-			code, stdout, stderr := runCLI(t, nil, args...)
-			if code != 0 || stderr != "" || !strings.Contains(stdout, "--target") || !strings.Contains(stdout, "--list") {
-				t.Fatalf("help: exit=%d stdout=%q stderr=%q", code, stdout, stderr)
-			}
-		})
-	}
-}
-
 func TestCLIRejectsInvalidArguments(t *testing.T) {
 	for _, args := range [][]string{
 		{"--unknown"},

@@ -93,6 +93,7 @@ jobs:
           assert clean['state'] == 'complete' and not clean.get('matches'), clean
           truncated = by_target['synthetic-truncated']['outcome']
           assert truncated['state'] == 'incomplete', truncated
+          assert {match['product'] for match in truncated.get('matches', [])} == {'Cloudflare (Cloudflare Inc.)'}, truncated
           for record in records:
               assert record['provenance']['scan_mode'] == 'passive', record
               assert 'wafme0w ' + record['provenance']['program_version'] == version, record

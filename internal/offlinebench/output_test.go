@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -54,6 +55,9 @@ func generationSnapshot(t *testing.T, directory string) map[string]string {
 }
 
 func TestGenerationPublicationPreservesPriorArtifactsOnEveryFailure(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("offline benchmark publication requires directory fsync; the runner requires Linux")
+	}
 	parent := t.TempDir()
 	prior := filepath.Join(parent, "prior")
 	manifest := testManifest(t)
@@ -120,6 +124,9 @@ func TestGenerationPublicationPreservesPriorArtifactsOnEveryFailure(t *testing.T
 }
 
 func TestGenerationCommitDoesNotReplaceConcurrentPublisher(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("offline benchmark publication requires directory fsync; the runner requires Linux")
+	}
 	destination := filepath.Join(t.TempDir(), "run")
 	ops := publicationOps{write: atomicfile.Write, syncDir: syncDirectory}
 	ops.rename = func(staging, final string) error {
@@ -140,6 +147,9 @@ func TestGenerationCommitDoesNotReplaceConcurrentPublisher(t *testing.T) {
 }
 
 func TestGenerationConsumersRequireCompletionAndIntegrity(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("offline benchmark publication requires directory fsync; the runner requires Linux")
+	}
 	for _, mutation := range []string{"artifact", "missing-manifest", "incomplete", "missing-identity", "symlink", "unlisted"} {
 		t.Run(mutation, func(t *testing.T) {
 			destination := filepath.Join(t.TempDir(), "run")

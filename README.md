@@ -66,15 +66,15 @@ Of the 518 bundled fingerprints, **277 use literal string matching**, **17 compa
 </details>
 
 ## Installation
-Download a tested binary from [v0.3.0](https://github.com/Lu1sDV/wafme0w/releases/tag/v0.3.0); no Go installation is needed:
+Download a tested binary from [v0.3.1](https://github.com/Lu1sDV/wafme0w/releases/tag/v0.3.1); no Go installation is needed:
 
 | Platform | Archive |
 | --- | --- |
-| Linux x64 | [tar.gz](https://github.com/Lu1sDV/wafme0w/releases/download/v0.3.0/wafme0w_v0.3.0_linux_amd64.tar.gz) |
-| macOS Apple silicon | [tar.gz](https://github.com/Lu1sDV/wafme0w/releases/download/v0.3.0/wafme0w_v0.3.0_darwin_arm64.tar.gz) |
-| Windows x64 | [zip](https://github.com/Lu1sDV/wafme0w/releases/download/v0.3.0/wafme0w_v0.3.0_windows_amd64.zip) |
+| Linux x64 | [tar.gz](https://github.com/Lu1sDV/wafme0w/releases/download/v0.3.1/wafme0w_v0.3.1_linux_amd64.tar.gz) |
+| macOS Apple silicon | [tar.gz](https://github.com/Lu1sDV/wafme0w/releases/download/v0.3.1/wafme0w_v0.3.1_darwin_arm64.tar.gz) |
+| Windows x64 | [zip](https://github.com/Lu1sDV/wafme0w/releases/download/v0.3.1/wafme0w_v0.3.1_windows_amd64.zip) |
 
-Check the archive's SHA-256 against [SHA256SUMS](https://github.com/Lu1sDV/wafme0w/releases/download/v0.3.0/SHA256SUMS), extract it, and put `wafme0w` (`wafme0w.exe` on Windows) on your `PATH`. Archives include the synthetic demo captures under `assets/demo/`.
+Check the archive's SHA-256 against [SHA256SUMS](https://github.com/Lu1sDV/wafme0w/releases/download/v0.3.1/SHA256SUMS), extract it, and put `wafme0w` (`wafme0w.exe` on Windows) on your `PATH`. Archives include the synthetic demo captures under `assets/demo/`.
 
 ### Install with Go
 
@@ -249,6 +249,8 @@ go test ./internal/offlinebench -run '^$' \
 ```
 
 Historical scan artifacts and local-only measurement helpers are not distributed with releases. The benchmark command above exercises local evidence rather than public targets; it does not measure live scanning throughput or production detection accuracy.
+
+The separate `cmd/offlinebench` comparison runner requires Linux and bubblewrap, including directory-sync support for publishing complete benchmark generations. It is not the cross-platform `wafme0w` CLI.
 
 </details>
 

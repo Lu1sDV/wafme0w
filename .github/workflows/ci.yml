@@ -44,18 +44,25 @@ jobs:
           retention-days: 30
       - name: Build
         run: go build ./cmd/wafme0w
-      - uses: actions/setup-python@v7
-        if: matrix.go == '1.27.x'
-        with:
-          python-version: '3.12'
-      - name: Run offline detector coverage metric
+      - name: Set up isolated benchmark runtime
         if: matrix.go == '1.27.x'
         run: |
           sudo apt-get update
-          sudo apt-get install --yes bubblewrap
-          python -m venv .offlinebench-venv
+          sudo apt-get install --yes bubblewrap python3-venv
+          # Allow namespaces for the sandbox helper, not every unprivileged process.
+          cat > "$RUNNER_TEMP/wafme0w-bwrap" <<'PROFILE'
+          abi <abi/4.0>,
+          profile wafme0w-bwrap /usr/bin/bwrap flags=(default_allow) {
+            userns,
+          }
+          PROFILE
+          sudo apparmor_parser -r "$RUNNER_TEMP/wafme0w-bwrap"
+      - name: Run offline detector coverage metric
+        if: matrix.go == '1.27.x'
+        run: |
+          /usr/bin/python3 -m venv .offlinebench-venv
           .offlinebench-venv/bin/pip install --requirement tools/offlinebench/requirements.txt
-          python -m unittest discover -s tools/offlinebench -p '*_test.py'
+          /usr/bin/python3 -m unittest discover -s tools/offlinebench -p '*_test.py'
           go run ./cmd/offlinebench \
             -wafw00f-python "$PWD/.offlinebench-venv/bin/python" \
             -output offlinebench-results \
