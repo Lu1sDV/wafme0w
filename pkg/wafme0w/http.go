@@ -94,6 +94,13 @@ func sendHTTP(ctx context.Context, options requestOpts, client *http.Client, max
 	for header, value := range options.Headers {
 		req.Header.Set(header, value)
 	}
+	for _, header := range options.ExtraHeaders {
+		if strings.EqualFold(header.Name, "Host") {
+			req.Host = header.Value
+		} else {
+			req.Header.Set(header.Name, header.Value)
+		}
+	}
 	resp, err := client.Do(req)
 	// net/http returns nil on a failed later hop. Keep the last response's
 	// metadata, whose body the redirect machinery has already closed.

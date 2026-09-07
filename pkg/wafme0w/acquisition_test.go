@@ -329,6 +329,8 @@ func TestPolicyConfigurationFailsBeforeInput(t *testing.T) {
 		{"origin contains path", func(c *Config) { c.AllowedOrigins = []string{"https://fixture.invalid/path"} }},
 		{"conflicting live modes", func(c *Config) { c.BaselineOnly, c.FastMode = true, true }},
 		{"passive live runner", func(c *Config) { c.Passive = true }},
+		{"invalid header name", func(c *Config) { c.Headers = []Header{{Name: "Bad Name", Value: "value"}} }},
+		{"invalid header value", func(c *Config) { c.Headers = []Header{{Name: "X-Test", Value: "value\r\nInjected: x"}} }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			config := DefaultConfig()

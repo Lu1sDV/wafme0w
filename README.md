@@ -151,6 +151,20 @@ Capture labels are identifiers, not destinations to request. Bare labels have an
 
 </details>
 
+### Request headers
+
+Use `-H` / `--header` to add comma-separated `Name: value` entries. Names are case-insensitive: later entries and repeated flags replace earlier values and built-in defaults, including `Origin` and `User-Agent`.
+
+```sh
+wafme0w --target http://127.0.0.1:8080 --baseline \
+  -H 'Origin: https://example.test, User-Agent: my-client' \
+  --header '"Accept: text/html, application/json", X-Tag: demo'
+```
+
+CSV-quote the **whole entry** when its value contains a comma; double embedded quotes inside a quoted entry. `-H 'User-Agent:'` suppresses the wire User-Agent. An explicit User-Agent also overrides the no-UA request's default. `Host` sets the HTTP request host; it does not change the connection destination or redirect scope. HTTP framing remains managed by Go's HTTP client.
+
+Overrides apply to every selected request; redirect forwarding still follows Go's `net/http` rules and the existing scope checks. Only send sensitive headers to origins you trust. Invalid names and control bytes are rejected before acquisition. `--header` cannot be combined with offline `--evidence`; it never changes saved observations. Go callers can set the ordered `Config.Headers` slice of `wafme0w.Header` name/value pairs.
+
 ### Inputs and limits
 
 | Setting | Behavior |
@@ -165,7 +179,7 @@ Capture labels are identifiers, not destinations to request. Bare labels have an
 | Globally in-flight requests | `--max-connections` defaults to 20, including body reads |
 | Redirect limit | `--max-redirects` defaults to 5 per request; 0 follows none |
 
-Bodies are bounded after gzip/deflate decoding. Unsupported encodings, truncation and read errors retain usable response metadata without treating unavailable content as a clean negative. The ineffective `-H`/`--headers` option remains removed.
+Bodies are bounded after gzip/deflate decoding. Unsupported encodings, truncation and read errors retain usable response metadata without treating unavailable content as a clean negative. The header option is `-H` / `--header` (singular); the old `--headers` spelling remains unsupported.
 
 <details>
 <summary><strong>URL validation, redirect scope and pacing</strong></summary>

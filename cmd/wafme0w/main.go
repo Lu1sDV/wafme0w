@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"encoding/csv"
 	"errors"
 	"fmt"
 	"io"
@@ -17,6 +18,7 @@ import (
 	"time"
 
 	"github.com/Lu1sDV/wafme0w/internal/atomicfile"
+	"github.com/Lu1sDV/wafme0w/internal/httpmeta"
 	"github.com/Lu1sDV/wafme0w/pkg/wafme0w"
 	"github.com/jessevdk/go-flags"
 )
@@ -31,6 +33,7 @@ type options struct {
 	OutputFile       string        `short:"O" long:"output" description:"Atomic report file: JSON, JSONL, CSV or TXT by extension"`
 	JournalFile      string        `long:"diagnostics-journal" description:"Append and sync body-free result/diagnostic JSONL independently of the report"`
 	Debug            bool          `long:"debug" description:"Print body-free per-request evidence and error details to stderr after each target"`
+	Headers          []string      `short:"H" long:"header" description:"Comma-separated Name: value headers; override defaults, repeatable; CSV-quote fields containing commas"`
 	FingerPrintFile  string        `long:"fingerprints" description:"File containing the JSON-formatted fingerprints"`
 	Concurrency      int           `short:"c" long:"concurrency" description:"Number of concurrent target workers"`
 	MaxBodyBytes     int64         `long:"max-body-bytes" description:"Maximum decoded bytes retained per response"`
@@ -107,6 +110,10 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 		return 0
 	}
 	if err := validateOptions(opts); err != nil {
+		return fail(err)
+	}
+	config.Headers, err = parseHeaders(opts.Headers)
+	if err != nil {
 		return fail(err)
 	}
 	if err := ctx.Err(); err != nil {
@@ -284,8 +291,8 @@ func validateOptions(opts options) error {
 	if opts.Target != "" && opts.InputFile != "" {
 		return errors.New("--target and --input are mutually exclusive")
 	}
-	if opts.EvidenceFile != "" && (opts.Target != "" || opts.InputFile != "" || opts.FastMode || opts.BaselineOnly) {
-		return errors.New("--evidence is exclusive with --target, --input, --fast and --baseline")
+	if opts.EvidenceFile != "" && (opts.Target != "" || opts.InputFile != "" || opts.FastMode || opts.BaselineOnly || len(opts.Headers) != 0) {
+		return errors.New("--evidence is exclusive with --target, --input, --fast, --baseline and --header")
 	}
 	if opts.FastMode && opts.BaselineOnly {
 		return errors.New("--fast is active and cannot be combined with --baseline")
@@ -299,6 +306,30 @@ func validateOptions(opts options) error {
 		return errors.New("silent mode requires --output or --jsonl")
 	}
 	return nil
+}
+
+func parseHeaders(values []string) ([]wafme0w.Header, error) {
+	var headers []wafme0w.Header
+	for _, value := range values {
+		if value == "" || strings.ContainsAny(value, "\r\n") {
+			return nil, errors.New("--header requires a nonempty, single-line header list")
+		}
+		reader := csv.NewReader(strings.NewReader(value))
+		reader.TrimLeadingSpace = true
+		fields, err := reader.Read()
+		if err != nil {
+			return nil, errors.New("--header requires CSV-quoted fields when values contain commas or quotes")
+		}
+		for _, field := range fields {
+			name, content, ok := strings.Cut(field, ":")
+			name, content = strings.Trim(name, " \t"), strings.Trim(content, " \t")
+			if !ok || !httpmeta.ValidHeaderName(name) || !httpmeta.ValidHeaderValue(content) {
+				return nil, errors.New("--header requires valid Name: value entries")
+			}
+			headers = append(headers, wafme0w.Header{Name: name, Value: content})
+		}
+	}
+	return headers, nil
 }
 
 func loadEngine(path string) (*wafme0w.Engine, error) {

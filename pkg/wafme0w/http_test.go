@@ -214,4 +214,11 @@ func TestRequestComponentsAndNoUserAgentOnWire(t *testing.T) {
 	if third.uri != "/Case%2fKept/Next%2fPart?Token=Ab%2F%2b&dup=one&dup=two&dup=three&p=inert+value" {
 		t.Fatalf("path/query components were changed: %q", third.uri)
 	}
+	noUA.ExtraHeaders = []Header{{Name: "user-agent", Value: "explicit-client"}}
+	if _, err := sendHTTP(context.Background(), noUA, server.Client(), 32); err != nil {
+		t.Fatal(err)
+	}
+	if got := <-requests; got.userAgent != "explicit-client" {
+		t.Fatalf("explicit User-Agent did not override no-UA default: %+v", got)
+	}
 }

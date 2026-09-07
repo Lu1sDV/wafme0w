@@ -21,13 +21,14 @@ const (
 const requestsDelay = 50 * time.Millisecond
 
 type requestOpts struct {
-	Method   string
-	Target   string
-	Path     string
-	Headers  map[string]string
-	Params   map[string]string
-	Type     string
-	PostBody io.Reader
+	Method       string
+	Target       string
+	Path         string
+	Headers      map[string]string
+	ExtraHeaders []Header
+	Params       map[string]string
+	Type         string
+	PostBody     io.Reader
 }
 
 // newTypeOptions builds the existing ordered probe catalogue once per target.
@@ -63,6 +64,7 @@ func sendRequests(ctx context.Context, target string, client *http.Client, confi
 	responses := make([]Evidence, len(options))
 	for i, option := range options {
 		responses[i].Role = option.Type
+		options[i].ExtraHeaders = config.Headers
 	}
 	send := func(i int) {
 		requestCtx, cancel := context.WithTimeout(ctx, config.RequestTimeout)

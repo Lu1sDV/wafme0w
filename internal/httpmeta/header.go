@@ -19,3 +19,13 @@ func ValidHeaderName(name string) bool {
 	}
 	return true
 }
+
+// ValidHeaderValue rejects control bytes other than horizontal tab.
+func ValidHeaderValue(value string) bool {
+	for i := range len(value) {
+		if c := value[i]; c < ' ' && c != '\t' || c == 0x7f {
+			return false
+		}
+	}
+	return true
+}

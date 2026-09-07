@@ -719,3 +719,64 @@ func TestConsoleRetainsDistinctFailureCauses(t *testing.T) {
 		t.Fatalf("failure causes lost or unsafe: stdout=%q stderr=%q", &stdout, &stderr)
 	}
 }
+
+func TestCLIHeaderOverridesOnWire(t *testing.T) {
+	type observed struct {
+		host    string
+		headers http.Header
+	}
+	requests := make(chan observed, 2)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests <- observed{r.Host, r.Header.Clone()}
+		if r.URL.Path == "/start" {
+			http.Redirect(w, r, "/finish", http.StatusFound)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	code, _, stderr := runCLI(t, nil, "--target", server.URL+"/start", "--baseline", "--no-colors",
+		"-H", "Origin: https://old.test, User-Agent: old-client, X-Custom: first",
+		"--header", `oRiGiN: https://new.test, user-agent: fixture-client, X-Custom: last, "Accept: text/plain, application/json", Host: fixture.test`)
+	if code != 0 {
+		t.Fatalf("header scan failed: %s", stderr)
+	}
+	if len(requests) != 2 {
+		t.Fatalf("expected original request and allowed redirect, got %d", len(requests))
+	}
+	for range 2 {
+		got := <-requests
+		if got.host != "fixture.test" {
+			t.Fatalf("Host override ignored: %q", got.host)
+		}
+		for name, want := range map[string]string{"Origin": "https://new.test", "User-Agent": "fixture-client", "X-Custom": "last", "Accept": "text/plain, application/json"} {
+			if values := got.headers.Values(name); len(values) != 1 || values[0] != want {
+				t.Fatalf("%s on wire = %q, want single value %q", name, values, want)
+			}
+		}
+	}
+	code, _, stderr = runCLI(t, nil, "--target", server.URL, "--baseline", "-H", "User-Agent:")
+	if code != 0 || len(requests) != 1 {
+		t.Fatalf("empty User-Agent scan failed: %s", stderr)
+	}
+	if got := <-requests; len(got.headers.Values("User-Agent")) != 0 || got.headers.Get("Origin") != "" {
+		t.Fatalf("empty User-Agent not suppressed or prior headers leaked: %v", got.headers)
+	}
+}
+
+func TestCLIInvalidHeadersFailBeforeRequests(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	for _, value := range []string{"", "missing-colon", "Bad Name: x", "X-Test: a\r\nInjected: b", "X-Test: \x7f", "Accept: text/plain, application/json", "X-Test: x,"} {
+		t.Run(fmt.Sprintf("%q", value), func(t *testing.T) {
+			code, _, _ := runCLI(t, nil, "--target", server.URL, "--baseline", "-H", value)
+			if code != 1 || requests.Load() != 0 {
+				t.Fatalf("invalid header reached acquisition: exit=%d requests=%d", code, requests.Load())
+			}
+		})
+	}
+}

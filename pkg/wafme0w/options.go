@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"slices"
 	"time"
+
+	"github.com/Lu1sDV/wafme0w/internal/httpmeta"
 )
 
 const DefaultMaxBodyBytes int64 = 1 << 20
@@ -39,8 +41,11 @@ type Config struct {
 	MaxRedirects               int
 	RedirectPolicy             string
 	AllowedOrigins             []string
-	Client                     *http.Client
-	CancelInput                func()
+	// Headers override request defaults in order, case-insensitively, including
+	// the NoUserAgent request. Redirect forwarding follows net/http's rules.
+	Headers     []Header
+	Client      *http.Client
+	CancelInput func()
 }
 
 func DefaultConfig() Config {
@@ -70,6 +75,7 @@ func (c Config) normalized() Config {
 		c.RedirectPolicy = defaults.RedirectPolicy
 	}
 	c.AllowedOrigins = slices.Clone(c.AllowedOrigins)
+	c.Headers = slices.Clone(c.Headers)
 	for i, value := range c.AllowedOrigins {
 		if origin, err := parseAllowedOrigin(value); err == nil {
 			c.AllowedOrigins[i] = origin
@@ -113,6 +119,11 @@ func (c Config) validate() error {
 	for _, value := range c.AllowedOrigins {
 		if _, err := parseAllowedOrigin(value); err != nil {
 			return fmt.Errorf("allowed origin %q: %w", value, err)
+		}
+	}
+	for _, header := range c.Headers {
+		if !httpmeta.ValidHeaderName(header.Name) || !httpmeta.ValidHeaderValue(header.Value) {
+			return fmt.Errorf("invalid request header %q", header.Name)
 		}
 	}
 	if c.BaselineOnly && c.FastMode {
