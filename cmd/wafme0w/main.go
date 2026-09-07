@@ -30,6 +30,7 @@ type options struct {
 	EvidenceFile     string        `long:"evidence" description:"Classify saved capture JSONL with zero network access; - reads stdin"`
 	OutputFile       string        `short:"O" long:"output" description:"Atomic report file: JSON, JSONL, CSV or TXT by extension"`
 	JournalFile      string        `long:"diagnostics-journal" description:"Append and sync body-free result/diagnostic JSONL independently of the report"`
+	Debug            bool          `long:"debug" description:"Print body-free per-request evidence and error details to stderr after each target"`
 	FingerPrintFile  string        `long:"fingerprints" description:"File containing the JSON-formatted fingerprints"`
 	Concurrency      int           `short:"c" long:"concurrency" description:"Number of concurrent target workers"`
 	MaxBodyBytes     int64         `long:"max-body-bytes" description:"Maximum decoded bytes retained per response"`
@@ -199,6 +200,11 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 			// Persist recovery evidence before touching fallible final-report sinks.
 			if err := journal.result(result); err != nil {
 				return err
+			}
+			if opts.Debug {
+				if err := printDebug(stderr, result); err != nil {
+					return err
+				}
 			}
 			counts.add(result)
 			if output != nil {

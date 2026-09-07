@@ -211,6 +211,8 @@ Output files are staged beside the destination, flushed, synced, closed and atom
 
 `--diagnostics-journal recovery.jsonl` independently appends and syncs completed results and run diagnostics, preserving earlier records if the final report fails. Use a regular file distinct from input, capture and report files; aliases are rejected. Journals and reports omit response bodies, but URLs, reasons and generic marker values may still be sensitive. Restrict access and retention accordingly.
 
+`--debug` prints body-free request diagnostics to stderr after each target completes: every recorded observation's role, requested/effective URLs, HTTP status (`0` means no response metadata), redirect chain, blocked destination, truncation and full error messages. It works with live acquisition or `--evidence`, leaves JSONL stdout unchanged, and is explicitly enabled even with `--silent` or `--no-warning`. It is not a real-time packet trace and does not add requests, retries or permission to follow redirects. URLs and error text may contain sensitive values; protect debug logs as you would reports. For example: `wafme0w --evidence captures.jsonl --debug --jsonl 2>debug.log`.
+
 ## Benchmarks
 
 ### Saved runs · 1,000 targets

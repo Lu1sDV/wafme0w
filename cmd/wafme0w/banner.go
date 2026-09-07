@@ -127,6 +127,31 @@ func printResult(stdout, stderr io.Writer, result wafme0w.Result, suppressWarnin
 	return nil
 }
 
+// Debug output uses the same recorded evidence as JSON reports, not new requests.
+func printDebug(writer io.Writer, result wafme0w.Result) error {
+	var group strings.Builder
+	for i, observation := range result.Evidence {
+		fmt.Fprintf(&group, "DEBUG  %s | evidence=%d role=%s status=%d request=%s effective=%s truncated=%t code=%s\n",
+			terminalText(result.Target), i, terminalText(observation.Role), observation.StatusCode,
+			terminalText(observation.RequestURL), terminalText(observation.EffectiveURL),
+			observation.BodyTruncated, terminalText(observation.ErrorCode))
+		for hop, destination := range observation.RedirectChain {
+			fmt.Fprintf(&group, "DEBUG  %s | evidence=%d redirect=%d destination=%s\n",
+				terminalText(result.Target), i, hop+1, terminalText(destination))
+		}
+		if observation.BlockedRedirectURL != "" {
+			fmt.Fprintf(&group, "DEBUG  %s | evidence=%d blocked_redirect=%s\n",
+				terminalText(result.Target), i, terminalText(observation.BlockedRedirectURL))
+		}
+	}
+	for _, diagnostic := range result.Outcome.Diagnostics {
+		fmt.Fprintf(&group, "DEBUG  %s | evidence=%d code=%s detail=%s\n",
+			terminalText(result.Target), diagnostic.Evidence, terminalText(diagnostic.Code), terminalText(diagnostic.Message))
+	}
+	_, err := io.WriteString(writer, group.String())
+	return err
+}
+
 type resultCounts struct {
 	Total, Complete, Matched, Unnamed, Incomplete, Failed, Generic, Diagnostics int
 	StrictFailure                                                               bool
