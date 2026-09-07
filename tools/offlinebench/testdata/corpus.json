@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "profile": "synthetic-shared-product-conformance-v2",
+  "profile": "synthetic-shared-product-conformance-v3",
   "products": [
     {
       "id": "aws-elb",
@@ -196,6 +196,13 @@
       "names": {
         "wafme0w": "Vercel WAF (Vercel)",
         "wafw00f": "Vercel WAF (Vercel)"
+      }
+    },
+    {
+      "id": "pksecurity",
+      "names": {
+        "wafme0w": "pkSecurity IDS (pkSec)",
+        "wafw00f": "pkSecurity IDS (pkSec)"
       }
     }
   ],
@@ -593,6 +600,7 @@
             "link11",
             "modsecurity",
             "panyun360",
+            "pksecurity",
             "reflected",
             "scutum",
             "shieldon",
@@ -627,6 +635,7 @@
             "link11",
             "modsecurity",
             "panyun360",
+            "pksecurity",
             "reflected",
             "scutum",
             "shieldon",
@@ -677,6 +686,7 @@
             "fortiguard",
             "modsecurity",
             "panyun360",
+            "pksecurity",
             "reflected",
             "shieldon",
             "siteguard",
@@ -734,6 +744,7 @@
             "link11",
             "modsecurity",
             "panyun360",
+            "pksecurity",
             "reflected",
             "scutum",
             "shieldon",
@@ -768,6 +779,7 @@
             "link11",
             "modsecurity",
             "panyun360",
+            "pksecurity",
             "reflected",
             "scutum",
             "shieldon",
@@ -817,6 +829,7 @@
             "fortigate",
             "fortiguard",
             "modsecurity",
+            "pksecurity",
             "shieldon",
             "siteguard",
             "tencent",
@@ -836,6 +849,7 @@
             "fortigate",
             "fortiguard",
             "modsecurity",
+            "pksecurity",
             "reflected",
             "shieldon",
             "siteguard",
@@ -891,6 +905,7 @@
             "fortigate",
             "fortiguard",
             "modsecurity",
+            "pksecurity",
             "shieldon",
             "siteguard",
             "tencent",
@@ -912,6 +927,7 @@
             "fortigate",
             "fortiguard",
             "modsecurity",
+            "pksecurity",
             "reflected",
             "shieldon",
             "siteguard",
@@ -981,6 +997,7 @@
             "bigip-asm",
             "fortigate",
             "fortiguard",
+            "pksecurity",
             "shieldon",
             "siteguard",
             "tencent",
@@ -1004,6 +1021,7 @@
             "bigip-asm",
             "fortigate",
             "fortiguard",
+            "pksecurity",
             "reflected",
             "shieldon",
             "siteguard",
@@ -1079,6 +1097,7 @@
             "bigip-asm",
             "fortigate",
             "fortiguard",
+            "pksecurity",
             "reflected",
             "shieldon",
             "siteguard",
@@ -1099,6 +1118,7 @@
             "fortigate",
             "fortiguard",
             "modsecurity",
+            "pksecurity",
             "reflected",
             "shieldon",
             "siteguard",
@@ -6118,6 +6138,7 @@
             "fortigate",
             "fortiguard",
             "modsecurity",
+            "pksecurity",
             "shieldon",
             "siteguard",
             "tencent",
@@ -6137,6 +6158,7 @@
             "fortigate",
             "fortiguard",
             "modsecurity",
+            "pksecurity",
             "reflected",
             "shieldon",
             "siteguard",
@@ -6204,6 +6226,7 @@
             "fortigate",
             "fortiguard",
             "modsecurity",
+            "pksecurity",
             "shieldon",
             "siteguard",
             "tencent",
@@ -6224,6 +6247,7 @@
             "fortigate",
             "fortiguard",
             "modsecurity",
+            "pksecurity",
             "reflected",
             "shieldon",
             "siteguard",
@@ -6279,6 +6303,7 @@
             "fortigate",
             "fortiguard",
             "modsecurity",
+            "pksecurity",
             "shieldon",
             "siteguard",
             "tencent",
@@ -6301,6 +6326,178 @@
         "reviewed_on": "unknown",
         "reviewer": "unknown"
       }
+    },
+    {
+      "id": "pksecurity-schema1-single-marker",
+      "kind": "synthetic-conformance",
+      "review": "Pinned wafw00f 2.4.2 pksec.py:20-27 accepts either schema-1 content term; the native catalogue schema omits any and requires both. Only the module marker is present, so upstream matches and native does not. Identical complete Normal and Attack observations isolate boolean structure from response-role selection. No other selected content marker is present; ordinary 200/OK metadata has no headers. Truth remains unknown: source conformance is not independently labelled product evidence.",
+      "truth": {
+        "state": "unknown"
+      },
+      "expected": {
+        "wafme0w": {
+          "state": "complete",
+          "products": []
+        },
+        "wafw00f": {
+          "state": "complete",
+          "products": [
+            "pksecurity"
+          ]
+        }
+      },
+      "responses": [
+        {
+          "role": "Normal",
+          "status_code": 200,
+          "reason": "OK",
+          "body_sha256": "a582088f023c9ccb96aca96d62781e2eb61a6049d00e234c5a0c2593f1f472f7"
+        },
+        {
+          "role": "Attack",
+          "status_code": 200,
+          "reason": "OK",
+          "body_sha256": "a582088f023c9ccb96aca96d62781e2eb61a6049d00e234c5a0c2593f1f472f7"
+        }
+      ],
+      "provenance": {
+        "type": "synthetic",
+        "source_id": "wafme0w:source-conformance/2026-09-07/pksecurity-schema1-single-marker",
+        "collected_on": "2026-09-07",
+        "review_status": "conformance",
+        "reviewed_on": "2026-09-07",
+        "reviewer": "OpenAI assistant (source inspection only)"
+      }
+    },
+    {
+      "id": "pksecurity-schema1-both-markers",
+      "kind": "synthetic-conformance",
+      "review": "Pinned wafw00f 2.4.2 pksec.py:20-27 accepts either schema-1 term; native requires both. Both terms are present, so both tools match. This is the positive control for the single-marker disagreement. Identical complete Normal and Attack observations isolate boolean structure from response-role selection. No other selected content marker is present; ordinary 200/OK metadata has no headers. Truth remains unknown: source conformance is not independently labelled product evidence.",
+      "truth": {
+        "state": "unknown"
+      },
+      "expected": {
+        "wafme0w": {
+          "state": "complete",
+          "products": [
+            "pksecurity"
+          ]
+        },
+        "wafw00f": {
+          "state": "complete",
+          "products": [
+            "pksecurity"
+          ]
+        }
+      },
+      "responses": [
+        {
+          "role": "Normal",
+          "status_code": 200,
+          "reason": "OK",
+          "body_sha256": "ab56b7e2ff9dc4b122c53cb71357b7a64cc6fd6620195c21fe5138ad1f139e53"
+        },
+        {
+          "role": "Attack",
+          "status_code": 200,
+          "reason": "OK",
+          "body_sha256": "ab56b7e2ff9dc4b122c53cb71357b7a64cc6fd6620195c21fe5138ad1f139e53"
+        }
+      ],
+      "provenance": {
+        "type": "synthetic",
+        "source_id": "wafme0w:source-conformance/2026-09-07/pksecurity-schema1-both-markers",
+        "collected_on": "2026-09-07",
+        "review_status": "conformance",
+        "reviewed_on": "2026-09-07",
+        "reviewer": "OpenAI assistant (source inspection only)"
+      }
+    },
+    {
+      "id": "pksecurity-schema2-single-marker",
+      "kind": "synthetic-conformance",
+      "review": "Pinned wafw00f 2.4.2 pksec.py:30-40 requires all three schema-2 terms; native sets any=true and accepts one. Only the potential-attack warning is present, so native matches and upstream does not. Identical complete Normal and Attack observations isolate boolean structure from response-role selection. No other selected content marker is present; ordinary 200/OK metadata has no headers. Truth remains unknown: source conformance is not independently labelled product evidence.",
+      "truth": {
+        "state": "unknown"
+      },
+      "expected": {
+        "wafme0w": {
+          "state": "complete",
+          "products": [
+            "pksecurity"
+          ]
+        },
+        "wafw00f": {
+          "state": "complete",
+          "products": []
+        }
+      },
+      "responses": [
+        {
+          "role": "Normal",
+          "status_code": 200,
+          "reason": "OK",
+          "body_sha256": "2092eab7324a5b8664323d0413f1dd20b090fb334be4c686e777e0ac5c71279e"
+        },
+        {
+          "role": "Attack",
+          "status_code": 200,
+          "reason": "OK",
+          "body_sha256": "2092eab7324a5b8664323d0413f1dd20b090fb334be4c686e777e0ac5c71279e"
+        }
+      ],
+      "provenance": {
+        "type": "synthetic",
+        "source_id": "wafme0w:source-conformance/2026-09-07/pksecurity-schema2-single-marker",
+        "collected_on": "2026-09-07",
+        "review_status": "conformance",
+        "reviewed_on": "2026-09-07",
+        "reviewer": "OpenAI assistant (source inspection only)"
+      }
+    },
+    {
+      "id": "pksecurity-schema2-all-markers",
+      "kind": "synthetic-conformance",
+      "review": "Pinned wafw00f 2.4.2 pksec.py:30-40 requires all three schema-2 terms; native accepts any one. All three are present, so both tools match. This is the positive control for the partial-conjunction disagreement. Identical complete Normal and Attack observations isolate boolean structure from response-role selection. No other selected content marker is present; ordinary 200/OK metadata has no headers. Truth remains unknown: source conformance is not independently labelled product evidence.",
+      "truth": {
+        "state": "unknown"
+      },
+      "expected": {
+        "wafme0w": {
+          "state": "complete",
+          "products": [
+            "pksecurity"
+          ]
+        },
+        "wafw00f": {
+          "state": "complete",
+          "products": [
+            "pksecurity"
+          ]
+        }
+      },
+      "responses": [
+        {
+          "role": "Normal",
+          "status_code": 200,
+          "reason": "OK",
+          "body_sha256": "9f55f032195356baa5ea3d1d2283d721117676a34a7f0b63f1d9637724132624"
+        },
+        {
+          "role": "Attack",
+          "status_code": 200,
+          "reason": "OK",
+          "body_sha256": "9f55f032195356baa5ea3d1d2283d721117676a34a7f0b63f1d9637724132624"
+        }
+      ],
+      "provenance": {
+        "type": "synthetic",
+        "source_id": "wafme0w:source-conformance/2026-09-07/pksecurity-schema2-all-markers",
+        "collected_on": "2026-09-07",
+        "review_status": "conformance",
+        "reviewed_on": "2026-09-07",
+        "reviewer": "OpenAI assistant (source inspection only)"
+      }
     }
   ],
   "semantics": [
@@ -6313,6 +6510,8 @@
     "Coverage inventory preserves every full-catalogue schema identity and every reviewed fixture identity. Baseline-untested is an inherited inventory, not reviewed accuracy; new/changed rules require positive and negative review links. No automatic truth or lock blessing command exists.",
     "Reason fingerprints are exact case-sensitive literal equality, not regular expressions. Upstream Shieldon has a bracketed literal header key that cannot occur in valid HTTP evidence; its unreachable branch is intentionally not added.",
     "Observed cross-tool disagreement is reported independently of per-tool expected conformance and synthetic truth. Deliberate role, repeated-header, malformed-cookie and empty-header disagreement cases have unknown product truth.",
-    "Provenance metadata explicitly classifies inherited fixtures as synthetic conformance. Historical collection/review dates and reviewer identities are unknown; migration does not constitute a new independent review or a real capture."
+    "Provenance metadata explicitly classifies inherited fixtures as synthetic conformance. Historical collection/review dates and reviewer identities are unknown; migration does not constitute a new independent review or a real capture.",
+    "The 29-product expansion adds source-conformance cases for pkSecurity's boolean differences: native schema 1 is AND and schema 2 is OR; pinned wafw00f 2.4.2 pksec.py uses OR and AND respectively. Their identical response roles isolate this from Attack metadata differences. New cases retain unknown product truth, and both native schemas remain baseline-untested pending human review.",
+    "Source inspection for pkSecurity found none of its five content patterns in pre-existing complete bodies. Existing product expectations and truth are retained. Native missing or unavailable bodies leave pkSecurity unknown across the response pool; upstream's first content access leaves it unknown only when Attack is missing or unavailable. The existing known-empty case supplies the complete negative control."
   ]
 }

@@ -32,7 +32,7 @@ func TestClassifyResponseEvidence(t *testing.T) {
 		},
 		{
 			name:     "later repeated header value",
-			fp:       FingerPrint{Type: "Header", HeaderKey: "x-firewall", HeaderValue: "blocked"},
+			fp:       FingerPrint{Type: "Header", HeaderKey: "x-firewall", HeaderValue: "^blocked$"},
 			evidence: []Evidence{{StatusCode: 200, Headers: []Header{{"X-Firewall", "welcome"}, {"x-firewall", "blocked"}}}},
 			want:     true,
 		},
@@ -46,6 +46,11 @@ func TestClassifyResponseEvidence(t *testing.T) {
 			fp:       FingerPrint{Type: "Header", HeaderKey: "X-Empty", HeaderValue: "^$"},
 			evidence: []Evidence{{StatusCode: 200, Headers: []Header{{"X-Empty", ""}}}},
 			want:     true,
+		},
+		{
+			name:     "repeated empty headers are not a nonempty joined value",
+			fp:       FingerPrint{Type: "Header", HeaderKey: "X-Empty", HeaderValue: ".+"},
+			evidence: []Evidence{{StatusCode: 200, Headers: []Header{{"X-Empty", ""}, {"X-Empty", ""}}}},
 		},
 		{
 			name:     "actual custom reason phrase",
@@ -84,6 +89,28 @@ func TestClassifyResponseEvidence(t *testing.T) {
 			name:     "later cookie",
 			fp:       FingerPrint{Type: "Cookie", Pattern: "^firewall=blocked"},
 			evidence: []Evidence{{StatusCode: 200, Headers: []Header{{"Set-Cookie", "session=ok"}, {"Set-Cookie", "firewall=blocked; Path=/"}}}},
+			want:     true,
+		},
+		{
+			name:     "bare cookie token is not a parsed cookie",
+			fp:       FingerPrint{Type: "Cookie", Pattern: "^firewall"},
+			evidence: []Evidence{{StatusCode: 200, Headers: []Header{{"Set-Cookie", "firewall"}}}},
+		},
+		{
+			name:     "space in cookie name is rejected",
+			fp:       FingerPrint{Type: "Cookie", Pattern: "^firewall"},
+			evidence: []Evidence{{StatusCode: 200, Headers: []Header{{"Set-Cookie", "firewall name=blocked"}}}},
+		},
+		{
+			name:     "invalid cookie does not hide later valid cookie",
+			fp:       FingerPrint{Type: "Cookie", Pattern: "^firewall=blocked"},
+			evidence: []Evidence{{StatusCode: 200, Headers: []Header{{"Set-Cookie", "firewall name=bad"}, {"Set-Cookie", "firewall=blocked; Path=/"}}}},
+			want:     true,
+		},
+		{
+			name:     "unrecognized cookie attribute does not discard valid cookie",
+			fp:       FingerPrint{Type: "Cookie", Pattern: "^firewall=blocked"},
+			evidence: []Evidence{{StatusCode: 200, Headers: []Header{{"Set-Cookie", "firewall=blocked; SameSite=unknown"}}}},
 			want:     true,
 		},
 	}
@@ -370,6 +397,8 @@ func TestGenericDetectionPrecedenceAnd404(t *testing.T) {
 		evidence []Evidence
 		want     GenericDetection
 	}{
+		{"body changes alone are not an anomaly", []Evidence{normal, {Role: "Probe", StatusCode: 200, Headers: []Header{{"Server", "origin"}}, Body: []byte("different application page")}}, GenericDetection{}},
+		{"ordinary redirect is still only a status anomaly", []Evidence{normal, {Role: "Probe", StatusCode: 302, Headers: []Header{{"Server", "origin"}, {"Location", "/login"}}}}, GenericDetection{Mode: ChangeInStatus, BeforeStatus: 200, AfterStatus: 302, RequestType: "Probe"}},
 		{"no baseline", []Evidence{{Role: "Probe", StatusCode: 403}}, GenericDetection{}},
 		{"marker without baseline", []Evidence{{Role: "Saved", StatusCode: 200, Headers: []Header{{"X-WAF-Protection", "active"}}}}, GenericDetection{Mode: WAFHeaderDetected, GenericWAFHeader: "X-WAF-Protection", GenericWAFHeaderValue: "active", RequestType: "Saved"}},
 		{"marker on baseline repeated value", []Evidence{{Role: "Normal", StatusCode: 200, Headers: []Header{{"X-WAF-Protection", ""}, {"x-waf-protection", "active"}}}}, GenericDetection{Mode: WAFHeaderDetected, GenericWAFHeader: "X-WAF-Protection", GenericWAFHeaderValue: "active", RequestType: "Normal"}},

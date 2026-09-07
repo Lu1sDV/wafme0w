@@ -63,6 +63,8 @@ The bundled catalogue is historical data with a scoped refresh against wafw00f 2
 
 Of the 518 bundled fingerprints, **277 use literal string matching**, **17 compare integer status codes**, and **224 retain regular expressions compiled once by `Compile`**. Regex-derived literal matching preserves anchors and Unicode case folding. The five `Reason` fingerprints now use **exact, case-sensitive literal equality**: custom catalogues must supply the actual reason phrase, not regex anchors or flags. Other complex expressions keep Go regexp semantics, with malformed fingerprints rejected before execution.
 
+Headers are matched one value at a time, not comma-joined; an empty value is distinct from an absent header. Cookies use Go's HTTP cookie parser: bare tokens and invalid cookie names do not match, while an invalid cookie does not hide a later valid one. These semantics intentionally differ from some wafw00f helpers.
+
 </details>
 
 ## Installation
@@ -125,9 +127,12 @@ wafme0w --silent --list --no-colors
 
 | Mode | Network behavior |
 | --- | --- |
-| Default / `--fast` | Active requests; fast mode reduces the request set, but is **not passive** |
-| `--baseline` | Only the normal request, subject to redirect and request budgets |
+| Default | Up to nine selected active requests, before redirects |
+| `--fast` | Three selected active requests; fewer requests, **not passive** or a latency guarantee |
+| `--baseline` | One normal request, subject to redirect and request budgets |
 | `--evidence captures.jsonl` | Classifies saved observations with **zero network access**; `-` reads stdin |
+
+Budgets, timeouts and acquisition failures can prevent selected requests; redirects spend the same outbound-request budget. Active modes do not stop at the first product match: later observations can identify another product or satisfy a cross-response conjunction.
 
 <details>
 <summary><strong>Saved-capture format and replay</strong></summary>
@@ -182,6 +187,8 @@ Redirects default to `--redirect-policy canonical-host`: the starting origin and
 | `failed` | The target could not be evaluated; this is not a negative result |
 
 Output format follows the case-insensitive extension: `.json`, `.jsonl`, `.csv`, otherwise TXT. **Every result is retained**, including complete no-matches, incomplete evaluations and failed targets. `--jsonl` streams result records to stdout and directs human output to stderr. Generic anomalies remain separate from named matches and do not establish WAF presence or enforcement.
+
+Ordinary login redirects and backend rotation can trigger status/header anomalies. A generic marker header is also only a self-declared signal, even when its value says “disabled.” Use `--no-generic` to omit these checks; it does not change named-product matching.
 
 <details>
 <summary><strong>Serialization, provenance and terminal output</strong></summary>
