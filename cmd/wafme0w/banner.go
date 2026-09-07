@@ -133,11 +133,16 @@ func printResult(stdout, stderr io.Writer, result wafme0w.Result, suppressWarnin
 			}
 			if diagnostic.Code == "redirect_scope" {
 				description = "redirect outside allowed scope"
+				if diagnostic.Evidence >= 0 && diagnostic.Evidence < len(result.Evidence) {
+					if status := result.Evidence[diagnostic.Evidence].StatusCode; status >= 300 && status < 400 {
+						description = fmt.Sprintf("Got Redirect %d", status)
+					}
+				}
 			}
 			group.WriteString(terminalText(description))
 			if diagnostic.Code == "redirect_scope" && diagnostic.Evidence >= 0 && diagnostic.Evidence < len(result.Evidence) {
 				if destination := result.Evidence[diagnostic.Evidence].BlockedRedirectURL; destination != "" {
-					fmt.Fprintf(&group, ": %s", au.Italic(au.BrightBlack(terminalText(destination))))
+					fmt.Fprintf(&group, ": %s", au.Italic(au.White(terminalText(destination))))
 				}
 			}
 		}
@@ -146,7 +151,8 @@ func printResult(stdout, stderr io.Writer, result wafme0w.Result, suppressWarnin
 			return err
 		}
 	}
-	return nil
+	_, err := io.WriteString(stdout, "\n")
+	return err
 }
 
 // Debug output uses the same recorded evidence as JSON reports, not new requests.

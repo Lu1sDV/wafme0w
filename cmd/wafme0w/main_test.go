@@ -301,7 +301,7 @@ func TestConsoleBlockedRedirectDestination(t *testing.T) {
 	}))
 	defer source.Close()
 	code, _, warning := runCLI(t, nil, "--target", source.URL, "--baseline", "--no-colors")
-	if code != 0 || !strings.Contains(warning, "redirect outside allowed scope: "+location) || strings.Contains(warning, "\x1b") {
+	if code != 0 || !strings.Contains(warning, "[Normal] Got Redirect 302: "+location) || strings.Contains(warning, "\x1b") {
 		t.Fatalf("missing plain redirect destination: exit=%d stderr=%q", code, warning)
 	}
 	if destinationHits.Load() != 0 {
@@ -312,14 +312,14 @@ func TestConsoleBlockedRedirectDestination(t *testing.T) {
 		Outcome: wafme0w.Outcome{State: wafme0w.Incomplete, Diagnostics: []wafme0w.Diagnostic{
 			{Code: "redirect_scope", Evidence: 0},
 		}},
-		Evidence: []wafme0w.EvidenceSummary{{BlockedRedirectURL: location + "\x1b\nFORGED"}},
+		Evidence: []wafme0w.EvidenceSummary{{Role: "Normal", StatusCode: http.StatusFound, BlockedRedirectURL: location + "\x1b\nFORGED"}},
 	}
 	var stdout, stderr bytes.Buffer
 	if err := printResult(&stdout, &stderr, result, false, aurora.New(aurora.WithColors(true))); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(stderr.String(), "\x1b[3;90m"+location+`\x1b\nFORGED`+"\x1b[0m") || strings.Count(stderr.String(), "\n") != 1 {
-		t.Fatalf("destination not safely gray and italicized: %q", stderr.String())
+	if !strings.Contains(stderr.String(), "\x1b[3;37m"+location+`\x1b\nFORGED`+"\x1b[0m") || strings.Count(stderr.String(), "\n") != 1 {
+		t.Fatalf("destination not safely white and italicized: %q", stderr.String())
 	}
 }
 
