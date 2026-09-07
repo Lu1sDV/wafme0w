@@ -213,6 +213,8 @@ Output files are staged beside the destination, flushed, synced, closed and atom
 
 `--debug` prints body-free request diagnostics to stderr after each target completes: every recorded observation's role, requested/effective URLs, HTTP status (`0` means no response metadata), redirect chain, blocked destination, truncation and full error messages. It works with live acquisition or `--evidence`, leaves JSONL stdout unchanged, and is explicitly enabled even with `--silent` or `--no-warning`. It is not a real-time packet trace and does not add requests, retries or permission to follow redirects. URLs and error text may contain sensitive values; protect debug logs as you would reports. For example: `wafme0w --evidence captures.jsonl --debug --jsonl 2>debug.log`.
 
+Normal terminal output distinguishes no HTTP response from received-but-incomplete evidence and a scope-blocked redirect. Warnings show the originating request role and recorded error message (for example DNS lookup, TLS verification, connection refusal or deadline errors), rather than just `transport error`; distinct messages with the same code are retained. A site working in a browser does not imply its redirect is permitted by the configured scan scope. Scope blocks do not establish that the destination is down. `--no-warning` hides these details but keeps the inconclusive/error state. Error messages may expose URLs or local network information; avoid sharing logs without review.
+
 ## Benchmarks
 
 ### Saved runs · 1,000 targets

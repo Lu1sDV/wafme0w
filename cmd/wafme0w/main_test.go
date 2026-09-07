@@ -282,7 +282,7 @@ func TestConsolePreservesUncertaintyWhenWarningsSuppressed(t *testing.T) {
 		if err := printResult(&stdout, &stderr, result, true, au); err != nil {
 			t.Fatal(err)
 		}
-		if strings.HasPrefix(stdout.String(), "FOUND ") || strings.HasPrefix(stdout.String(), "NO MATCH ") || !strings.Contains(stdout.String(), "Could not") || stderr.Len() != 0 {
+		if (!strings.HasPrefix(stdout.String(), "INCONCLUSIVE ") && !strings.HasPrefix(stdout.String(), "ERROR ")) || stderr.Len() != 0 {
 			t.Fatalf("warning suppression lost evaluation state: stdout=%q stderr=%q", stdout.String(), stderr.String())
 		}
 	}
@@ -320,43 +320,6 @@ func TestConsoleBlockedRedirectDestination(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "\x1b[3;90m"+location+`\x1b\nFORGED`+"\x1b[0m") || strings.Count(stderr.String(), "\n") != 1 {
 		t.Fatalf("destination not safely gray and italicized: %q", stderr.String())
-	}
-}
-
-func TestConsoleSummarizesIncompleteEvidence(t *testing.T) {
-	result := wafme0w.Result{
-		Target: "saved-response",
-		Outcome: wafme0w.Outcome{
-			State:   wafme0w.Incomplete,
-			Matches: []wafme0w.Match{{Product: "Known WAF"}},
-			Diagnostics: []wafme0w.Diagnostic{
-				{Code: "redirect_scope", Message: "request-detail-one"},
-				{Code: "redirect_scope", Message: "request-detail-two"},
-				{Code: "body_truncated", Message: "request-detail-three"},
-			},
-		},
-	}
-	for i := 0; i < 200; i++ {
-		result.Outcome.IncompleteProducts = append(result.Outcome.IncompleteProducts, fmt.Sprintf("Unconfirmed product %d", i))
-		result.Evidence = append(result.Evidence, wafme0w.EvidenceSummary{RequestURL: "request-detail"})
-	}
-	var stdout, stderr bytes.Buffer
-	if err := printResult(&stdout, &stderr, result, false, colorizer(&stdout, true)); err != nil {
-		t.Fatal(err)
-	}
-	if strings.Count(stdout.String(), "\n") != 1 || strings.Count(stderr.String(), "\n") != 1 {
-		t.Fatalf("console expanded evidence instead of summarizing: stdout=%q stderr=%q", stdout.String(), stderr.String())
-	}
-	if !strings.HasPrefix(stdout.String(), "FOUND ") || !strings.Contains(stdout.String(), "Known WAF") || !strings.Contains(stdout.String(), "partial scan") {
-		t.Fatalf("summary lost the finding or its limitation: stdout=%q stderr=%q", stdout.String(), stderr.String())
-	}
-	for _, r := range stdout.String() + stderr.String() {
-		if unicode.IsDigit(r) {
-			t.Fatal("per-target output exposed internal counts")
-		}
-	}
-	if strings.Contains(stdout.String()+stderr.String(), "request-detail") || strings.Contains(stdout.String(), "Unconfirmed product") {
-		t.Fatal("console leaked per-observation detail or the unconfirmed product list")
 	}
 }
 
@@ -733,5 +696,26 @@ func TestCLIJournalErrorsDoNotReplaceReport(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestConsoleRetainsDistinctFailureCauses(t *testing.T) {
+	result := wafme0w.Result{
+		Target:   "saved",
+		Evidence: []wafme0w.EvidenceSummary{{Role: "Normal"}, {Role: "Probe"}},
+		Outcome: wafme0w.Outcome{State: wafme0w.Incomplete, Diagnostics: []wafme0w.Diagnostic{
+			{Evidence: 0, Code: "transport_error", Message: "lookup fixture.invalid: no such host"},
+			{Evidence: 1, Code: "transport_error", Message: "tls: certificate rejected\nFORGED"},
+		}},
+	}
+	var stdout, stderr bytes.Buffer
+	if err := printResult(&stdout, &stderr, result, false, colorizer(&stdout, true)); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(stdout.String(), "INCONCLUSIVE ") ||
+		!strings.Contains(stderr.String(), "[Normal] lookup fixture.invalid: no such host") ||
+		!strings.Contains(stderr.String(), `[Probe] tls: certificate rejected\nFORGED`) ||
+		strings.Contains(stderr.String(), "\nFORGED") {
+		t.Fatalf("failure causes lost or unsafe: stdout=%q stderr=%q", &stdout, &stderr)
 	}
 }

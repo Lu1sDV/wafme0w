@@ -80,9 +80,22 @@ func printResult(stdout, stderr io.Writer, result wafme0w.Result, suppressWarnin
 		case !partial:
 			group.WriteString("No known WAF fingerprint matched")
 		case result.Outcome.State == wafme0w.Failed:
-			group.WriteString("Could not evaluate target")
+			group.WriteString("Target evaluation failed")
 		default:
-			group.WriteString("Could not complete fingerprint checks")
+			description := "No HTTP response received"
+			for _, observation := range result.Evidence {
+				if observation.StatusCode >= 100 {
+					description = "HTTP response received; fingerprint evidence incomplete"
+					break
+				}
+			}
+			for _, diagnostic := range result.Outcome.Diagnostics {
+				if diagnostic.Code == "redirect_scope" {
+					description = "Redirect blocked by scope; fingerprint evidence incomplete"
+					break
+				}
+			}
+			group.WriteString(description)
 		}
 	} else if partial {
 		group.WriteString(" | partial scan")
@@ -100,15 +113,24 @@ func printResult(stdout, stderr io.Writer, result wafme0w.Result, suppressWarnin
 		fmt.Fprintf(&group, "WARN  %s | ", terminalText(result.Target))
 		first := true
 		for _, diagnostic := range result.Outcome.Diagnostics {
-			if seen[diagnostic.Code] {
+			key := diagnostic.Code + "\x00" + diagnostic.Message
+			if seen[key] {
 				continue
 			}
-			seen[diagnostic.Code] = true
+			seen[key] = true
 			if !first {
 				group.WriteString("; ")
 			}
 			first = false
-			description := strings.ReplaceAll(diagnostic.Code, "_", " ")
+			if diagnostic.Evidence >= 0 && diagnostic.Evidence < len(result.Evidence) {
+				if role := result.Evidence[diagnostic.Evidence].Role; role != "" {
+					fmt.Fprintf(&group, "[%s] ", terminalText(role))
+				}
+			}
+			description := diagnostic.Message
+			if description == "" || description == diagnostic.Code {
+				description = strings.ReplaceAll(diagnostic.Code, "_", " ")
+			}
 			if diagnostic.Code == "redirect_scope" {
 				description = "redirect outside allowed scope"
 			}
