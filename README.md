@@ -236,9 +236,8 @@ func main() {
 
 - **Fingerprint source:** [wafw00f](https://github.com/EnableSecurity/wafw00f/).
 - **Contributor:** [@Fibonaccispiralz](https://github.com/Fibonaccispiralz).
-- **Maintainer contact:** divittorioluis **AT** gmail **DOT** com.
 - **Project:** [github.com/Lu1sDV/wafme0w](https://github.com/Lu1sDV/wafme0w).
 
 ## License
 
-Released under the [MIT License](LICENSE.md). Copyright © 2022 Luis Di Vittorio.
+Released under the [MIT License](LICENSE.md). Copyright © 2022.
