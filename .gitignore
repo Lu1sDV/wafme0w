@@ -30,3 +30,8 @@ AGENTS.md
 .omp/
 .codex/
 .claude/
+
+# Local build outputs and scan scratch files
+/wafme0w
+/wafme0w-*.json
+/urls.txt

@@ -172,19 +172,17 @@ jobs:
                       digest = hashlib.file_digest(archive, 'sha256').hexdigest()
                   checksums.write(f'{digest}  {name}\n')
           base = f"https://github.com/{os.environ['GH_REPO']}/blob/{tag}"
-          notes = f'''## wafme0w {tag}: pre-1.0 relaunch
+          notes = f'''## wafme0w {tag}
 
-          Blazingfast, lightweight and AI Assisted WAF detector.
+          Blazingfast, lightweight WAF detector.
 
-          AI assisted development, not runtime detection: wafme0w uses static fingerprints, not an AI model or a hosted AI service.
+          AI-assisted development, not runtime detection: wafme0w uses static fingerprints, not an AI model or a hosted AI service.
 
-          This pre-1.0 relaunch includes breaking Go library and structured-output changes from older versions. Review the current library API and result records before upgrading integrations; do not assume old callers or output parsers remain compatible.
+          This release follows the v1 compatibility baseline: result schema 1 (with the optional browser field), the CSV column layout, CLI flags and exit codes, and the documented Go library API. New in v1.0.0: optional local headless Chromium navigation and viewport screenshots on Linux. Upgrading from a pre-1.0 release involves breaking Go library and structured-output changes; review the current library API and result records before upgrading integrations.
 
           - [README: installation, CLI and Go library]({base}/README.md)
           - [Offline CLI demo]({base}/assets/demo/demo.gif)
           - [Synthetic demo captures]({base}/assets/demo/captures.jsonl)
-          - [Incomplete is not negative]({base}/docs/incomplete-is-not-negative.md)
-          - [Literal matching without changing semantics]({base}/docs/literal-matching.md)
 
           Each archive includes the native CLI binary, LICENSE.md and assets/demo/captures.jsonl. Native package tests and binary help/version/offline-evidence smoke checks run on Linux x64, macOS ARM64 and Windows x64 before publication. SHA256SUMS covers all three archives. The binary reports its embedded build/VCS identity, which need not equal the release tag.
 

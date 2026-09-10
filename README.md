@@ -4,7 +4,7 @@
 
 <h1 align="center">Wafme0w</h1>
 
-<p align="center">Blazingfast, lightweight</p>
+<p align="center">Blazingfast, lightweight WAF detector.</p>
 
 <p align="center">
   <a href="go.mod">Go 1.26+</a> &nbsp;·&nbsp;
@@ -41,15 +41,15 @@ Use it from your terminal, feed results into your scripts, or bring the same mat
 > **Know what a match means:** Fingerprints are clues, not proof of active WAF enforcement. An incomplete result is not a clean negative. Only assess systems you own or are authorized to test.
 
 ## Installation
-Download a tested binary from [v0.3.1](https://github.com/Lu1sDV/wafme0w/releases/tag/v0.3.1); no Go installation is needed:
+Download a tested binary from [v1.0.0](https://github.com/Lu1sDV/wafme0w/releases/tag/v1.0.0); no Go installation is needed:
 
 | Platform | Archive |
 | --- | --- |
-| Linux x64 | [tar.gz](https://github.com/Lu1sDV/wafme0w/releases/download/v0.3.1/wafme0w_v0.3.1_linux_amd64.tar.gz) |
-| macOS Apple silicon | [tar.gz](https://github.com/Lu1sDV/wafme0w/releases/download/v0.3.1/wafme0w_v0.3.1_darwin_arm64.tar.gz) |
-| Windows x64 | [zip](https://github.com/Lu1sDV/wafme0w/releases/download/v0.3.1/wafme0w_v0.3.1_windows_amd64.zip) |
+| Linux x64 | [tar.gz](https://github.com/Lu1sDV/wafme0w/releases/download/v1.0.0/wafme0w_v1.0.0_linux_amd64.tar.gz) |
+| macOS Apple silicon | [tar.gz](https://github.com/Lu1sDV/wafme0w/releases/download/v1.0.0/wafme0w_v1.0.0_darwin_arm64.tar.gz) |
+| Windows x64 | [zip](https://github.com/Lu1sDV/wafme0w/releases/download/v1.0.0/wafme0w_v1.0.0_windows_amd64.zip) |
 
-Check the archive's SHA-256 against [SHA256SUMS](https://github.com/Lu1sDV/wafme0w/releases/download/v0.3.1/SHA256SUMS), extract it, and put `wafme0w` (`wafme0w.exe` on Windows) on your `PATH`. Archives include the synthetic demo captures under `assets/demo/`.
+Check the archive's SHA-256 against [SHA256SUMS](https://github.com/Lu1sDV/wafme0w/releases/download/v1.0.0/SHA256SUMS), extract it, and put `wafme0w` (`wafme0w.exe` on Windows) on your `PATH`. Archives include the synthetic demo captures under `assets/demo/`.
 
 ### Install with Go
 
@@ -108,7 +108,7 @@ wafme0w --silent --list --no-colors
 
 ### Headless browser capture
 
-Build this checkout for the browser options below; they are not included in the linked v0.3.1 release. On Linux, run as a non-root user with an installed native Chromium executable:
+The options below are included in the v1.0.0 binaries. They require Linux, a non-root user and an installed native Chromium executable:
 
 ```sh
 # Metadata and rendered DOM acquisition, without an image or saved files
@@ -131,6 +131,8 @@ Chromium is discovered only when selected; `--browser-path /path/to/native/chrom
 
 Browser metadata appears in a separate `browser` result field and never changes fingerprint matches. `--strict` also reports capture/export failures with exit 2 after report publication. Browser-off JSON remains unchanged; CSV now always ends with a `browser` JSON cell (`null` when off). `--evidence` rejects live browser selection and remains zero-network.
 
+As of v1.0.0, result schema 1 (with the optional `browser` field), the CSV column layout, CLI flags and exit codes, and the Go library API below form the stable 1.x baseline; backward-incompatible changes require a new major version.
+
 ### Request headers
 
 Use `-H` / `--header` to add comma-separated `Name: value` entries. Names are case-insensitive: later entries and repeated flags replace earlier values and built-in defaults, including `Origin` and `User-Agent`.
@@ -141,9 +143,9 @@ wafme0w --target http://127.0.0.1:8080 --baseline \
   --header '"Accept: text/html, application/json", X-Tag: demo'
 ```
 
-CSV-quote the **whole entry** when its value contains a comma; double embedded quotes inside a quoted entry. `-H 'User-Agent:'` suppresses the wire User-Agent. An explicit User-Agent also overrides the no-UA request's default. 
+CSV-quote the **whole entry** when its value contains a comma; double embedded quotes inside a quoted entry. `-H 'User-Agent:'` suppresses the wire User-Agent. An explicit User-Agent also overrides the no-UA request's default.
 
-Overrides apply to every selected request;
+Overrides apply to every selected request.
 
 ### Inputs and limits
 
