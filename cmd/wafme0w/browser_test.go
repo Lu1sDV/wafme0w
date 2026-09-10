@@ -128,7 +128,7 @@ func TestBrowserHelpOmitsDOMArtifactsAndDefaultsToThirtySeconds(t *testing.T) {
 		t.Fatalf("help exit=%d stderr=%s", code, &stderr)
 	}
 	help := stdout.String()
-	if strings.Contains(help, "--artifacts") || !strings.Contains(help, "--browser-timeout=") || !strings.Contains(help, "(default: 30s)") {
+	if strings.Contains(help, "artifacts") || !strings.Contains(help, "browser-timeout") || !strings.Contains(help, "(default: 30s)") {
 		t.Fatalf("unexpected browser help:\n%s", help)
 	}
 }
