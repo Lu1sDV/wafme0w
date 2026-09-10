@@ -140,10 +140,10 @@ Use `-H` / `--header` to add comma-separated `Name: value` entries. Names are ca
 ```sh
 wafme0w --target http://127.0.0.1:8080 --baseline \
   -H 'Origin: https://example.test, User-Agent: my-client' \
-  --header '"Accept: text/html, application/json", X-Tag: demo'
+  --header 'X-Tag: demo, "Accept: text/html, application/json"'
 ```
 
-CSV-quote the **whole entry** when its value contains a comma; double embedded quotes inside a quoted entry. `-H 'User-Agent:'` suppresses the wire User-Agent. An explicit User-Agent also overrides the no-UA request's default.
+CSV-quote the **whole entry** when its value contains a comma; double embedded quotes inside a quoted entry. A quoted entry cannot be the **first** field: a value beginning with `"` is treated as one fully quoted argument and rejected. `-H 'User-Agent:'` suppresses the wire User-Agent. An explicit User-Agent also overrides the no-UA request's default.
 
 Overrides apply to every selected request.
 
