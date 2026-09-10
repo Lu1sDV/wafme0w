@@ -24,6 +24,7 @@ func TestSerializersRetainAllEvaluationStates(t *testing.T) {
 	results[1].Provenance = ResultProvenance{ProgramVersion: "fixture-version", CatalogueSHA256: strings.Repeat("a", 64)}
 	results[1].Outcome.Matches[0].Fingerprints = []FingerprintMatch{{Fingerprint: 1, Evidence: 0}}
 	results[1].Evidence = []EvidenceSummary{{Index: 0, Role: "NormalRequest", RequestURL: "https://captured.example/path", EffectiveURL: "https://captured.example/end", RedirectChain: []string{"https://captured.example/end"}, StatusCode: 200, BodyTruncated: true, ErrorCode: "body_limit"}}
+	results[1].Browser = &BrowserReport{ID: "capture-2", Mode: "screenshot", State: "partial", Reason: "image_failed\u202e\U000e0001", DOM: BrowserAsset{State: "complete", Saved: "/private/text.json"}, Screenshot: BrowserAsset{State: "failed"}}
 	for _, format := range []string{"json", "jsonl", "csv", "txt"} {
 		t.Run(format, func(t *testing.T) {
 			var buffer bytes.Buffer
@@ -64,7 +65,7 @@ func TestSerializersRetainAllEvaluationStates(t *testing.T) {
 				}
 				for _, row := range rows[1:] {
 					result := Result{Target: row[0], Outcome: Outcome{State: EvaluationState(row[1])}}
-					for i, value := range []any{&result.Outcome.Matches, &result.Generic, &result.Outcome.IncompleteProducts, &result.Outcome.Diagnostics, &result.SchemaVersion, &result.Origin, &result.Provenance, &result.Evidence} {
+					for i, value := range []any{&result.Outcome.Matches, &result.Generic, &result.Outcome.IncompleteProducts, &result.Outcome.Diagnostics, &result.SchemaVersion, &result.Origin, &result.Provenance, &result.Evidence, &result.Browser} {
 						if err := json.Unmarshal([]byte(row[i+2]), value); err != nil {
 							t.Fatal(err)
 						}
@@ -72,13 +73,16 @@ func TestSerializersRetainAllEvaluationStates(t *testing.T) {
 					got = append(got, result)
 				}
 			case "txt":
+				if strings.ContainsAny(buffer.String(), "\u202e\U000e0001") {
+					t.Fatalf("browser formatting controls entered TXT output: %q", buffer.String())
+				}
 				rows := strings.Split(strings.TrimSuffix(buffer.String(), "\n"), "\n")
 				if len(rows) != len(results) {
 					t.Fatalf("lost result rows: %q", buffer.String())
 				}
 				for _, row := range rows {
 					fields := strings.Split(row, "\t")
-					if len(fields) != 10 {
+					if len(fields) != 12 {
 						t.Fatalf("missing result fields: %q", row)
 					}
 					target, err := strconv.Unquote(fields[0])
@@ -91,7 +95,7 @@ func TestSerializersRetainAllEvaluationStates(t *testing.T) {
 						t.Fatalf("invalid state field: %q", fields[1])
 					}
 					result := Result{Target: target, Outcome: Outcome{State: EvaluationState(state)}}
-					for j, value := range []any{&result.Outcome.Matches, &result.Generic, &result.Outcome.IncompleteProducts, &result.Outcome.Diagnostics, &result.SchemaVersion, &result.Origin, &result.Provenance, &result.Evidence} {
+					for j, value := range []any{&result.Outcome.Matches, &result.Generic, &result.Outcome.IncompleteProducts, &result.Outcome.Diagnostics, &result.SchemaVersion, &result.Origin, &result.Provenance, &result.Evidence, &result.Browser} {
 						_, data, ok := strings.Cut(fields[j+2], "=")
 						if !ok {
 							t.Fatalf("missing field: %q", fields[j+2])
@@ -161,5 +165,21 @@ func TestEmptyJSONStreamIsAnArray(t *testing.T) {
 	}
 	if _, err := NewResultWriter(io.Discard, "unsupported"); err == nil {
 		t.Fatal("unknown format accepted")
+	}
+}
+
+func TestEmptyCSVRetainsBrowserColumn(t *testing.T) {
+	var buffer bytes.Buffer
+	writer, err := NewResultWriter(&buffer, "csv")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := csv.NewReader(&buffer).ReadAll()
+	want := []string{"target", "state", "matches", "generic", "incomplete_products", "diagnostics", "schema_version", "origin", "provenance", "evidence", "browser"}
+	if err != nil || len(rows) != 1 || !reflect.DeepEqual(rows[0], want) {
+		t.Fatalf("empty CSV lost its fixed schema: %v, %v", rows, err)
 	}
 }

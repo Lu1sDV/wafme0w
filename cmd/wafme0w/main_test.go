@@ -81,6 +81,13 @@ func TestCLIRejectsInvalidArguments(t *testing.T) {
 		{"--evidence=-", "--input", "missing.txt"},
 		{"--evidence=-", "--fast"},
 		{"--evidence=-", "--baseline"},
+		{"--evidence=-", "--browser=navigate"},
+		{"--browser=unknown", "--jsonl"},
+		{"--browser=navigate", "--browser-timeout=0s", "--jsonl"},
+		{"--browser=screenshot", "--browser-settle=60s", "--jsonl"},
+		{"--browser=navigate", "--save-screenshots=images", "--jsonl"},
+		{"--artifacts=text", "--jsonl"},
+		{"--save-screenshots=images", "--jsonl"},
 		{"--fast", "--baseline", "--target", "invalid://one"},
 		{"--jsonl", "--list"},
 		{"--jsonl", "--version"},
@@ -599,6 +606,8 @@ func TestHumanOutputEscapesUntrustedControls(t *testing.T) {
 		},
 		Generic:  wafme0w.GenericDetection{Mode: wafme0w.WAFHeaderDetected, Reason: poison},
 		Evidence: []wafme0w.EvidenceSummary{{Role: poison, RequestURL: poison, EffectiveURL: poison + "/end", RedirectChain: []string{poison}, ErrorCode: poison}},
+		Browser: &wafme0w.BrowserReport{Mode: poison, State: poison, Reason: poison, Error: poison,
+			DOM: wafme0w.BrowserAsset{State: poison, Saved: poison}, Screenshot: wafme0w.BrowserAsset{State: poison, Saved: poison}, Limitations: []string{poison}},
 	}
 	var stdout, stderr bytes.Buffer
 	au := colorizer(&stdout, false)

@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"runtime"
 	"slices"
 	"time"
 
+	"github.com/Lu1sDV/wafme0w/internal/browserruntime"
 	"github.com/Lu1sDV/wafme0w/internal/httpmeta"
 )
 
@@ -46,6 +48,8 @@ type Config struct {
 	Headers     []Header
 	Client      *http.Client
 	CancelInput func()
+	// Browser is independently selected live observation, never classifier evidence.
+	Browser *BrowserConfig
 }
 
 func DefaultConfig() Config {
@@ -83,6 +87,27 @@ func (c Config) normalized() Config {
 	}
 	slices.Sort(c.AllowedOrigins)
 	c.AllowedOrigins = slices.Compact(c.AllowedOrigins)
+	if c.Browser != nil {
+		browser := *c.Browser
+		browser.ResourceOrigins = slices.Clone(browser.ResourceOrigins)
+		if browser.Mode == "" {
+			browser.Mode = "off"
+		}
+		if browser.Timeout == 0 {
+			browser.Timeout = 30 * time.Second
+		}
+		if browser.Settle == 0 {
+			browser.Settle = 2 * time.Second
+		}
+		for i, value := range browser.ResourceOrigins {
+			if origin, err := parseAllowedOrigin(value); err == nil {
+				browser.ResourceOrigins[i] = origin
+			}
+		}
+		slices.Sort(browser.ResourceOrigins)
+		browser.ResourceOrigins = slices.Compact(browser.ResourceOrigins)
+		c.Browser = &browser
+	}
 	return c
 }
 
@@ -128,6 +153,38 @@ func (c Config) validate() error {
 	}
 	if c.BaselineOnly && c.FastMode {
 		return errors.New("baseline and fast modes are mutually exclusive")
+	}
+	if b := c.Browser; b != nil {
+		switch b.Mode {
+		case "off":
+			if b.Path != "" || len(b.ResourceOrigins) != 0 || b.SaveText != nil || b.SaveScreenshot != nil {
+				return errors.New("browser options require navigate or screenshot mode")
+			}
+			return nil
+		case "navigate", "screenshot":
+		default:
+			return errors.New("browser mode must be off, navigate, or screenshot")
+		}
+		if c.Passive {
+			return errors.New("saved evidence cannot select live browser capture")
+		}
+		if runtime.GOOS != "linux" {
+			return errors.New("local browser capture currently supports Linux only")
+		}
+		if b.Timeout <= 0 || b.Settle <= 0 || b.Settle >= b.Timeout {
+			return errors.New("browser settle interval must be positive and smaller than its timeout")
+		}
+		if b.SaveScreenshot != nil && b.Mode != "screenshot" {
+			return errors.New("saving screenshots requires browser screenshot mode")
+		}
+		if err := browserruntime.ValidateExecutable(b.Path); err != nil {
+			return err
+		}
+		for _, origin := range b.ResourceOrigins {
+			if _, err := parseAllowedOrigin(origin); err != nil {
+				return fmt.Errorf("browser resource origin %q: %w", origin, err)
+			}
+		}
 	}
 	return nil
 }

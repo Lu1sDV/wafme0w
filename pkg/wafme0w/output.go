@@ -8,6 +8,8 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"unicode"
+	"unicode/utf16"
 )
 
 // ResultWriter serializes all results, including complete no-matches and failures.
@@ -38,7 +40,7 @@ func NewResultWriter(writer io.Writer, format string) (*ResultWriter, error) {
 		out.json = json.NewEncoder(writer)
 	case "csv":
 		out.csv = csv.NewWriter(writer)
-		out.err = out.csv.Write([]string{"target", "state", "matches", "generic", "incomplete_products", "diagnostics", "schema_version", "origin", "provenance", "evidence"})
+		out.err = out.csv.Write([]string{"target", "state", "matches", "generic", "incomplete_products", "diagnostics", "schema_version", "origin", "provenance", "evidence", "browser"})
 		out.csv.Flush()
 		out.err = errors.Join(out.err, out.csv.Error())
 	case "txt":
@@ -76,7 +78,7 @@ func (out *ResultWriter) Write(result Result) error {
 	for _, value := range []any{
 		result.Outcome.Matches, result.Generic, result.Outcome.IncompleteProducts,
 		result.Outcome.Diagnostics, result.SchemaVersion, result.Origin,
-		result.Provenance, result.Evidence,
+		result.Provenance, result.Evidence, result.Browser,
 	} {
 		encoded, err := json.Marshal(value)
 		if err != nil {
@@ -90,10 +92,35 @@ func (out *ResultWriter) Write(result Result) error {
 		out.csv.Flush()
 		out.err = errors.Join(out.err, out.csv.Error())
 	} else {
-		_, out.err = fmt.Fprintf(out.writer, "%s\tstate=%s\tmatches=%s\tgeneric=%s\tincomplete_products=%s\tdiagnostics=%s\tschema_version=%s\torigin=%s\tprovenance=%s\tevidence=%s\n",
-			strconv.QuoteToGraphic(row[0]), strconv.QuoteToGraphic(row[1]), row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9])
+		browserState := "off"
+		if result.Browser != nil {
+			browserState = result.Browser.State
+			row[10] = printableJSON(row[10])
+		}
+		_, out.err = fmt.Fprintf(out.writer, "%s\tstate=%s\tmatches=%s\tgeneric=%s\tincomplete_products=%s\tdiagnostics=%s\tschema_version=%s\torigin=%s\tprovenance=%s\tevidence=%s\tbrowser=%s\tbrowser_state=%s\n",
+			strconv.QuoteToGraphic(row[0]), strconv.QuoteToGraphic(row[1]), row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10], strconv.QuoteToGraphic(browserState))
 	}
 	return out.err
+}
+
+// Keep the browser JSON cell valid JSON while making invisible formatting visible
+// in TXT reports. Machine JSON/CSV retain the original Unicode values.
+func printableJSON(value string) string {
+	if strings.IndexFunc(value, func(r rune) bool { return !unicode.IsPrint(r) }) < 0 {
+		return value
+	}
+	var out strings.Builder
+	for _, r := range value {
+		if unicode.IsPrint(r) {
+			out.WriteRune(r)
+		} else if r <= 0xffff {
+			fmt.Fprintf(&out, "\\u%04x", r)
+		} else {
+			high, low := utf16.EncodeRune(r)
+			fmt.Fprintf(&out, "\\u%04x\\u%04x", high, low)
+		}
+	}
+	return out.String()
 }
 
 func (out *ResultWriter) Close() error {

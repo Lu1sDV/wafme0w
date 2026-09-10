@@ -9,4 +9,5 @@ RUN CGO_ENABLED=0 go build -trimpath -o /out/wafme0w ./cmd/wafme0w
 FROM scratch
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=build /out/wafme0w /usr/local/bin/wafme0w
+COPY --from=build /src/LICENSE.md /LICENSE.md
 ENTRYPOINT ["wafme0w"]

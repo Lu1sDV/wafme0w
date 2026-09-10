@@ -8,10 +8,30 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
 )
+
+func TestRunCapturedRejectsLiveBrowserBeforeReading(t *testing.T) {
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	inputErr := errors.New("capture input must remain unread")
+	for _, mode := range []string{"navigate", "screenshot"} {
+		config := DefaultConfig()
+		config.Browser = &BrowserConfig{Mode: mode, Path: executable}
+		err := RunCaptured(context.Background(), emptyEngine(t), failingReader{inputErr}, config, func(Result) error {
+			t.Fatal("live browser configuration emitted an offline result")
+			return nil
+		})
+		if err == nil || errors.Is(err, inputErr) {
+			t.Fatalf("%s browser mode reached offline input: %v", mode, err)
+		}
+	}
+}
 
 func TestRunCapturedClassifiesWithoutAcquisition(t *testing.T) {
 	engine, err := Compile([]WAF{{Name: "Capture marker", Schemas: []Scheme{{FingerPrints: []FingerPrint{{Type: "Content", Pattern: "saved marker"}}}}}})

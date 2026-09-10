@@ -6,6 +6,8 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -54,6 +56,31 @@ func TestRunRejectsInvalidConfigurationBeforeReading(t *testing.T) {
 	}
 	if err := Run(context.Background(), nil, strings.NewReader(""), DefaultConfig(), func(Result) error { return nil }); err == nil {
 		t.Fatal("nil engine accepted")
+	}
+}
+
+func TestBrowserWrapperRejectedBeforeHTTPOrInput(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "chromium")
+	if err := os.WriteFile(path, []byte("#!/bin/sh\nexit 0\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	config := DefaultConfig()
+	config.Browser = &BrowserConfig{Mode: "navigate", Path: path}
+	readErr := errors.New("input reached")
+	err := Run(context.Background(), emptyEngine(t), failingReader{readErr}, config, func(Result) error {
+		t.Fatal("invalid browser executable emitted a result")
+		return nil
+	})
+	if err == nil || errors.Is(err, readErr) {
+		t.Fatalf("browser wrapper passed configuration validation: %v", err)
+	}
+}
+
+func TestBrowserTimeoutDefaultsToThirtySeconds(t *testing.T) {
+	config := DefaultConfig()
+	config.Browser = &BrowserConfig{Mode: "navigate"}
+	if got := config.normalized().Browser.Timeout; got != 30*time.Second {
+		t.Fatalf("browser timeout default = %s, want 30s", got)
 	}
 }
 

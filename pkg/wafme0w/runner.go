@@ -3,6 +3,7 @@ package wafme0w
 import (
 	"bufio"
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"io"
@@ -82,6 +83,7 @@ type Result struct {
 	Evidence      []EvidenceSummary `json:"evidence"`
 	Outcome       Outcome           `json:"outcome"`
 	Generic       GenericDetection  `json:"generic"`
+	Browser       *BrowserReport    `json:"browser,omitempty"`
 }
 
 func makeResult(engine *Engine, target, origin string, evidence []Evidence, config Config) Result {
@@ -179,7 +181,17 @@ func Run(ctx context.Context, engine *Engine, inputs io.Reader, config Config, e
 		cancel()
 	}()
 	policy := newOutboundPolicy(config)
-	targets := make(chan string)
+	type targetWork struct {
+		target     string
+		occurrence uint64
+	}
+	targets := make(chan targetWork)
+	var browserPermit chan struct{}
+	var browserRunID string
+	if config.Browser != nil && config.Browser.Mode != "off" {
+		browserPermit = make(chan struct{}, 1)
+		browserRunID = rand.Text()
+	}
 	results := make(chan Result)
 	sinkErrors := make(chan error, 1)
 	go func() {
@@ -203,11 +215,14 @@ func Run(ctx context.Context, engine *Engine, inputs io.Reader, config Config, e
 				select {
 				case <-workCtx.Done():
 					return
-				case target, ok := <-targets:
+				case work, ok := <-targets:
 					if !ok || workCtx.Err() != nil {
 						return
 					}
-					result := classifyTarget(workCtx, engine, target, config, policy)
+					result := classifyTarget(workCtx, engine, work.target, config, policy)
+					if browserPermit != nil {
+						result.Browser = observeBrowser(workCtx, work.target, fmt.Sprintf("%s-%d", browserRunID, work.occurrence), work.occurrence, result.Origin, config, policy, browserPermit)
+					}
 					select {
 					case <-workCtx.Done():
 						return
@@ -218,14 +233,16 @@ func Run(ctx context.Context, engine *Engine, inputs io.Reader, config Config, e
 		}()
 	}
 	scanner := bufio.NewScanner(inputs)
+	var occurrence uint64
 	for workCtx.Err() == nil && scanner.Scan() {
 		target := strings.TrimSpace(scanner.Text())
 		if target == "" {
 			continue
 		}
+		occurrence++
 		select {
 		case <-workCtx.Done():
-		case targets <- target:
+		case targets <- targetWork{target: target, occurrence: occurrence}:
 		}
 	}
 	close(targets)
@@ -253,7 +270,29 @@ func classifyTarget(ctx context.Context, engine *Engine, target string, config C
 		return result
 	}
 	targetCtx, cancel := context.WithTimeout(ctx, config.TargetTimeout)
-	defer cancel()
+	// Browser acquisition gets its own deadline after HTTP resources are released.
 	evidence := sendRequests(targetCtx, u.String(), policy.client(origin), config)
+	cancel()
 	return makeResult(engine, target, origin, evidence, config)
+}
+
+func observeBrowser(ctx context.Context, target, id string, occurrence uint64, origin string, config Config, policy *outboundPolicy, permit chan struct{}) *BrowserReport {
+	queuedAt := time.Now()
+	if origin == "" || !policy.allowed(origin) {
+		capture := browserCapture{report: BrowserReport{
+			ID: id, Occurrence: occurrence, Mode: config.Browser.Mode,
+			State: "skipped", Reason: "target_scope", URL: target, QueuedAt: queuedAt,
+			DOM: BrowserAsset{State: "skipped"}, Screenshot: BrowserAsset{State: "skipped"},
+		}}
+		return exportBrowserCapture(ctx, &capture, *config.Browser)
+	}
+	select {
+	case <-ctx.Done():
+		return nil
+	case permit <- struct{}{}:
+	}
+	capture := captureBrowser(ctx, target, id, occurrence, config)
+	<-permit
+	capture.report.QueuedAt = queuedAt
+	return exportBrowserCapture(ctx, &capture, *config.Browser)
 }

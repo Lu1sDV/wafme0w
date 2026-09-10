@@ -103,6 +103,22 @@ func printResult(stdout, stderr io.Writer, result wafme0w.Result, suppressWarnin
 	if result.Generic.Reason != "" || result.Generic.Mode != "" {
 		group.WriteString(" | generic anomaly")
 	}
+	if browser := result.Browser; browser != nil {
+		fmt.Fprintf(&group, " | browser %s (%s), text %s, image %s",
+			terminalText(browser.State), terminalText(browser.Mode), terminalText(browser.DOM.State), terminalText(browser.Screenshot.State))
+		if browser.DOM.SaveState != "" {
+			fmt.Fprintf(&group, " | text save %s", terminalText(browser.DOM.SaveState))
+		}
+		if browser.Screenshot.SaveState != "" {
+			fmt.Fprintf(&group, " | image save %s", terminalText(browser.Screenshot.SaveState))
+		}
+		if browser.DOM.Saved != "" {
+			fmt.Fprintf(&group, " | text saved %s", terminalText(browser.DOM.Saved))
+		}
+		if browser.Screenshot.Saved != "" {
+			fmt.Fprintf(&group, " | image saved %s", terminalText(browser.Screenshot.Saved))
+		}
+	}
 	group.WriteByte('\n')
 	if _, err := io.WriteString(stdout, group.String()); err != nil {
 		return err
@@ -151,6 +167,18 @@ func printResult(stdout, stderr io.Writer, result wafme0w.Result, suppressWarnin
 			return err
 		}
 	}
+	if browser := result.Browser; browser != nil && !suppressWarnings {
+		group.Reset()
+		if browser.Reason != "" || browser.Error != "" {
+			fmt.Fprintf(&group, "WARN  %s | browser %s: %s\n", terminalText(result.Target), terminalText(browser.Reason), terminalText(browser.Error))
+		}
+		for _, limitation := range browser.Limitations {
+			fmt.Fprintf(&group, "WARN  %s | browser limitation: %s\n", terminalText(result.Target), terminalText(limitation))
+		}
+		if _, err := io.WriteString(stderr, group.String()); err != nil {
+			return err
+		}
+	}
 	_, err := io.WriteString(stdout, "\n")
 	return err
 }
@@ -182,6 +210,7 @@ func printDebug(writer io.Writer, result wafme0w.Result) error {
 
 type resultCounts struct {
 	Total, Complete, Matched, Unnamed, Incomplete, Failed, Generic, Diagnostics int
+	Browser, BrowserFailed                                                      int
 	StrictFailure                                                               bool
 }
 
@@ -205,6 +234,13 @@ func (counts *resultCounts) add(result wafme0w.Result) {
 		counts.Generic++
 	}
 	counts.Diagnostics += len(result.Outcome.Diagnostics)
+	if result.Browser != nil {
+		counts.Browser++
+		if result.Browser.Failed() {
+			counts.BrowserFailed++
+			counts.StrictFailure = true
+		}
+	}
 	counts.StrictFailure = counts.StrictFailure || result.Outcome.State != wafme0w.Complete || len(result.Outcome.Diagnostics) != 0
 }
 
@@ -215,5 +251,8 @@ func printSummary(writer io.Writer, counts resultCounts, finished bool, au *auro
 	}
 	_, err := fmt.Fprintf(writer, "%s  %d targets\n  complete %d | matched %d | unnamed %d | incomplete %d | failed %d\n  generic %d | diagnostics %d\n",
 		label, counts.Total, counts.Complete, counts.Matched, counts.Unnamed, counts.Incomplete, counts.Failed, counts.Generic, counts.Diagnostics)
+	if err == nil && counts.Browser != 0 {
+		_, err = fmt.Fprintf(writer, "  browser %d | browser/artifact failures %d (separate from HTTP state)\n", counts.Browser, counts.BrowserFailed)
+	}
 	return err
 }

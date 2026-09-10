@@ -83,3 +83,20 @@ jobs:
         run: |
           docker build -t wafme0w:ci .
           docker run --rm --network none wafme0w:ci --help
+
+  browser:
+    name: Local Chromium integration
+    runs-on: ubuntu-24.04
+    env:
+      WAFME0W_TEST_BROWSER: /opt/google/chrome/chrome
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.26.x'
+      - name: Require installed native Chromium
+        run: |
+          test -x "$WAFME0W_TEST_BROWSER"
+          "$WAFME0W_TEST_BROWSER" --version
+      - name: Exercise owned browser fixtures
+        run: go test -race -tags browser_integration ./pkg/wafme0w -run '^TestBrowser' -count=1 -timeout=3m

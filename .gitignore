@@ -24,3 +24,9 @@ __pycache__/
 
 # Live scan artifacts (Tranco runs, logs, comparison outputs)
 benchmarks/
+
+# Local AI-assistant instructions and state
+AGENTS.md
+.omp/
+.codex/
+.claude/

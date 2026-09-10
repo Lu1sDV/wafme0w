@@ -162,8 +162,10 @@ func checkFileCollisions(opts options, stdin io.Reader, piped bool, stdout, stde
 		{"fingerprints", opts.FingerPrintFile, false},
 		{"output", opts.OutputFile, true},
 		{"diagnostics journal", opts.JournalFile, true},
+		{"browser executable", opts.BrowserPath, false},
+		{"browser artifacts images", opts.SaveScreenshots, true},
 	} {
-		if item.path == "" || item.label == "evidence input" && item.path == "-" {
+		if item.path == "" || item.label == "evidence input" && item.path == "-" || item.label == "browser executable" && opts.Browser == "off" {
 			continue
 		}
 		identity, err := identifyPath(item.label, item.path, item.writes)
