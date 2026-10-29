@@ -40,8 +40,9 @@ The README pairs two different jobs: human-readable evidence in `dark-cyberpunk`
 on the left, JSONL processing and strict report publication in `light-gruvbox`
 on the right. It uses a still frame when reduced motion is preferred.
 These are two real Tern recordings composed side by side, not a per-pane theme setting.
-The evidence pane is scrolled to the results and incomplete-body warning;
-the full walkthrough includes the command, banner, and complete summary.
+Recording starts before either command runs, showing typing and actual output.
+The evidence pane then scrolls to the results and incomplete-body warning,
+followed by the summary; the full walkthrough includes all output.
 
 To record it again, install Tern, Go, Bash, jq, and FFmpeg with the `libx264`
 encoder. From the repository root, choose a fresh output directory:

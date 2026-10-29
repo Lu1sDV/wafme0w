@@ -33,6 +33,11 @@ pause() {
   read -r
 }
 
+if [[ "$mode" != all ]]; then
+  card 'Real evidence. Two workflows.'
+  pause 'Start recording'
+fi
+
 if [[ "$mode" == all ]]; then
   card 'Fingerprint the response. Keep the evidence.'
   printf '\n  01  READ       Named matches and supporting observations\n\n'

@@ -32,8 +32,6 @@
 </p>
 
 <p align="center">
-  <strong>Cyberpunk:</strong> human evidence · <strong>Gruvbox:</strong> JSONL &amp; reports<br>
-  Synthetic captures · No target requests<br>
   <a href="assets/demo/tern-demo-split.gif">Open full-size split demo</a> ·
   <a href="assets/demo/tern-demo.mp4">Watch the full walkthrough</a> ·
   <a href="docs/usage.md#offline-captures">Commands &amp; recording</a>

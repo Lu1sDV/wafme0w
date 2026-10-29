@@ -13,13 +13,18 @@ tabs horizontal
 rename "HUMAN / WAF evidence"
 ready
 run "bash assets/demo/tern-demo.sh evidence"
+expect "Start recording"
+record start human fps 15
+key Enter
 expect "Next: machine-readable output"
+wait 1000
 scroll 1000
 # Focus the evidence, not the build banner; retain the incomplete-body warning.
-scroll -9
+scroll -8
 shot human
-record start human fps 15
-wait 16000
+wait 8000
+scroll -8
+wait 6500
 record stop
 key Enter
 scroll -1000
@@ -28,9 +33,11 @@ appearance light
 font 20
 rename "AUTOMATION / JSONL and reports"
 run "bash assets/demo/tern-demo.sh automation"
+expect "Start recording"
+record start automation fps 15
+key Enter
 expect "Next: automation with an explicit safety signal"
 shot automation
-record start automation fps 15
 wait 6500
 key Enter
 expect "Demo complete"
