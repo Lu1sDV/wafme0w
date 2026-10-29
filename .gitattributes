@@ -1,0 +1,2 @@
+# Corpus bodies are SHA256-addressed byte fixtures; preserve their line endings.
+tools/offlinebench/testdata/bodies/*.bin -text
