@@ -15,6 +15,7 @@ permissions:
 
 env:
   GOTOOLCHAIN: local
+  GH_REPO: ${{ github.repository }}
 
 concurrency:
   group: release-${{ inputs.tag || github.ref_name }}
@@ -55,13 +56,15 @@ jobs:
     name: Test and package ${{ matrix.os }}/${{ matrix.arch }}
     needs: prepare
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 25
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
         include:
           - {runner: ubuntu-24.04, os: linux, arch: amd64, suffix: '', extension: tar.gz}
+          - {runner: ubuntu-24.04-arm, os: linux, arch: arm64, suffix: '', extension: tar.gz}
           - {runner: macos-15, os: darwin, arch: arm64, suffix: '', extension: tar.gz}
+          - {runner: macos-15-intel, os: darwin, arch: amd64, suffix: '', extension: tar.gz}
           - {runner: windows-2022, os: windows, arch: amd64, suffix: .exe, extension: zip}
     env:
       CGO_ENABLED: '0'
@@ -110,6 +113,22 @@ jobs:
         shell: bash
         timeout-minutes: 5
         run: python tools/smoke.py archive "dist/wafme0w_${RELEASE_TAG}_${RELEASE_OS}_${RELEASE_ARCH}.${RELEASE_EXTENSION}"
+      - name: Build and smoke the native release container without pushing
+        if: runner.os == 'Linux'
+        shell: bash
+        timeout-minutes: 10
+        run: |
+          python tools/container_release.py build --tag "$RELEASE_TAG" --revision "$RELEASE_SHA" \
+            --arch "$RELEASE_ARCH" --repository "$GITHUB_REPOSITORY" \
+            --output "$RUNNER_TEMP/native-container"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: runner.os == 'Linux'
+        with:
+          name: release-image-linux-${{ matrix.arch }}
+          path: ${{ runner.temp }}/native-container/*
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: false
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-raw-${{ matrix.os }}-${{ matrix.arch }}
@@ -122,7 +141,7 @@ jobs:
     name: Verify downloaded identities, hashes and actual packaged binaries
     needs: [prepare, native]
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 40
     permissions:
       contents: read
       id-token: write
@@ -151,7 +170,7 @@ jobs:
         timeout-minutes: 5
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
       - name: Scan all extracted binaries and generate verified manifest
-        timeout-minutes: 17
+        timeout-minutes: 30
         run: python tools/release.py verify --tag "$RELEASE_TAG" --revision "$RELEASE_SHA"
       - name: Retain scanner reports even on findings
         if: always()
@@ -209,3 +228,68 @@ jobs:
           path: dist
       - name: Recheck hashes and remote tag, stage draft, recheck then publish
         run: python tools/release.py publish --tag "$RELEASE_TAG" --revision "$RELEASE_SHA"
+
+  publish-container:
+    name: Publish tested native images to GHCR
+    # Explicit repository opt-in after GHCR visibility/access is configured.
+    # No image is pushed by PR CI or before archive publication succeeds.
+    if: vars.WAFME0W_PUBLISH_GHCR == 'true'
+    needs: [prepare, publish]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+      RELEASE_SHA: ${{ needs.prepare.outputs.revision }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.revision }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: release-verified
+          path: dist
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: release-image-linux-*
+          path: container-images
+          merge-multiple: true
+      - name: Authenticate only the publication job
+        run: |
+          export DOCKER_CONFIG="$RUNNER_TEMP/docker-auth"
+          printf 'DOCKER_CONFIG=%s\n' "$DOCKER_CONFIG" >> "$GITHUB_ENV"
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+      - name: Verify loaded binaries and publish versioned multi-platform image
+        id: container
+        run: |
+          python tools/container_release.py publish --tag "$RELEASE_TAG" --revision "$RELEASE_SHA" \
+            --repository "$GITHUB_REPOSITORY" --images container-images \
+            --output "$RUNNER_TEMP/container-manifest.json"
+      - name: Attest the immutable registry digest and actual frozen source
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ steps.container.outputs.image }}
+          subject-digest: ${{ steps.container.outputs.digest }}
+          predicate-type: https://github.com/${{ github.repository }}/release-container/v1
+          predicate-path: ${{ runner.temp }}/container-manifest.json
+          push-to-registry: true
+          create-storage-record: false
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: published-container-identity
+          path: ${{ runner.temp }}/container-manifest.json
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Remove registry credentials
+        if: always()
+        run: docker logout ghcr.io

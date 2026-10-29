@@ -1,0 +1,55 @@
+name: Bug report
+description: Report a reproducible CLI, library, or output problem with sanitized evidence.
+title: "Bug: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is a public issue. For a suspected security vulnerability, follow
+        [SECURITY.md](https://github.com/Lu1sDV/wafme0w/blob/main/SECURITY.md)
+        before sharing details. Use the Fingerprint report form for detection-rule changes.
+        Use synthetic input or owned loopback fixtures; do not publish secrets,
+        private target names, session cookies, or customer captures.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Problem
+      description: Describe the behavior and its impact on your workflow.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Version and environment
+      description: Include wafme0w --version, install method, OS/architecture, and shell. Include Go version for a source build and Chromium version for browser behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Provide exact sanitized commands and input, or a small owned-loopback fixture. Say whether the problem also occurs with the bundled offline demo.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Observed behavior and diagnostics
+      description: Include the exit code and relevant sanitized stdout/stderr. Keep outcome.state and diagnostic codes when reporting an incomplete result.
+      render: text
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Public evidence
+      options:
+        - label: I removed secrets, personal data, private target names, and unsanitized production content from this report.
+          required: true

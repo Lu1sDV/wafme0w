@@ -4,9 +4,12 @@
 
 <h1 align="center">Wafme0w</h1>
 
-<p align="center">Identify WAF fingerprints from live HTTP responses or saved captures.<br>A Go CLI and library with structured reports.</p>
+<p align="center"><strong>wafw00f's fingerprints. Go speed. Pipeline-native.</strong></p>
+
+<p align="center"><strong>172 WAF product identities</strong>, built on wafw00f's fingerprints.<br>A Go CLI and library for live HTTP and offline saved-response analysis.</p>
 
 <p align="center">
+  <a href="https://github.com/Lu1sDV/wafme0w/actions/workflows/ci.yml"><img src="https://github.com/Lu1sDV/wafme0w/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI workflow status on main" height="26"></a>
   <a href="go.mod"><img src="assets/badges/go.svg" alt="Go: 1.26+" height="26"></a>
   <a href="docs/usage.md"><img src="assets/badges/catalogue.svg" alt="Catalogue: 172 products" height="26"></a>
   <a href="LICENSE.md"><img src="assets/badges/license.svg" alt="License: MIT" height="26"></a>
@@ -18,9 +21,10 @@
   <a href="docs/library.md"><img src="assets/badges/library.svg" alt="Go API: library" height="26"></a>
 </p>
 
-<p align="center"><a href="#1-build">Quick start</a> · <a href="#benchmarks">Benchmarks</a> · <a href="#documentation">Documentation</a></p>
+<p align="center"><a href="#1-build">Quick start</a> · <a href="docs/migrating-from-wafw00f.md">Moving from wafw00f</a> · <a href="#benchmarks">Benchmarks</a> · <a href="#documentation">Documentation</a></p>
 
-<p align="center"><strong>Read the evidence. Automate the result.</strong></p>
+From a checked-out source tree with Go installed: `go install ./cmd/wafme0w`.
+The binary is installed in `GOBIN`, or `$(go env GOPATH)/bin` by default.
 
 <p align="center">
   <a href="assets/demo/tern-demo-split.gif">
@@ -34,6 +38,41 @@
 <p align="center">
   <a href="assets/demo/tern-demo-split.gif">Open full-size split demo</a>
 </p>
+
+## Why wafme0w?
+
+wafme0w is a **wafw00f alternative** for WAF detection in Go, built on the upstream
+project's fingerprint work. It brings fast WAF fingerprinting into concurrent,
+structured pipelines for teams that need to detect WAF at scale.
+
+- **172 product identities in the catalogue.** Fingerprints are ported from
+  [wafw00f](https://github.com/EnableSecurity/wafw00f/), with upstream credit and
+  [licence notices](LICENSE.md). Probe behavior and evidence semantics differ;
+  catalogue size does not prove equivalent detection on every target.
+- **Static Go release binaries.** No Python, pip or virtualenv is required
+  to scan or classify saved responses. Optional browser capture needs Chromium.
+- **JSONL, JSON and CSV output.** Stream to `jq`, notification tools or a database,
+  while keeping human diagnostics on stderr.
+- **Offline response analysis.** Re-analyse native captures or supported httpx
+  exports without sending another request.
+- **Request, redirect and connection budgets.** Bound acquisition and apply
+  explicit scope rules across redirects.
+- **An importable Go library.** Use the same evidence classifier in your own
+  application through the [v2 API](docs/library.md).
+
+### From discovery to JSONL
+
+```sh
+# Set AUTHORIZED_DOMAIN to a domain you own or are authorized to test.
+set -o pipefail
+subfinder -d "${AUTHORIZED_DOMAIN:?set an authorized domain}" -silent |
+  httpx -silent |
+  wafme0w --input - --baseline --jsonl --silent
+```
+
+This pipeline sends normal HTTP requests with `--baseline`. Remove that flag
+only when the active probes are within your testing scope. For existing httpx
+response exports, use the [offline import pipeline](#projectdiscovery-httpx-pipelines).
 
 ## 1. Build
 
@@ -94,19 +133,18 @@ Configuration, input and output failures exit **1**; cancellation exits **130**.
 
 ## Benchmarks
 
-**wafme0w vs wafw00f 2.4.2**, measured on 500 Tranco targets on 29 October 2026.
-One sequential sweep of saved build `347f547`; these results do not measure the v2
-evidence API or httpx importer:
+Run the [reproducible offline comparison](docs/benchmarks.md#reproduce-the-current-checkout)
+against **wafw00f 2.4.2** from a clean committed checkout. The runner records source
+and binary hashes, compiler and Python package versions, CPU details, the exact
+synthetic corpus, repeated blocks and a verified result manifest. Workers replay
+saved responses with network access isolated by bubblewrap.
 
-| Workers / processes | <img src="assets/wafme0w.svg" width="20" height="20" alt=""> wafme0w fast | <img src="assets/wafme0w.svg" width="20" height="20" alt=""> wafme0w full | wafw00f |
-| --- | ---: | ---: | ---: |
-| 1 | 6m 49.44s | 15m 51.93s | 14m 38.21s |
-| 10 | 52.89s | 1m 45.62s | 2m 53.39s |
-| 50 | 24.06s | 44.26s | 1m 50.93s |
-
-Observed wall times, not equivalent-work speedups or accuracy. wafme0w emitted
-500 results per cell; wafw00f omitted 157–159 targets. Higher concurrency changed
-evidence completeness. [Methodology, result accounting and limitations](docs/benchmarks.md#live-cli-comparison).
+The shipped synthetic fixtures have reviewed links for **28 of 172 products**;
+this is a conformance check, not a field-accuracy score. Older live measurements
+remain in the [benchmark guide](docs/benchmarks.md#live-cli-comparison). They do
+not establish a current release speedup: the tools used different probes and
+returned different amounts of complete evidence. A headline such as “up to
+4.6× faster” needs a fresh, comparable run before publication.
 
 ## Major caveats
 
@@ -119,10 +157,14 @@ evidence completeness. [Methodology, result accounting and limitations](docs/ben
 | Guide | Contents |
 | --- | --- |
 | [CLI usage](docs/usage.md) | Modes, headers, scope, byte limits and cancellation |
+| [Moving from wafw00f](docs/migrating-from-wafw00f.md) | Common flag mappings, changed semantics and pipeline migration |
 | [Browser capture](docs/browser.md) | Chromium setup, screenshots and sanitized exports |
 | [Operations](docs/operations.md) | Result semantics, safe report consumption, deployment and soak checks |
 | [Releases](docs/releases.md) | Installation, Docker, validation, security scans and publication controls |
 | [Go library](docs/library.md) | Working example, ownership and streaming contracts |
 | [Benchmarks](docs/benchmarks.md) | Measurement methodology, results and offline conformance checks |
+| [Contributing](CONTRIBUTING.md) | Development setup, reviewed fingerprint fixtures and starter tasks |
+| [Security policy](SECURITY.md) | Private vulnerability reporting and supported versions |
+| [Launch checklist](docs/launch.md) | Evidence-backed messaging, publication and repository settings |
 
 [MIT license](LICENSE.md) · Fingerprints from [wafw00f](https://github.com/EnableSecurity/wafw00f/) · Contributor [@Fibonaccispiralz](https://github.com/Fibonaccispiralz)

@@ -45,7 +45,7 @@ jobs:
   published:
     name: Supported published archives (independent failure gate)
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 65
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
@@ -64,7 +64,7 @@ jobs:
         timeout-minutes: 5
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
       - name: Scan current stable and any newer prerelease actual binaries
-        timeout-minutes: 34
+        timeout-minutes: 57
         run: python tools/release.py scan-published
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()

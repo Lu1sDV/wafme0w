@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2022 Luis Di Vittorio
+Copyright (c) 2022-2026 Luis Di Vittorio
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -34,6 +34,9 @@ disclaimer above, with their respective copyright notices:
 - github.com/ysmood/fetchup v0.2.3: Copyright (c) 2023 Yad Smood
 
 ### github.com/jessevdk/go-flags v1.6.1
+
+The following BSD 3-Clause notice is reproduced from the
+[v1.6.1 upstream license](https://github.com/jessevdk/go-flags/blob/v1.6.1/LICENSE).
 
 Copyright (c) 2012 Jesse van den Kieboom. All rights reserved.
 Redistribution and use in source and binary forms, with or without
@@ -125,9 +128,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ## Fingerprint catalogue attribution
 
-The fingerprint catalogue is derived from wafw00f. The following upstream
-notice is reproduced from wafw00f 2.4.2; it does not identify the exact
-revision used for the inherited catalogue.
+The fingerprint catalogue is derived from wafw00f. The following BSD 3-Clause
+notice is reproduced from the
+[wafw00f 2.4.2 upstream license](https://github.com/EnableSecurity/wafw00f/blob/v2.4.2/LICENSE).
+It does not identify the exact revision used for the inherited catalogue.
 
 Copyright (c) 2009-2026, WAFW00F Developers
 All rights reserved.

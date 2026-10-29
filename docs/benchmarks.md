@@ -6,6 +6,57 @@ Wall-clock timings describe a specific build, workload, and environment. Offline
 conformance checks compare detector behavior with reviewed fixture expectations.
 Neither measures real-world detection accuracy or proves WAF enforcement.
 
+## Reproduce the current checkout
+
+Use a **clean, committed Linux checkout**, a supported Go compiler, Python 3.12
+or newer, and `bwrap` with working user, mount, PID and network namespaces.
+The comparison replays the checked-in synthetic corpus; it accepts no live target
+list and sends no requests to third-party targets. Package setup downloads
+dependencies; detector workers have no external network access.
+
+```sh
+python3 -m venv .offlinebench-venv
+.offlinebench-venv/bin/pip install -r tools/offlinebench/requirements.txt
+python3 tools/reproduce_benchmark.py \
+  --wafw00f-python "$PWD/.offlinebench-venv/bin/python" \
+  --output benchmarks/reproduction-01 --iterations 100 --blocks 4
+```
+
+Choose a new output directory for every run. The wrapper builds the benchmark
+binary itself, rejects dirty source or a mismatched binary VCS identity, verifies
+every pinned Python package (including wafw00f 2.4.2), runs the isolated comparison,
+and verifies its published generation. It records:
+
+- The source SHA, initial/final clean state, binary hash and embedded VCS identity.
+- Go version and build settings, Python version and dependency versions.
+- OS/kernel, CPU model, architecture, logical CPU count and allowed CPU affinity.
+- Corpus and requirements hashes, case counts/kinds, selection policy, iterations
+  and blocks. Every checked-in case is used; targets are not sampled or replaced.
+- The exact commands, stdout/stderr, manifest hash, timestamps and completion
+  status. A failed build, isolation check or result verification remains a failure
+  with `complete: false`; there is no fallback to an unisolated comparison.
+
+`reproduction.json` describes the host and run; `run/report.txt` and
+`run/summary.json` contain the measurements; `run/run-manifest.json` binds the
+published result files. Retain the complete output directory with any published
+claim. The CI artifact contains the same records for its exact checkout. A hosted
+CI runner is suitable for conformance and reproducibility checks, but variable
+shared-host load is a limitation for small timing differences.
+
+The wrapper's `launcher_gomaxprocs_env` is recorded for context only. The isolated
+workers clear inherited environment variables; Go chooses its worker runtime
+parallelism. For controlled comparisons, use the same CPU affinity and resource
+allocation for every candidate and retain repeated alternating blocks.
+
+The reported `wafw00f_over_wafme0w_latency_ratio` is the median of the per-case
+wafw00f/wafme0w ratios, using each case's median **saved-response classification
+latency** across blocks. Only paired, expected-complete, conformant cases in the
+shared-product profile contribute. The comparison times warm named-product
+classification, excluding generic detection, live DNS/HTTP work, initialization
+and preparation. It is not a number of Internet hosts per minute. Keep the
+full-native-catalogue profile distinct and retain the bootstrap interval and
+paired-case count. Do not substitute this ratio for a live CLI speedup.
+
 ## Live CLI comparison
 
 The following measurements were collected on **29 October 2026**, using 500

@@ -321,7 +321,7 @@ func TestBrowserCredentialAttributeExportAndGeometry(t *testing.T) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		io.WriteString(w, `<!doctype html><html><head><style>
 body{margin:0}
-input,div{position:absolute;left:20px;width:300px;height:30px;border:0;padding:0;background:rgb(255,0,0)}
+input,div{position:absolute;left:20px;width:300px;height:30px;border:0;padding:0;background:rgb(255,0,0);contain:paint}
 #autocomplete{top:20px}
 #data-field{top:80px}
 #unicode-type{top:140px}
@@ -387,5 +387,157 @@ input,div{position:absolute;left:20px;width:300px;height:30px;border:0;padding:0
 		if got := color.RGBAModel.Convert(masked.At(300, y)).(color.RGBA); got != want {
 			t.Fatalf("masked pixel (300,%d) = %v, want %v", y, got, want)
 		}
+	}
+}
+
+func TestBrowserCredentialSubtreeGeometryRejectsUnsafeExports(t *testing.T) {
+	const secret = "AUDIT-CREDENTIAL-SECRET"
+	for _, test := range []struct {
+		name   string
+		markup string
+	}{
+		{"zero-sized wrapper", `<div class="credential" data-field="password" style="width:0;height:0"><span class="child">` + secret + `</span></div>`},
+		{"display contents", `<div data-field="password" style="display:contents"><span class="credential">` + secret + `</span></div>`},
+		{"overflowing text", `<div class="credential" data-field="password" style="width:10px;white-space:nowrap">` + secret + `</div>`},
+		{"positioned descendant", `<div class="credential" data-field="password"><span class="child" style="position:absolute;left:400px">` + secret + `</span></div>`},
+		{"visible descendant of hidden wrapper", `<div class="credential" data-field="password" style="visibility:hidden"><span class="child" style="visibility:visible">` + secret + `</span></div>`},
+		{"visible descendant of offscreen wrapper", `<div class="credential" data-field="password" style="left:-500px"><span class="child" style="position:fixed;left:20px;top:20px">` + secret + `</span></div>`},
+		{"generated credential text", `<style>.credential::after{content:attr(data-password);position:fixed;left:400px;top:20px}</style><div class="credential" data-password="` + secret + `"></div>`},
+		{"credential text shadow", `<div class="credential" data-field="password" style="text-shadow:400px 0 red">` + secret + `</div>`},
+		{"ancestor paint effect", `<section style="filter:drop-shadow(400px 0 0 red)"><div class="credential" data-field="password">` + secret + `</div></section>`},
+		{"unclipped credential text", `<div class="credential" data-field="password">` + secret + `</div>`},
+		{"italic glyph ink overhang", `<span class="credential" data-field="password" style="left:200px;display:block;width:max-content;height:auto;line-height:400px;font:italic 240px/400px serif;color:red;background:none">f</span>`},
+		{"upright glyph ink overhang", `<span class="credential" data-field="password" style="left:200px;display:block;width:max-content;height:auto;line-height:400px;font:240px/400px serif;color:red;background:none">j</span>`},
+		{"negative letter spacing", `<span class="credential" data-field="password" style="left:200px;display:block;width:max-content;height:auto;font:100px/400px monospace;letter-spacing:-30px;color:red;background:none">SECRET</span>`},
+		{"ancestor first-line paint", `<style>section::first-line{text-shadow:400px 0 red}</style><section style="position:absolute;left:20px;top:20px;width:320px;height:40px"><span data-field="password">` + secret + `</span></section>`},
+		{"inapplicable inline containment", `<span data-field="password" style="contain:paint;font:italic 240px/400px serif;color:red">f</span>`},
+		{"top-layer descendant", `<div data-field="password" style="position:absolute;left:200px;top:20px;width:100px;height:400px;contain:paint"><span id="popup" popover style="position:fixed;left:200px;top:20px;width:100px;height:400px;margin:0;padding:0;border:0;font:italic 240px/400px serif;color:red">f</span></div><script>document.getElementById('popup').showPopover()</script>`},
+		{"expanded paint clip margin", `<span class="credential" data-field="password" style="left:200px;display:block;width:max-content;height:auto;font:240px/400px serif;color:red;background:none;contain:paint;overflow-clip-margin:100px">j</span>`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			config := browserFixtureConfig(t, "screenshot")
+			fixture := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/" {
+					w.WriteHeader(http.StatusNoContent)
+					return
+				}
+				w.Header().Set("Content-Type", "text/html; charset=utf-8")
+				io.WriteString(w, `<!doctype html><html><head><style>body{margin:0;font:16px sans-serif}.credential{position:absolute;left:20px;top:20px;width:300px;height:30px;background:red}.child{display:block;width:300px;height:30px}</style></head><body>`+test.markup+`</body></html>`)
+			}))
+			defer fixture.Close()
+			capture := captureBrowser(context.Background(), fixture.URL+"/", "credential-subtree", 1, config)
+			if capture.report.State != "complete" || len(capture.image) == 0 {
+				t.Fatalf("fixture did not acquire a screenshot: %+v", capture.report)
+			}
+			var dom []byte
+			screenshotCalls := 0
+			config.Browser.SaveText = func(_ context.Context, artifact BrowserArtifact) (string, error) {
+				var err error
+				dom, err = io.ReadAll(artifact.Content)
+				return "sanitized-dom.json", err
+			}
+			config.Browser.SaveScreenshot = func(_ context.Context, artifact BrowserArtifact) (string, error) {
+				screenshotCalls++
+				return "must-not-save.png", nil
+			}
+			report := exportBrowserCapture(context.Background(), &capture, *config.Browser)
+			if capture.geometryOK || screenshotCalls != 0 || report.State != "partial" || report.Screenshot.SaveState != "failed" || !report.Failed() {
+				t.Fatalf("unsafe credential subtree reached screenshot export: geometry=%t calls=%d report=%+v", capture.geometryOK, screenshotCalls, report)
+			}
+			if report.DOM.SaveState != "saved" || bytes.Contains(dom, []byte(secret)) {
+				t.Fatalf("independent DOM export lost its redaction contract: %+v", report.DOM)
+			}
+		})
+	}
+}
+
+func TestBrowserCredentialSubtreeGeometryPreservesContainedAndHiddenFields(t *testing.T) {
+	config := browserFixtureConfig(t, "screenshot")
+	fixture := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		io.WriteString(w, `<!doctype html><html><head><meta name="csrf-token" content="hidden-secret"><style>body{margin:0;font:16px sans-serif}#ordinary{position:absolute;left:20px;top:100px;width:300px;height:30px;background:blue}</style></head><body>
+<input type="hidden" name="csrf-token" value="hidden-secret">
+<div style="display:none"><div data-field="password"><span style="position:fixed;left:400px;top:20px;visibility:visible">hidden-secret</span></div></div>
+<div data-field="password" style="position:absolute;left:20px;top:20px;width:300px;height:60px;background:red;contain:paint"><span>AUDIT-CREDENTIAL-SECRET</span></div>
+<div id="ordinary">ordinary visible text</div>
+</body></html>`)
+	}))
+	defer fixture.Close()
+	capture := captureBrowser(context.Background(), fixture.URL+"/", "contained-credential", 1, config)
+	if capture.report.State != "complete" || !capture.geometryOK || len(capture.secrets) != 1 {
+		t.Fatalf("contained or hidden credential handling failed: %+v geometry=%t rectangles=%+v", capture.report, capture.geometryOK, capture.secrets)
+	}
+	var screenshot []byte
+	config.Browser.SaveScreenshot = func(_ context.Context, artifact BrowserArtifact) (string, error) {
+		var err error
+		screenshot, err = io.ReadAll(artifact.Content)
+		return "masked.png", err
+	}
+	report := exportBrowserCapture(context.Background(), &capture, *config.Browser)
+	if report.State != "complete" || report.Screenshot.SaveState != "saved" {
+		t.Fatalf("ordinary screenshot was not exported: %+v", report)
+	}
+	masked, err := png.Decode(bytes.NewReader(screenshot))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		y    int
+		want color.RGBA
+	}{{35, color.RGBA{A: 255}}, {115, color.RGBA{B: 255, A: 255}}} {
+		if got := color.RGBAModel.Convert(masked.At(300, test.y)).(color.RGBA); got != test.want {
+			t.Fatalf("pixel (300,%d) = %v, want %v", test.y, got, test.want)
+		}
+	}
+}
+
+func TestBrowserCredentialInkClippingMasksNativeControlsAndContainedText(t *testing.T) {
+	config := browserFixtureConfig(t, "screenshot")
+	fixture := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		io.WriteString(w, `<!doctype html><html><head><style>body{margin:0;background:white}input,textarea{position:absolute;left:20px;width:300px;padding:0;border:0;color:red;background:red;font:italic 100px/200px serif}</style></head><body>
+<input name="password" type="text" value="f" style="top:20px;height:40px">
+<textarea name="password" style="top:100px;height:80px">jSECRET</textarea>
+<span data-field="password" style="position:absolute;left:20px;top:200px;width:max-content;height:400px;contain:paint;font:italic 240px/400px serif;color:red">f</span>
+<div style="position:absolute;left:500px;top:20px;width:300px;height:30px;background:blue">ordinary visible text</div>
+</body></html>`)
+	}))
+	defer fixture.Close()
+	capture := captureBrowser(context.Background(), fixture.URL+"/", "clipped-credential-ink", 1, config)
+	if capture.report.State != "complete" || !capture.geometryOK || len(capture.secrets) != 3 {
+		t.Fatalf("supported clipping was rejected: %+v geometry=%t rectangles=%+v", capture.report, capture.geometryOK, capture.secrets)
+	}
+	var screenshot []byte
+	config.Browser.SaveScreenshot = func(_ context.Context, artifact BrowserArtifact) (string, error) {
+		var err error
+		screenshot, err = io.ReadAll(artifact.Content)
+		return "masked.png", err
+	}
+	report := exportBrowserCapture(context.Background(), &capture, *config.Browser)
+	if report.State != "complete" || report.Screenshot.SaveState != "saved" {
+		t.Fatalf("clipped credential screenshot failed: %+v", report)
+	}
+	masked, err := png.Decode(bytes.NewReader(screenshot))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for y := range masked.Bounds().Dy() {
+		for x := range masked.Bounds().Dx() {
+			pixel := color.RGBAModel.Convert(masked.At(x, y)).(color.RGBA)
+			if pixel.R > pixel.G && pixel.R > pixel.B {
+				t.Fatalf("credential glyph ink escaped actual clipping and masking at (%d,%d): %v", x, y, pixel)
+			}
+		}
+	}
+	if got := color.RGBAModel.Convert(masked.At(790, 35)).(color.RGBA); got != (color.RGBA{B: 255, A: 255}) {
+		t.Fatalf("ordinary screenshot content changed: %v", got)
 	}
 }
