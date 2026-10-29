@@ -14,8 +14,8 @@
 
 <p align="center">
   <a href="#3-automate-and-save-results"><img src="assets/badges/output.svg" alt="Export: JSONL, JSON, CSV and TXT" height="26"></a>
-  <a href="docs/usage.md#offline-captures"><img src="assets/badges/offline.svg" alt="Offline captures: no network" height="26"></a>
-  <a href="https://github.com/Lu1sDV/wafme0w/actions/workflows/ci.yml"><img src="assets/badges/ci.svg" alt="CI: view workflows" height="26"></a>
+  <a href="docs/usage.md#httpx-response-import"><img src="assets/badges/httpx.svg" alt="httpx: response import" height="26"></a>
+  <a href="docs/library.md"><img src="assets/badges/library.svg" alt="Go API: library" height="26"></a>
 </p>
 
 <p align="center"><a href="#1-build">Quick start</a> · <a href="#benchmarks">Benchmarks</a> · <a href="#documentation">Documentation</a></p>

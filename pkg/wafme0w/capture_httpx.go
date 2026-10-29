@@ -84,6 +84,7 @@ type httpxRecord struct {
 func parseHTTPXRecord(record []byte) (httpxRecord, error) {
 	var result httpxRecord
 	decoder := json.NewDecoder(bytes.NewReader(record))
+	decoder.UseNumber()
 	token, err := decoder.Token()
 	if err != nil {
 		return result, err

@@ -206,6 +206,44 @@ func TestHTTPXRejectsMalformedStreamPreservingPriorResults(t *testing.T) {
 	}
 }
 
+func TestHTTPXUnknownNumbersPreserveStreamAndStrictStatus(t *testing.T) {
+	for name, metadata := range map[string]string{
+		"top-level": `"unrelated":1e400`,
+		"nested":    `"unrelated":{"values":[1e400,{"value":-1e400}]}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			for _, status := range []string{`1e400`, `200.5`, `"200"`} {
+				t.Run(status, func(t *testing.T) {
+					input := `{"url":"https://first.test/","status_code":200,` + metadata + "}\n" +
+						"{\"url\":\"https://second.test/\",\"status_code\":403}\n" +
+						`{"url":"https://invalid.test/","status_code":` + status + "}\n" +
+						"{\"url\":\"https://unreached.test/\"}\n"
+					var results []Result
+					err := RunHTTPXCaptured(context.Background(), emptyEngine(t), strings.NewReader(input), DefaultConfig(), HTTPXImportOptions{}, func(result Result) error {
+						results = append(results, result)
+						return nil
+					})
+					var typeErr *json.UnmarshalTypeError
+					if !errors.As(err, &typeErr) || !strings.Contains(err.Error(), "line 3") || !strings.Contains(err.Error(), `"status_code"`) {
+						t.Fatalf("invalid consumed status was not rejected on line 3: %v", err)
+					}
+					if len(results) != 2 {
+						t.Fatalf("unknown numeric metadata interrupted stream or invalid status emitted: results=%d err=%v", len(results), err)
+					}
+					for i, want := range []struct {
+						target string
+						status int
+					}{{"https://first.test/", 200}, {"https://second.test/", 403}} {
+						if results[i].Target != want.target || results[i].Evidence[0].StatusCode != want.status {
+							t.Fatalf("record %d lost identity or status: %+v", i, results[i])
+						}
+					}
+				})
+			}
+		})
+	}
+}
+
 func TestHTTPXFailureAndIgnoredEnrichment(t *testing.T) {
 	engine := httpxEngine(t, FingerPrint{Type: "Header", HeaderKey: "X-Fixture", HeaderValue: "marker"})
 	for _, extra := range []string{`,"failed":true`, `,"error":"upstream timeout"`} {
@@ -326,6 +364,22 @@ func TestHTTPXNoNetworkAndLifecycle(t *testing.T) {
 	err = RunHTTPXCaptured(context.Background(), emptyEngine(t), failingReader{io.ErrUnexpectedEOF}, config, HTTPXImportOptions{}, func(Result) error { return nil })
 	if err == nil || errors.Is(err, io.ErrUnexpectedEOF) {
 		t.Fatalf("browser reached importer input: %v", err)
+	}
+}
+
+func TestRunHTTPXCapturedPrecancelledInputWakesWithoutReading(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	inputErr := errors.New("input must not be read")
+	config := DefaultConfig()
+	var wakeups atomic.Int32
+	config.CancelInput = func() { wakeups.Add(1) }
+	err := RunHTTPXCaptured(ctx, emptyEngine(t), failingReader{inputErr}, config, HTTPXImportOptions{}, func(Result) error {
+		t.Error("pre-cancelled stream emitted a result")
+		return nil
+	})
+	if !errors.Is(err, context.Canceled) || errors.Is(err, inputErr) || wakeups.Load() != 1 {
+		t.Fatalf("pre-cancelled stream acquired input or lost cancellation: err=%v wakeups=%d", err, wakeups.Load())
 	}
 }
 

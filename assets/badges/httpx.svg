@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="142" height="30" viewBox="0 0 142 30" role="img" aria-label="httpx: IMPORT">
+  <title>httpx: IMPORT</title>
+  <rect width="142" height="30" rx="3" fill="#2B292E"/>
+  <path d="M76 0h66v30H76z" fill="#A9D5B0"/>
+  <g transform="translate(8 7) scale(.67)" fill="none" stroke="#FAF6F1" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12h12 M12 8l4 4-4 4 M19 5h3v14h-3"/>
+  </g>
+  <g font-family="Arial,Helvetica,sans-serif" font-size="10" font-weight="700">
+    <text x="29" y="19" fill="#FAF6F1">httpx</text>
+    <text x="109" y="19" text-anchor="middle" fill="#241D20">IMPORT</text>
+  </g>
+</svg>

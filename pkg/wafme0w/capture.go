@@ -68,9 +68,6 @@ func runCaptured(ctx context.Context, engine *Engine, inputs io.Reader, config C
 	if err := config.validate(); err != nil {
 		return err
 	}
-	if err := ctx.Err(); err != nil {
-		return err
-	}
 	if config.CancelInput != nil {
 		wake := sync.OnceFunc(config.CancelInput)
 		finished := make(chan struct{})
@@ -86,6 +83,9 @@ func runCaptured(ctx context.Context, engine *Engine, inputs io.Reader, config C
 				<-finished
 			}
 		}()
+	}
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 	scanner := bufio.NewScanner(inputs)
 	scanner.Buffer(make([]byte, bufio.MaxScanTokenSize), maxCaptureRecordBytes+1)
