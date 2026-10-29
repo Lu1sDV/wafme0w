@@ -6,6 +6,26 @@ The module path is `github.com/Lu1sDV/wafme0w/v2`. Use keyed literals for export
 structs. Go module versions and result JSON schema versions are separate contracts;
 see [versioning](#versioning).
 
+## Add the module
+
+Use Go 1.26 or newer. In your application's module, select a reviewed v2
+tag or commit:
+
+```sh
+go mod init example.com/waf-client # Skip if go.mod already exists.
+go get github.com/Lu1sDV/wafme0w/v2@<v2-tag-or-commit>
+```
+
+Replace the placeholder with an actual revision; do not use a v1 release with
+the `/v2` import path. To develop against a local source checkout instead:
+
+```sh
+go mod edit -replace github.com/Lu1sDV/wafme0w/v2=/absolute/path/to/wafme0w
+go get github.com/Lu1sDV/wafme0w/v2
+```
+
+## Classify a saved response
+
 Match an already captured response without sending any requests:
 ```go
 package main
@@ -42,6 +62,105 @@ func main() {
 }
 
 ```
+
+## Scan authorized URLs
+
+The library does not automatically load the CLI's embedded catalogue. Supply
+your own rules or load the JSON catalogue from
+[`cmd/wafme0w/resources/waf-fingerprints.json`](../cmd/wafme0w/resources/waf-fingerprints.json)
+with `ReadCatalogue`, then compile it once and reuse the engine.
+
+Save this as `main.go`. It accepts a catalogue path and one authorized URL and
+writes one result as JSONL:
+
+```go
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+	"os"
+	"os/signal"
+	"strings"
+
+	"github.com/Lu1sDV/wafme0w/v2/pkg/wafme0w"
+)
+
+func main() {
+	if len(os.Args) != 3 {
+		log.Fatal("usage: waf-client catalogue.json authorized-url")
+	}
+	if err := scan(os.Args[1], os.Args[2]); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func scan(cataloguePath, target string) error {
+	catalogue, err := os.Open(cataloguePath)
+	if err != nil {
+		return err
+	}
+	defer catalogue.Close()
+	rules, err := wafme0w.ReadCatalogue(catalogue)
+	if err != nil {
+		return err
+	}
+	engine, err := wafme0w.Compile(rules)
+	if err != nil {
+		return err
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	interruptsDone := make(chan struct{})
+	go func() {
+		<-ctx.Done()
+		stop() // Restore default handling so a second Ctrl-C can terminate.
+		close(interruptsDone)
+	}()
+	defer func() {
+		stop()
+		<-interruptsDone
+	}()
+	config := wafme0w.DefaultConfig()
+	config.BaselineOnly = true
+	config.RequestsPerSecond = 5
+	encoder := json.NewEncoder(os.Stdout)
+	return wafme0w.Run(ctx, engine, strings.NewReader(target+"\n"), config,
+		func(result wafme0w.Result) error {
+			if err := encoder.Encode(result); err != nil {
+				return fmt.Errorf("write result: %w", err)
+			}
+			return nil
+		})
+}
+```
+
+```sh
+go mod tidy
+# Start your own HTTP server on port 8080 first.
+go run . /path/to/waf-fingerprints.json http://127.0.0.1:8080
+```
+
+`BaselineOnly` sends a normal request rather than active probes; redirects can
+still produce additional requests. Without it, the default mode sends active
+probes. Only scan targets you own or are authorized to test.
+
+The first Ctrl-C cancels acquisition; a subsequent Ctrl-C terminates the process
+after default interrupt handling is restored. Context cancellation cannot
+interrupt this example's stdout write if a downstream reader stops consuming.
+For unattended services, supply a sink with a bounded write deadline or a
+caller-owned cancellation/unblock mechanism; callbacks must return for graceful
+shutdown. Forced termination can leave a partial JSONL record.
+
+Target failures and incomplete evidence appear in `Result`; a nil `Run` error
+does not establish a successful acquisition or a clean negative. Inspect
+`result.Outcome`, evidence diagnostics, and channel availability. Configuration,
+input, cancellation, and callback errors are returned by the runner.
+
+For native capture JSONL, replace the `Run` call with `RunCaptured` and pass an
+opened capture file as the reader. It performs no network requests. For httpx
+exports, use `RunHTTPXCaptured` with explicit encoding as described below.
 
 ## Ownership and streaming
 
@@ -121,6 +240,8 @@ Native/live output omits that metadata when unused. CSV columns and TXT keys do
 not depend on whether import metadata is present. Incompatible documented Go API
 or report-schema changes require appropriate versioning.
 
-See [CLI limits](usage.md#inputs-and-limits) and [browser capture](browser.md) for
-the remaining ownership and acquisition rules.
+See [CLI limits](usage.md#inputs-and-limits), [browser capture](browser.md), and
+[deployment boundaries](operations.md#deployment-boundaries) for the remaining
+ownership, acquisition, and hosted-service isolation requirements. URL/redirect
+validation is not an SSRF defense for a service accepting arbitrary targets.
 
