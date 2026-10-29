@@ -26,7 +26,47 @@ From the repository root after building:
 ```
 
 No network requests. The synthetic examples demonstrate a match, a clean response,
-and incomplete evidence. [Captures](../assets/demo/captures.jsonl) · [Demo recording](../assets/demo/demo.cast).
+and incomplete evidence. [Captures](../assets/demo/captures.jsonl) ·
+[Gruvbox GIF](../assets/demo/tern-demo.gif) · [Cyberpunk GIF](../assets/demo/tern-demo-dark.gif) ·
+[Split workflow demo](../assets/demo/tern-demo-split.gif) · [Video](../assets/demo/tern-demo.mp4) ·
+[Earlier asciicast](../assets/demo/demo.cast).
+
+The Tern demo runs the real CLI: human-readable evidence, a JSONL pipeline, and
+`--strict` returning exit 2 **after** saving a report containing incomplete evidence.
+It uses synthetic captures only; typing and pauses are paced for readability,
+not a speed or deployed-detection benchmark.
+
+The README pairs two different jobs: human-readable evidence in `dark-cyberpunk`
+on the left, JSONL processing and strict report publication in `light-gruvbox`
+on the right. It uses a still frame when reduced motion is preferred.
+These are two real Tern recordings composed side by side, not a per-pane theme setting.
+The evidence pane is scrolled to the results and incomplete-body warning;
+the full walkthrough includes the command, banner, and complete summary.
+
+To record it again, install Tern, Go, Bash, jq, and FFmpeg with the `libx264`
+encoder. From the repository root, choose a fresh output directory:
+
+```sh
+tern shot assets/demo/tern-demo.txt --theme both --scale 1 \
+  --out /tmp/wafme0w-demo --flat
+for suffix in '' '-dark'; do
+  ffmpeg -i "/tmp/wafme0w-demo/wafme0w-tern${suffix}.mp4" \
+    -filter_complex '[0:v]fps=15,scale=1200:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle' \
+    -loop 0 "/tmp/wafme0w-demo/tern-demo${suffix}.gif"
+done
+tern shot assets/demo/tern-split.txt --theme dark --scale 1 \
+  --out /tmp/wafme0w-demo/split --flat
+ffmpeg -i /tmp/wafme0w-demo/split/human-dark.mp4 \
+  -i /tmp/wafme0w-demo/split/automation-dark.mp4 \
+  -filter_complex '[0:v]fps=15[l];[1:v]fps=15[r];[l][r]hstack=shortest=1,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle' \
+  -loop 0 /tmp/wafme0w-demo/tern-demo-split.gif
+ffmpeg -i /tmp/wafme0w-demo/tern-demo-split.gif \
+  -frames:v 1 /tmp/wafme0w-demo/tern-demo-split.png
+```
+
+The presentation script builds an isolated temporary binary and removes its
+temporary captures and report when it exits. Run `bash assets/demo/tern-demo.sh`
+for an interactive walkthrough without recording.
 
 ## URL pipelines
 

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/wafme0w.webp" width="280" height="280" alt="The Wafme0w cat peeking over a brick firewall">
+  <img src="assets/wafme0w.webp" width="160" height="160" alt="The Wafme0w cat peeking over a brick firewall">
 </p>
 
 <h1 align="center">Wafme0w</h1>
@@ -19,6 +19,25 @@
 </p>
 
 <p align="center"><a href="#1-build">Quick start</a> · <a href="#benchmarks">Benchmarks</a> · <a href="#documentation">Documentation</a></p>
+
+<p align="center"><strong>Read the evidence. Automate the result.</strong></p>
+
+<p align="center">
+  <a href="assets/demo/tern-demo-split.gif">
+    <picture>
+      <source media="(prefers-reduced-motion: reduce)" srcset="assets/demo/tern-demo-split.png">
+      <img src="assets/demo/tern-demo-split.gif" width="960" height="507" alt="Two wafme0w workflows: Cyberpunk terminal shows WAF matches and incomplete evidence; Gruvbox terminal streams JSONL, then saves a report with strict-mode exit status 2.">
+    </picture>
+  </a>
+</p>
+
+<p align="center">
+  <strong>Cyberpunk:</strong> human evidence · <strong>Gruvbox:</strong> JSONL &amp; reports<br>
+  Synthetic captures · No target requests<br>
+  <a href="assets/demo/tern-demo-split.gif">Open full-size split demo</a> ·
+  <a href="assets/demo/tern-demo.mp4">Watch the full walkthrough</a> ·
+  <a href="docs/usage.md#offline-captures">Commands &amp; recording</a>
+</p>
 
 ## 1. Build
 

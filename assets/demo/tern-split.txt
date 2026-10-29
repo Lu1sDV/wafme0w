@@ -1,0 +1,40 @@
+# Two real recordings, composed side by side; themes are window-wide in Tern.
+# tern shot assets/demo/tern-split.txt --theme dark --scale 1 --out /tmp/wafme0w-split --flat
+size 720 760 1
+theme dark dark-cyberpunk
+theme light light-gruvbox
+appearance dark
+font 20
+ui-font-size 14
+padding 16
+pane-headers never
+status-bar off
+tabs horizontal
+rename "HUMAN / WAF evidence"
+ready
+run "bash assets/demo/tern-demo.sh evidence"
+expect "Next: machine-readable output"
+scroll 1000
+# Focus the evidence, not the build banner; retain the incomplete-body warning.
+scroll -9
+shot human
+record start human fps 15
+wait 16000
+record stop
+key Enter
+scroll -1000
+ready
+appearance light
+font 20
+rename "AUTOMATION / JSONL and reports"
+run "bash assets/demo/tern-demo.sh automation"
+expect "Next: automation with an explicit safety signal"
+shot automation
+record start automation fps 15
+wait 6500
+key Enter
+expect "Demo complete"
+shot report
+wait 6500
+record stop
+key Enter
