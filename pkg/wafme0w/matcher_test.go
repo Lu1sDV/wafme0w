@@ -1,6 +1,7 @@
 package wafme0w
 
 import (
+	"bytes"
 	"encoding/json"
 	"math/rand/v2"
 	"os"
@@ -127,9 +128,9 @@ func TestMatcherRegexpEquivalence(t *testing.T) {
 			if got, want := matcher.match(sample), oracle.MatchString(sample); got != want {
 				t.Errorf("pattern %q sample %q: got %v, want %v", pattern, sample, got, want)
 			}
-			folded := foldText(sample)
+			folded := foldBytes([]byte(sample))
 			mask := contentMask(folded)
-			response := responseData{body: sample, foldedBody: folded, bodyMask: mask, bodyFilter: true}
+			response := responseData{body: []byte(sample), foldedBody: folded, bodyMask: mask, bodyFilter: true}
 			if got, want := matcher.matchBody(&response), oracle.MatchString(sample); got != want {
 				t.Errorf("filtered pattern %q sample %q: got %v, want %v", pattern, sample, got, want)
 			}
@@ -154,6 +155,42 @@ func TestMatcherRegexpEquivalence(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestFoldBytesPreservesCallerStorage(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"unchanged ASCII", "ordinary response", "ordinary response"},
+		{"unchanged Unicode", "世界�", "世界�"},
+		{"first-byte fold", "ORDINARY response", "ordinary response"},
+		{"late fold", "ordinary RESPONSE", "ordinary response"},
+		{"simple-fold orbits", "Kσſ", "kΣs"},
+		{"malformed UTF-8", "ordinary \xff\xef\xbf", "ordinary ���"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			body := []byte(test.input)
+			folded := foldBytes(body)
+			if string(folded) != test.want {
+				t.Fatalf("folded %q: got %q, want %q", body, folded, test.want)
+			}
+			if !bytes.Equal(body, []byte(test.input)) {
+				t.Fatalf("folding mutated caller body: %q", body)
+			}
+			if test.input == test.want {
+				if &folded[0] != &body[0] {
+					t.Fatal("unchanged body was copied")
+				}
+			} else {
+				folded[0] ^= 1
+				if !bytes.Equal(body, []byte(test.input)) {
+					t.Fatal("changed folded body aliases caller storage")
+				}
+			}
+		})
 	}
 }
 
@@ -284,9 +321,9 @@ func TestBundledPatterns(t *testing.T) {
 					if got, want := matcher.match(sample), oracle.MatchString(sample); got != want {
 						t.Fatalf("%s schema %d fingerprint %d, %q on %q: got %v, want %v", waf.Name, si+1, fi+1, matcher.pattern, sample, got, want)
 					}
-					folded := foldText(sample)
+					folded := foldBytes([]byte(sample))
 					mask := contentMask(folded)
-					response := responseData{body: sample, foldedBody: folded, bodyMask: mask, bodyFilter: true}
+					response := responseData{body: []byte(sample), foldedBody: folded, bodyMask: mask, bodyFilter: true}
 					if got, want := matcher.matchBody(&response), oracle.MatchString(sample); got != want {
 						t.Fatalf("%s schema %d fingerprint %d, prepared body %q on %q: got %v, want %v", waf.Name, si+1, fi+1, matcher.pattern, sample, got, want)
 					}
@@ -330,6 +367,50 @@ func patternSample(node *syntax.Regexp, seed int) string {
 	default:
 		return ""
 	}
+}
+
+// FuzzMatcherRegexpEquivalence checks optimizations against the standard-library
+// regexp oracle, including malformed UTF-8 and rejection-only body indexes.
+func FuzzMatcherRegexpEquivalence(f *testing.F) {
+	for _, seed := range [][2]string{
+		{`(?i)kelvin`, "KELVIN"},
+		{`(?i)^�kelvin�$`, "\xffKELVIN\xff"},
+		{`(?i)(alpha.*tail|beta.+suffix)`, "BETA--SUFFIX"},
+		{`(?i)foo(?-i:[A-Z])bar`, "FOOZBAR"},
+		{`(?m)^foo$`, "before\nfoo\nafter"},
+		{`(?i)k*[0-9]`, "K7"},
+		{`(?i)kelvin sentinel`, strings.Repeat("ordinary ", 512) + "Kelvin sentinel"},
+		{`^$`, ""},
+	} {
+		f.Add(seed[0], seed[1])
+	}
+	f.Fuzz(func(t *testing.T, pattern, body string) {
+		if pattern == "" || len(pattern) > 256 || len(body) > 16<<10 {
+			return
+		}
+		oracle, err := regexp.Compile(pattern)
+		if err != nil {
+			return
+		}
+		matcher, err := compileFingerprint(FingerPrint{Type: "Content", Pattern: pattern})
+		if err != nil {
+			t.Fatalf("valid regexp %q rejected: %v", pattern, err)
+		}
+		want := oracle.MatchString(body)
+		if got := matcher.match(body); got != want {
+			t.Fatalf("pattern %q on %q: got %v, want %v", pattern, body, got, want)
+		}
+		folded := foldBytes([]byte(body))
+		for _, indexed := range []bool{false, true} {
+			response := responseData{body: []byte(body), foldedBody: folded, bodyMask: contentMask(folded), bodyFilter: true, allowIndex: indexed}
+			if indexed {
+				response.bodyQuadgrams = newQuadgramFilter(folded)
+			}
+			if got := matcher.matchBody(&response); got != want {
+				t.Fatalf("pattern %q on %q, indexed=%t: got %v, want %v", pattern, body, indexed, got, want)
+			}
+		}
+	})
 }
 
 var benchmarkMatches int

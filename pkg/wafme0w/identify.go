@@ -157,8 +157,8 @@ type responseData struct {
 	status        int
 	reason        string
 	headers       http.Header
-	body          string
-	foldedBody    string
+	body          []byte
+	foldedBody    []byte
 	cookies       []string
 	bodyMask      [4]uint64
 	bodyQuadgrams *quadgramFilter
@@ -175,6 +175,7 @@ const (
 // Classify evaluates supplied observations only. Fingerprints in an AND schema
 // may match different responses. Incomplete evidence uses three-valued logic:
 // a known false term settles AND, and a known true term settles OR.
+// Evidence bodies are borrowed read-only for this call and are never retained.
 func (e *Engine) Classify(evidence []Evidence) Outcome {
 	outcome := Outcome{State: Complete}
 	if e == nil {
@@ -212,9 +213,9 @@ func (e *Engine) Classify(evidence []Evidence) Outcome {
 			}
 		}
 		if e.needsBody && response.bodyComplete {
-			response.body = string(observation.Body)
+			response.body = observation.Body
 			if e.needsFoldedBody {
-				response.foldedBody = foldText(response.body)
+				response.foldedBody = foldBytes(response.body)
 				if e.filterBody {
 					response.allowIndex = true
 					response.bodyMask = contentMask(response.foldedBody)

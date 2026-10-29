@@ -1,6 +1,7 @@
 package wafme0w
 
 import (
+	"bytes"
 	"fmt"
 	"net/textproto"
 	"regexp"
@@ -69,7 +70,7 @@ func compileFingerprint(fp FingerPrint) (*fingerprintMatcher, error) {
 			if !m.fold {
 				literal = foldText(literal)
 			}
-			m.mask = contentMask(literal)
+			m.mask = contentMask([]byte(literal))
 		}
 		return m, nil
 	}
@@ -228,17 +229,31 @@ func (m *fingerprintMatcher) matchBody(response *responseData) bool {
 			}
 		}
 		if m.foldedRegex != nil {
-			return m.foldedRegex.MatchString(response.foldedBody)
+			return m.foldedRegex.Match(response.foldedBody)
 		}
-		return m.regex.MatchString(response.body)
+		return m.regex.Match(response.body)
 	}
 	if m.fold {
 		if !m.start && !m.end {
 			return response.containsFolded(m.literal)
 		}
-		return m.matchLiteral(response.foldedBody)
+		return m.matchBodyLiteral(response.foldedBody)
 	}
-	return m.matchLiteral(response.body)
+	return m.matchBodyLiteral(response.body)
+}
+
+func (m *fingerprintMatcher) matchBodyLiteral(value []byte) bool {
+	literal := []byte(m.literal)
+	switch {
+	case m.start && m.end:
+		return bytes.Equal(value, literal)
+	case m.start:
+		return bytes.HasPrefix(value, literal)
+	case m.end:
+		return bytes.HasSuffix(value, literal)
+	default:
+		return bytes.Contains(value, literal)
+	}
 }
 
 type quadgramFilter [1024]uint64
@@ -248,7 +263,7 @@ func quadgramBit(first, second, third, fourth byte) uint32 {
 	return (gram * 0x9e3779b1) >> 16
 }
 
-func newQuadgramFilter(value string) *quadgramFilter {
+func newQuadgramFilter(value []byte) *quadgramFilter {
 	filter := new(quadgramFilter)
 	for i := 3; i < len(value); i++ {
 		bit := quadgramBit(value[i-3], value[i-2], value[i-1], value[i])
@@ -259,7 +274,7 @@ func newQuadgramFilter(value string) *quadgramFilter {
 
 func (r *responseData) containsFolded(literal string) bool {
 	if !r.allowIndex || len(r.foldedBody) < 4096 || len(literal) < 4 || len(literal) > len(r.foldedBody) {
-		return strings.Contains(r.foldedBody, literal)
+		return bytes.Contains(r.foldedBody, []byte(literal))
 	}
 	// ponytail: only index catalogues eligible for shared filtering, after 8 misses.
 	// A qualifying body still costs one 8 KiB allocation; few-rule engines bypass it.
@@ -275,7 +290,7 @@ func (r *responseData) containsFolded(literal string) bool {
 			}
 		}
 	}
-	matched := strings.Contains(r.foldedBody, literal)
+	matched := bytes.Contains(r.foldedBody, []byte(literal))
 	if !matched && r.bodyMisses < 8 {
 		r.bodyMisses++
 	}
@@ -284,7 +299,7 @@ func (r *responseData) containsFolded(literal string) bool {
 
 // Each adjacent byte pair sets one bit. Collisions only permit extra exact
 // searches; a missing bit proves the required folded literal cannot occur.
-func contentMask(value string) (mask [4]uint64) {
+func contentMask(value []byte) (mask [4]uint64) {
 	for i := 1; i < len(value); i++ {
 		pair := uint32(value[i-1])<<8 | uint32(value[i])
 		bit := (pair * 0x9e3779b1) >> 24
@@ -341,6 +356,49 @@ func foldText(value string) string {
 	return folded.String()
 }
 
+// foldBytes uses the same canonical folding for bodies without converting them
+// to strings. Unchanged input is borrowed; changed input gets independent storage.
+func foldBytes(value []byte) []byte {
+	for index := 0; index < len(value); {
+		r, width := rune(value[index]), 1
+		mapped := r
+		if r < utf8.RuneSelf {
+			if r < 'A' || r > 'Z' {
+				index++
+				continue
+			}
+			mapped += 'a' - 'A'
+		} else {
+			r, width = utf8.DecodeRune(value[index:])
+			mapped = foldNonASCII(r)
+		}
+		if mapped == r && (r != utf8.RuneError || width != 1) {
+			index += width
+			continue
+		}
+		folded := make([]byte, index, len(value)+utf8.UTFMax)
+		copy(folded, value[:index])
+		folded = utf8.AppendRune(folded, mapped)
+		value = value[index+width:]
+		for index = 0; index < len(value); {
+			b := value[index]
+			if b < utf8.RuneSelf {
+				if b >= 'A' && b <= 'Z' {
+					b += 'a' - 'A'
+				}
+				folded = append(folded, b)
+				index++
+			} else {
+				r, width = utf8.DecodeRune(value[index:])
+				folded = utf8.AppendRune(folded, foldNonASCII(r))
+				index += width
+			}
+		}
+		return folded
+	}
+	return value
+}
+
 func foldNonASCII(r rune) rune {
 	least := r
 	for next := unicode.SimpleFold(r); next != r; next = unicode.SimpleFold(next) {
@@ -366,7 +424,7 @@ func requiredContent(node *syntax.Regexp) (literals []string, mask [4]uint64) {
 			}
 		}
 		literal := foldText(string(node.Rune))
-		return []string{literal}, contentMask(literal)
+		return []string{literal}, contentMask([]byte(literal))
 	case syntax.OpCapture, syntax.OpPlus:
 		return requiredContent(node.Sub[0])
 	case syntax.OpRepeat:
