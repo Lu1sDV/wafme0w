@@ -286,6 +286,82 @@ const browserGeometryScript = `(fields) => {
   let ok = innerWidth === 1440 && innerHeight === 900 && scrollX === 0 && scrollY === 0;
   if (document.getAnimations().some(animation => animation.playState === "running" || animation.pending)) ok = false;
   const rects = [];
+  const styles = new WeakMap();
+  const styleOf = element => {
+    let style = styles.get(element);
+    if (!style) { style = getComputedStyle(element); styles.set(element, style); }
+    return style;
+  };
+  const finiteRect = rect => [rect.x,rect.y,rect.width,rect.height,rect.right,rect.bottom].every(Number.isFinite) && rect.width >= 0 && rect.height >= 0;
+  // These effects can paint copies of credential text outside layout rectangles.
+  const paintExpands = style => style.textShadow !== "none" || style.filter !== "none" ||
+    (style.webkitBoxReflect || "none") !== "none" || parseFloat(style.webkitTextStrokeWidth || "0") !== 0 ||
+    (style.textEmphasisStyle || "none") !== "none";
+  const paintDisplays = new Set(["block", "flow-root", "inline-block", "flex", "inline-flex", "grid", "inline-grid"]);
+  const textInputs = new Set(["text", "search", "url", "tel", "email", "password", "number"]);
+  const clipsOverflow = value => ["clip", "hidden", "auto", "scroll"].includes(value);
+  const clipsCredentialInk = (element, style) => {
+    // Layout rectangles measure advances, not glyph ink: even upright letters
+    // can overhang them. Only accept actual clipping on this exact mask box.
+    if ((style.overflowClipMargin || "0px") !== "0px") return false;
+    const nativeText = element.localName === "textarea" || element.localName === "input" && textInputs.has(element.type);
+    if (nativeText && element.childElementCount === 0 && clipsOverflow(style.overflowX) && clipsOverflow(style.overflowY)) return true;
+    const containment = style.contain.split(/\s+/);
+    // Paint containment does not apply to ordinary non-replaced inline boxes
+    // or table-internal rows/columns. Use a deliberately narrow display set.
+    return paintDisplays.has(style.display) && containment.some(value => value === "paint" || value === "content" || value === "strict");
+  };
+  const displayHidden = element => {
+    let depth = 0;
+    for (let ancestor = element; ancestor; ancestor = ancestor.parentElement) {
+      if (++depth > 128) { ok = false; return true; }
+      if (styleOf(ancestor).display === "none") return true;
+    }
+    return false;
+  };
+  let examined = 0;
+  const subtreeContained = (element, bounds) => {
+    const within = rect => finiteRect(rect) && (rect.width === 0 || rect.height === 0 ||
+      rect.x >= bounds.x && rect.y >= bounds.y && rect.right <= bounds.right && rect.bottom <= bounds.bottom);
+    // Reject ambiguous geometry instead of assuming that a wrapper bounds its
+    // descendants, overflowing text, generated content, or ancestor effects.
+    for (let ancestor = element; ancestor; ancestor = ancestor.parentElement) {
+      if (paintExpands(styleOf(ancestor))) return false;
+      for (const pseudo of ["::first-letter", "::first-line"]) {
+        if (paintExpands(getComputedStyle(ancestor, pseudo))) return false;
+      }
+    }
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+      acceptNode: node => {
+        // Accept the first over-budget node so nextNode returns and inspection
+        // stops, even when every preceding sibling was hidden and rejected.
+        if (++examined > 4096) return NodeFilter.FILTER_ACCEPT;
+        return node.nodeType === Node.ELEMENT_NODE && styleOf(node).display === "none" ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    const range = document.createRange();
+    examined++;
+    for (let node = element; node; node = walker.nextNode()) {
+      if (examined > 4096) return false;
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const style = styleOf(node);
+        if (node.namespaceURI !== "http://www.w3.org/1999/xhtml" || paintExpands(style) || style.display === "list-item" ||
+          node.localName === "dialog" || node.hasAttribute("popover")) return false;
+        for (const pseudo of ["::before", "::after"]) {
+          const generated = getComputedStyle(node, pseudo).content;
+          if (generated !== "none" && generated !== "normal") return false;
+        }
+        for (const pseudo of ["::first-letter", "::first-line"]) {
+          if (paintExpands(getComputedStyle(node, pseudo))) return false;
+        }
+        for (const rect of node.getClientRects()) if (!within(rect)) return false;
+      } else {
+        range.selectNodeContents(node);
+        for (const rect of range.getClientRects()) if (!within(rect)) return false;
+      }
+    }
+    return true;
+  };
   for (const element of document.querySelectorAll("*")) {
     if (element.localName === "iframe" || element.localName === "frame" || element.shadowRoot) ok = false;
     let secret = false;
@@ -300,9 +376,12 @@ const browserGeometryScript = `(fields) => {
       if (key.startsWith("data-") && (names.has(normalized(key.slice(5))) || names.has(normalized(attr.value)))) secret = true;
     }
     if (!secret) continue;
-    const rect = element.getBoundingClientRect(), style = getComputedStyle(element);
-    if (style.display === "none" || style.visibility === "hidden" || rect.width === 0 || rect.height === 0) continue;
-    if (![rect.x,rect.y,rect.width,rect.height].every(Number.isFinite)) { ok = false; continue; }
+    // display:none suppresses the entire subtree, including positioned children.
+    // Zero-sized/contents/offscreen/visibility-hidden wrappers do not prove that.
+    if (displayHidden(element)) continue;
+    const rect = element.getBoundingClientRect(), style = styleOf(element);
+    if (!finiteRect(rect) || rect.width === 0 || rect.height === 0 || style.display === "contents" || style.visibility !== "visible" ||
+      !clipsCredentialInk(element, style) || !subtreeContained(element, rect)) { ok = false; continue; }
     if (rect.right <= 0 || rect.bottom <= 0 || rect.x >= innerWidth || rect.y >= innerHeight) continue;
     if (rects.length >= 256) { ok = false; break; }
     // A small outward margin covers antialiasing at ordinary field borders.

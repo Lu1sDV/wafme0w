@@ -2,13 +2,13 @@ package offlinebench
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -19,10 +19,11 @@ import (
 )
 
 const (
-	SchemaVersion = 3
-	maxCorpusSize = 8 << 20
-	maxBodySize   = 1 << 20
-	maxHeaders    = 256
+	SchemaVersion          = 3
+	maxCorpusSize          = 8 << 20
+	maxBodySize            = 1 << 20
+	maxReferencedBodyBytes = 4 << 20
+	maxHeaders             = 256
 )
 
 type Corpus struct {
@@ -83,6 +84,7 @@ type Truth struct {
 	Products []string `json:"products,omitempty"`
 }
 
+// Response bodies returned by LoadCorpus are immutable and may share storage.
 type Response struct {
 	Role           string           `json:"role"`
 	StatusCode     int              `json:"status_code"`
@@ -153,17 +155,30 @@ type Result struct {
 }
 
 func LoadCorpus(path, bodiesDir string) (Corpus, error) {
-	data, err := readLimited(path, maxCorpusSize)
+	return LoadCorpusContext(context.Background(), path, bodiesDir)
+}
+
+// LoadCorpusContext admits a bounded corpus and its hash-verified response
+// bodies. Repeated references share immutable storage, but each counts against
+// the aggregate body limit because worker JSON expands every reference.
+func LoadCorpusContext(ctx context.Context, path, bodiesDir string) (Corpus, error) {
+	data, err := readLimitedContext(ctx, path, maxCorpusSize)
 	if err != nil {
 		return Corpus{}, fmt.Errorf("read corpus: %w", err)
 	}
+	if err := admitCorpusJSON(ctx, data); err != nil {
+		return Corpus{}, fmt.Errorf("decode corpus: %w", err)
+	}
 	var corpus Corpus
-	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder := json.NewDecoder(contextReader{ctx, bytes.NewReader(data)})
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&corpus); err != nil {
 		return Corpus{}, fmt.Errorf("decode corpus: %w", err)
 	}
 	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		if ctx.Err() != nil {
+			return Corpus{}, ctx.Err()
+		}
 		return Corpus{}, errors.New("decode corpus: trailing JSON value")
 	}
 	var raw struct {
@@ -174,6 +189,9 @@ func LoadCorpus(path, bodiesDir string) (Corpus, error) {
 	}
 	corpus.fixtureDigests = make(map[string]string, len(raw.Cases))
 	for index, fixture := range raw.Cases {
+		if err := ctx.Err(); err != nil {
+			return Corpus{}, err
+		}
 		var value any
 		if err := json.Unmarshal(fixture, &value); err != nil {
 			return Corpus{}, err
@@ -185,13 +203,16 @@ func LoadCorpus(path, bodiesDir string) (Corpus, error) {
 		digest := sha256.Sum256(canonical)
 		corpus.fixtureDigests[corpus.Cases[index].ID] = hex.EncodeToString(digest[:])
 	}
-	if err := validateCorpus(&corpus, bodiesDir); err != nil {
+	if err := validateCorpus(ctx, &corpus, bodiesDir); err != nil {
 		return Corpus{}, err
 	}
 	return corpus, nil
 }
 
-func validateCorpus(corpus *Corpus, bodiesDir string) error {
+func validateCorpus(ctx context.Context, corpus *Corpus, bodiesDir string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if corpus.SchemaVersion != SchemaVersion {
 		return fmt.Errorf("unsupported corpus schema %d", corpus.SchemaVersion)
 	}
@@ -201,6 +222,9 @@ func validateCorpus(corpus *Corpus, bodiesDir string) error {
 	productIDs := make(map[string]struct{}, len(corpus.Products))
 	names := map[string]map[string]bool{"wafme0w": {}, "wafw00f": {}}
 	for _, product := range corpus.Products {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if product.ID == "" {
 			return errors.New("empty product ID")
 		}
@@ -219,7 +243,11 @@ func validateCorpus(corpus *Corpus, bodiesDir string) error {
 		}
 	}
 	caseIDs := make(map[string]struct{}, len(corpus.Cases))
+	bodies := corpusBodies{ctx: ctx, directory: bodiesDir, remaining: maxReferencedBodyBytes, verified: make(map[string][]byte)}
 	for ci := range corpus.Cases {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		fixture := &corpus.Cases[ci]
 		if fixture.ID == "" || fixture.Kind == "" || fixture.Review == "" {
 			return fmt.Errorf("case %d requires id, kind, and review", ci+1)
@@ -261,16 +289,19 @@ func validateCorpus(corpus *Corpus, bodiesDir string) error {
 				seen[id] = true
 			}
 		}
-		if err := loadResponses(fixture, bodiesDir); err != nil {
+		if err := loadResponses(fixture, &bodies); err != nil {
 			return err
 		}
 	}
-	return nil
+	return ctx.Err()
 }
 
-func loadResponses(fixture *Case, bodiesDir string) error {
+func loadResponses(fixture *Case, bodies *corpusBodies) error {
 	roles := make(map[string]struct{}, len(fixture.Responses))
 	for ri := range fixture.Responses {
+		if err := bodies.ctx.Err(); err != nil {
+			return err
+		}
 		response := &fixture.Responses[ri]
 		if response.Role == "" {
 			return fmt.Errorf("case %q response %d has empty role", fixture.ID, ri+1)
@@ -299,35 +330,101 @@ func loadResponses(fixture *Case, bodiesDir string) error {
 		if _, err := hex.DecodeString(response.BodySHA256); err != nil || response.BodySHA256 != strings.ToLower(response.BodySHA256) {
 			return fmt.Errorf("case %q role %q has invalid body digest", fixture.ID, response.Role)
 		}
-		bodyPath := filepath.Join(bodiesDir, response.BodySHA256+".bin")
-		body, err := readLimited(bodyPath, maxBodySize)
+		body, err := bodies.load(response.BodySHA256)
 		if err != nil {
 			return fmt.Errorf("case %q role %q read body: %w", fixture.ID, response.Role, err)
-		}
-		digest := sha256.Sum256(body)
-		if hex.EncodeToString(digest[:]) != response.BodySHA256 {
-			return fmt.Errorf("case %q role %q body digest mismatch", fixture.ID, response.Role)
 		}
 		response.Body = body
 	}
 	return nil
 }
 
+type corpusBodies struct {
+	ctx       context.Context
+	directory string
+	remaining int64
+	verified  map[string][]byte
+}
+
+func (bodies *corpusBodies) load(key string) ([]byte, error) {
+	if err := bodies.ctx.Err(); err != nil {
+		return nil, err
+	}
+	body, exists := bodies.verified[key]
+	if !exists {
+		limit := min(int64(maxBodySize), bodies.remaining)
+		var err error
+		body, err = readLimitedContext(bodies.ctx, filepath.Join(bodies.directory, key+".bin"), limit)
+		if errors.Is(err, errFileSizeLimit) && limit < maxBodySize {
+			return nil, fmt.Errorf("referenced body bytes exceed %d", maxReferencedBodyBytes)
+		}
+		if err != nil {
+			return nil, err
+		}
+		digest := sha256.Sum256(body)
+		if hex.EncodeToString(digest[:]) != key {
+			return nil, errors.New("body digest mismatch")
+		}
+		// Appending to one response must not modify another cached response.
+		body = body[:len(body):len(body)]
+		bodies.verified[key] = body
+	}
+	if int64(len(body)) > bodies.remaining {
+		return nil, fmt.Errorf("referenced body bytes exceed %d", maxReferencedBodyBytes)
+	}
+	bodies.remaining -= int64(len(body))
+	return body, bodies.ctx.Err()
+}
+
+var errFileSizeLimit = errors.New("file size limit exceeded")
+
 func readLimited(path string, limit int64) ([]byte, error) {
-	file, err := os.Open(path)
+	return readLimitedContext(context.Background(), path, limit)
+}
+
+func readLimitedContext(ctx context.Context, path string, limit int64) ([]byte, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	file, err := openInputFile(path)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
-	data, err := io.ReadAll(io.LimitReader(file, limit+1))
+	info, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, errors.New("input must be a regular file")
+	}
+	stop := context.AfterFunc(ctx, func() { _ = file.Close() })
+	defer stop()
+	data, err := io.ReadAll(io.LimitReader(contextReader{ctx, file}, limit+1))
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
 	if err != nil {
 		return nil, err
 	}
 	if int64(len(data)) > limit {
-		return nil, fmt.Errorf("file exceeds %d bytes", limit)
+		return nil, fmt.Errorf("file exceeds %d bytes: %w", limit, errFileSizeLimit)
 	}
 	return data, nil
 }
+
+type contextReader struct {
+	ctx    context.Context
+	reader io.Reader
+}
+
+func (reader contextReader) Read(data []byte) (int, error) {
+	if err := reader.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return reader.reader.Read(data)
+}
+
 func knownIdentity(value string) bool {
 	return value != "" && value == strings.TrimSpace(value) && !strings.EqualFold(value, "unknown")
 }

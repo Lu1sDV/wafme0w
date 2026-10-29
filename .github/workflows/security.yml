@@ -1,4 +1,4 @@
-name: Maintained source and published binary security
+name: Maintained source, optional Python and published binary security
 
 on:
   schedule:
@@ -42,10 +42,44 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+  optional-python:
+    name: Optional Python dependency pins (independent failure gate)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Install pinned Python scanner
+        timeout-minutes: 5
+        run: |
+          python -m venv "$RUNNER_TEMP/pip-audit"
+          "$RUNNER_TEMP/pip-audit/bin/python" -m pip install pip-audit==2.10.1
+      - name: Audit optional dependency pins without installing the project
+        timeout-minutes: 3
+        run: |
+          mkdir -p security-reports
+          "$RUNNER_TEMP/pip-audit/bin/python" -m pip_audit \
+            --requirement tools/offlinebench/requirements.txt \
+            --no-deps --disable-pip --strict --vulnerability-service pypi \
+            --progress-spinner off --timeout 20 --format json \
+            --output security-reports/optional-python.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: optional-python-vulnerability-reports
+          path: security-reports
+          if-no-files-found: error
+          retention-days: 90
+
   published:
     name: Supported published archives (independent failure gate)
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 65
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
@@ -64,7 +98,7 @@ jobs:
         timeout-minutes: 5
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
       - name: Scan current stable and any newer prerelease actual binaries
-        timeout-minutes: 34
+        timeout-minutes: 57
         run: python tools/release.py scan-published
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()

@@ -13,7 +13,7 @@ tag or commit:
 
 ```sh
 go mod init example.com/waf-client # Skip if go.mod already exists.
-go get github.com/Lu1sDV/wafme0w/v2@<v2-tag-or-commit>
+go get 'github.com/Lu1sDV/wafme0w/v2@<v2-tag-or-commit>'
 ```
 
 Replace the placeholder with an actual revision; do not use a v1 release with
@@ -174,11 +174,21 @@ fresh Chromium capture; bounded export workers may overlap sanitized asset saves
 `RunCaptured` decodes and classifies with at most `min(Config.Concurrency,
 GOMAXPROCS)` workers, then emits serially in input order. At most twice that many
 records and 32 MiB of raw records are admitted ahead of emission.
+Native records have a 16 MiB serialized limit, 64 observations, and at most
+4,096 headers and 4,096 redirect destinations per observation. The importer
+enforces collection limits before decoding an excess element; these limits do
+not change direct `Evidence` JSON unmarshalling or the `Classify` API.
 Readers, injected clients/transports, and writers remain caller-owned. Blocking
 input needs `Config.CancelInput` or another caller-provided wakeup; callbacks and
 transports must honor cancellation and return. After successful configuration
 validation, cancellation invokes `CancelInput` once, including when the supplied
 context is already cancelled.
+
+`Config.Concurrency` defaults to 20 and must be between 1 and
+`wafme0w.MaxConcurrency` (65,536). Values outside that supported range fail
+configuration validation before reading inputs or allocating workers. The upper
+bound prevents excessive worker fan-out and counter overflow; it is not a
+recommended setting or a process memory limit.
 
 `Config.ProbeConcurrency` defaults to 1; values up to 8 parallelize later
 full-mode probes after the normal response. `Config.MaxConnections == 0`

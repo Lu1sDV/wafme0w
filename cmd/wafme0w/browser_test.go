@@ -83,8 +83,8 @@ func TestBrowserArtifactsRejectAliasesAndCancellation(t *testing.T) {
 		}
 	}
 	for _, opts := range []options{
-		{SaveScreenshots: real, JournalFile: alias},
-		{Browser: "navigate", BrowserPath: alias, OutputFile: real},
+		{BrowserOptions: BrowserOptions{SaveScreenshots: real}, OutputOptions: OutputOptions{JournalFile: alias}},
+		{BrowserOptions: BrowserOptions{Browser: "navigate", BrowserPath: alias}, OutputOptions: OutputOptions{OutputFile: real}},
 	} {
 		if err := checkFileCollisions(opts, nil, false, io.Discard, io.Discard); err == nil {
 			t.Fatalf("artifact/browser alias accepted: %+v", opts)
@@ -140,6 +140,28 @@ func TestBrowserRejectsExecutableWrappers(t *testing.T) {
 	}
 	if _, err := resolveBrowserPath(wrapper); err == nil {
 		t.Fatal("shell wrapper accepted as native Chromium")
+	}
+}
+
+func TestBrowserDependentOptionsRequireTheirMode(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"implicit off path", []string{"--browser-path=/missing/native-browser"}, "--browser-path requires --browser=navigate or --browser=screenshot"},
+		{"explicit off path", []string{"--browser=off", "--browser-path=/missing/native-browser"}, "--browser-path requires --browser=navigate or --browser=screenshot"},
+		{"off screenshot saving", []string{"--save-screenshots=images"}, "--save-screenshots requires --browser=screenshot"},
+		{"navigate screenshot saving", []string{"--browser=navigate", "--save-screenshots=images"}, "--save-screenshots requires --browser=screenshot"},
+		{"off extra origin", []string{"--browser-allow-origin=https://assets.example.test"}, "--browser-allow-origin requires --browser=navigate or --browser=screenshot"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			args := append([]string{"--target=invalid://fixture", "--jsonl", "--silent"}, tc.args...)
+			code, stdout, stderr := runCLI(t, nil, args...)
+			if code != 1 || stdout != "" || !strings.Contains(stderr, tc.want) {
+				t.Fatalf("dependent browser options: exit=%d stdout=%q stderr=%q; want %q", code, stdout, stderr, tc.want)
+			}
+		})
 	}
 }
 

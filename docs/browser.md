@@ -40,6 +40,24 @@ certificate checks remain enabled.
   whitespace-delimited autocomplete tokens, password-type attributes, and
   credential `data-*` names or values. Substrings are not credential names;
   arbitrary text and pixels are not guaranteed secret-free.
+- Screenshot export requires actual clipping of recognized credential content
+  to its mask rectangle. Layout rectangles alone do not bound glyph ink, even
+  with upright fonts. Supported regions are native text inputs and textareas
+  with clipping overflow and no authored element children, or ordinary
+  block/flow-root/inline-block/flex/grid boxes with explicit CSS paint containment
+  (`contain: paint`, `content`, or `strict`). Generic credential text without that
+  containment makes screenshot saving fail closed. The page is not modified to
+  add clipping or change its appearance.
+- Expanded or uncertain `overflow-clip-margin`, inapplicable inline containment,
+  dialog/popover descendants, visible overflow, zero-sized or `display:contents`
+  wrappers, visibility uncertainty, generated content, and expanding paint
+  effects also withhold image export. Subtrees hidden by `display:none` can be
+  skipped safely, including ordinary hidden CSRF inputs. Credential-subtree
+  checks inspect at most 4,096 nodes per capture, and ancestor checks stop at 128
+  levels. On uncertainty or an exceeded limit, the screenshot callback is not
+  invoked, `screenshot.save_state` is `failed`, and `--strict` exits 2 after
+  publishing the report. DOM export remains independent. These checks do not
+  guarantee secrecy for arbitrary page pixels.
 
 ## Scope and isolation
 

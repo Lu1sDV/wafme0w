@@ -1,0 +1,78 @@
+name: Fingerprint report
+description: Propose a WAF fingerprint or report a false positive/negative with reviewed evidence.
+title: "Fingerprint: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is a public issue. Read the fingerprint workflow in
+        [CONTRIBUTING.md](https://github.com/Lu1sDV/wafme0w/blob/main/CONTRIBUTING.md#add-or-change-a-fingerprint).
+        Share sanitized synthetic or authorized evidence only. Do not attach private
+        target lists, session cookies, credentials, or customer content. If the problem
+        is a vulnerability in wafme0w, follow
+        [SECURITY.md](https://github.com/Lu1sDV/wafme0w/blob/main/SECURITY.md) instead.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Type of change
+      options:
+        - New product or fingerprint
+        - False positive
+        - False negative
+        - Update an existing rule
+    validations:
+      required: true
+  - type: input
+    id: product
+    attributes:
+      label: Product and version
+      description: Name the product and version/configuration when known; state unknown rather than inferring it from detector output.
+    validations:
+      required: true
+  - type: textarea
+    id: independent_evidence
+    attributes:
+      label: Independent basis for the expected result
+      description: Explain the known deployment configuration or source supporting the expectation. For upstream rules, link the repository, immutable revision, file, and license. Detector agreement alone is not ground truth.
+    validations:
+      required: true
+  - type: textarea
+    id: positive
+    attributes:
+      label: Sanitized positive example
+      description: Provide a minimal native capture or faithful response fields. Identify the matching channel/marker, keep repeated header values separate, and state whether body evidence is complete.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: negative
+    attributes:
+      label: Sanitized negative or near miss
+      description: Show evidence that should not match and explain why. Prefer an ordinary origin, CDN-only response, or similar marker that tests the proposed rule's boundary.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: provenance
+    attributes:
+      label: Provenance and sanitization
+      description: Mark each example synthetic or real. For real captures, provide safe authorization/reference identifiers, collection/review dates, and a description of sanitization and independent review. Do not disclose sensitive original values.
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Current behavior and proposed rule
+      description: Include wafme0w --version, relevant sanitized output/diagnostics, the proposed schema or predicate, and any known incomplete-evidence behavior.
+      render: text
+    validations:
+      required: true
+  - type: checkboxes
+    id: evidence_review
+    attributes:
+      label: Evidence review
+      options:
+        - label: I can share the submitted evidence and have removed secrets, personal data, private target names, and customer content.
+          required: true
+        - label: I distinguished synthetic examples from real captures and did not generate expected labels from detector output.
+          required: true

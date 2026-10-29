@@ -14,12 +14,16 @@ import (
 )
 
 const (
+	// MaxConcurrency bounds worker fan-out before allocation and keeps counts
+	// below sync.WaitGroup's signed 32-bit limit. It is not a memory-use limit.
+	MaxConcurrency                      = 65536
 	DefaultMaxBodyBytes           int64 = 1 << 20
 	DefaultMaxResponseHeaderBytes int64 = 64 << 10
 	DefaultMaxTargetEvidenceBytes int64 = 16 << 20
 )
 
-// Config is copied by Run. Concurrency and MaxBodyBytes must be positive.
+// Config is copied by Run. Concurrency must be 1..MaxConcurrency and
+// MaxBodyBytes must be positive.
 // Zero timeouts, header/evidence limits and request budgets use finite defaults.
 // Zero MaxConnections follows Concurrency; DefaultConfig retains an explicit 20.
 // ProbeConcurrency bounds full-mode probes after Normal (1..8, zero uses 1).
@@ -148,8 +152,8 @@ func (c Config) normalized() Config {
 }
 
 func (c Config) validate() error {
-	if c.Concurrency <= 0 {
-		return errors.New("concurrency must be positive")
+	if c.Concurrency <= 0 || c.Concurrency > MaxConcurrency {
+		return fmt.Errorf("concurrency must be between 1 and %d", MaxConcurrency)
 	}
 	if c.ProbeConcurrency < 1 || c.ProbeConcurrency > 8 {
 		return errors.New("probe concurrency must be between 1 and 8")

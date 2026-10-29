@@ -64,6 +64,25 @@ jobs:
         if: matrix.go == '1.27.3'
         timeout-minutes: 10
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+      - name: Audit optional Python dependency pins
+        if: matrix.go == '1.27.3'
+        timeout-minutes: 5
+        run: |
+          python3 -m venv "$RUNNER_TEMP/pip-audit"
+          "$RUNNER_TEMP/pip-audit/bin/python" -m pip install pip-audit==2.10.1
+          "$RUNNER_TEMP/pip-audit/bin/python" -m pip_audit \
+            --requirement tools/offlinebench/requirements.txt \
+            --no-deps --disable-pip --strict --vulnerability-service pypi \
+            --progress-spinner off --timeout 20 --format json \
+            --output "$RUNNER_TEMP/optional-python-vulnerabilities.json"
+      - name: Retain optional Python vulnerability report
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always() && matrix.go == '1.27.3'
+        with:
+          name: optional-python-vulnerability-report
+          path: ${{ runner.temp }}/optional-python-vulnerabilities.json
+          if-no-files-found: warn
+          retention-days: 90
       - name: Test release helper policies
         run: python3 -m unittest discover -s tools -p '*_test.py'
       - name: Test with race detector
@@ -105,19 +124,43 @@ jobs:
           go test ./pkg/wafme0w -run '^$' -fuzz '^FuzzAvailabilityUnusableBody$' -fuzztime=10s -parallel=2 -timeout=2m
           go test ./pkg/wafme0w -run '^$' -fuzz '^FuzzHTTPXImportCannotInventCompleteChannels$' -fuzztime=10s -parallel=2 -timeout=2m
       - name: Export statement coverage
-        run: go tool cover -func=coverage.out > coverage-statements.txt
+        run: go tool cover -func=coverage.out > "$RUNNER_TEMP/coverage-statements.txt"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: go-statement-coverage-${{ matrix.go }}
           path: |
             coverage.out
-            coverage-statements.txt
+            ${{ runner.temp }}/coverage-statements.txt
           if-no-files-found: error
           retention-days: 30
       - name: Build
         timeout-minutes: 5
         run: go build ./cmd/wafme0w
+      - name: Stress CLI option contracts without network requests
+        if: matrix.go == '1.27.3'
+        timeout-minutes: 5
+        run: python3 tools/cli_options_smoke.py --binary "$PWD/wafme0w" --output "$RUNNER_TEMP/cli-option-contracts"
+      - name: Archive CLI filename fixtures
+        if: always() && matrix.go == '1.27.3'
+        shell: bash
+        run: |
+          # Quote/colon fixture paths are valid Linux inputs but cannot be
+          # uploaded as individual files by the cross-platform artifact API.
+          if [[ -d "$RUNNER_TEMP/cli-option-contracts" ]]; then
+            tar -czf "$RUNNER_TEMP/cli-option-contracts.tar.gz" -C "$RUNNER_TEMP/cli-option-contracts" .
+          fi
+      - name: Retain CLI option contract evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always() && matrix.go == '1.27.3'
+        with:
+          name: cli-option-contracts
+          path: |
+            ${{ runner.temp }}/cli-option-contracts.tar.gz
+            ${{ runner.temp }}/cli-option-contracts/summary.json
+            ${{ runner.temp }}/cli-option-contracts/results.json
+          if-no-files-found: warn
+          retention-days: 7
       - name: Run offline detector coverage metric
         if: matrix.go == '1.27.3'
         timeout-minutes: 15
@@ -125,19 +168,17 @@ jobs:
           /usr/bin/python3 -m venv .offlinebench-venv
           .offlinebench-venv/bin/pip install --requirement tools/offlinebench/requirements.txt
           /usr/bin/python3 -m unittest discover -s tools/offlinebench -p '*_test.py'
-          go run ./cmd/offlinebench \
-            -wafw00f-python "$PWD/.offlinebench-venv/bin/python" \
-            -output offlinebench-results \
-            -iterations 25 \
-            -blocks 4 \
-            -min-coverage 1 \
-            -min-accuracy 1
-          go run ./cmd/offlinebench -verify-run offlinebench-results >> "$GITHUB_STEP_SUMMARY"
+          python3 tools/reproduce_benchmark.py \
+            --wafw00f-python "$PWD/.offlinebench-venv/bin/python" \
+            --output benchmarks/benchmark-reproduction \
+            --iterations 25 \
+            --blocks 4
+          go run ./cmd/offlinebench -verify-run benchmarks/benchmark-reproduction/run >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always() && matrix.go == '1.27.3'
         with:
           name: offline-semantic-coverage-and-profiles
-          path: offlinebench-results
+          path: benchmarks/benchmark-reproduction
           if-no-files-found: error
           retention-days: 30
       - name: Docker build and offline behavior smoke
@@ -183,13 +224,15 @@ jobs:
   native:
     name: Native PR test and archive smoke (${{ matrix.os }}/${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 25
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
         include:
           - {runner: ubuntu-24.04, os: linux, arch: amd64, suffix: '', extension: tar.gz}
+          - {runner: ubuntu-24.04-arm, os: linux, arch: arm64, suffix: '', extension: tar.gz}
           - {runner: macos-15, os: darwin, arch: arm64, suffix: '', extension: tar.gz}
+          - {runner: macos-15-intel, os: darwin, arch: amd64, suffix: '', extension: tar.gz}
           - {runner: windows-2022, os: windows, arch: amd64, suffix: .exe, extension: zip}
     env:
       CGO_ENABLED: '0'
@@ -197,7 +240,6 @@ jobs:
       RELEASE_OS: ${{ matrix.os }}
       RELEASE_ARCH: ${{ matrix.arch }}
       RELEASE_EXTENSION: ${{ matrix.extension }}
-      CHECK_TAG: v0.0.0-ci.${{ github.run_id }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -228,6 +270,8 @@ jobs:
         shell: bash
         timeout-minutes: 5
         run: |
+          CHECK_TAG=$(python tools/release.py ci-tag)
+          printf 'CHECK_TAG=%s\n' "$CHECK_TAG" >> "$GITHUB_ENV"
           go build -trimpath -buildvcs=true -o "$RUNNER_TEMP/wafme0w$BINARY_SUFFIX" ./cmd/wafme0w
           python tools/release.py package --tag "$CHECK_TAG" --revision "$(git rev-parse HEAD)" \
             --os "$RELEASE_OS" --arch "$RELEASE_ARCH" --binary "$RUNNER_TEMP/wafme0w$BINARY_SUFFIX"
@@ -235,3 +279,11 @@ jobs:
         shell: bash
         timeout-minutes: 5
         run: python tools/smoke.py archive "dist/wafme0w_${CHECK_TAG}_${RELEASE_OS}_${RELEASE_ARCH}.${RELEASE_EXTENSION}"
+      - name: Native release-container build and hardened offline smoke
+        if: runner.os == 'Linux'
+        shell: bash
+        timeout-minutes: 10
+        run: |
+          python tools/container_release.py build --tag "$CHECK_TAG" --revision "$(git rev-parse HEAD)" \
+            --arch "$RELEASE_ARCH" --repository "$GITHUB_REPOSITORY" \
+            --output "$RUNNER_TEMP/native-container"

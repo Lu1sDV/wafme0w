@@ -20,8 +20,14 @@ import (
 func validateBrowserOptions(opts options) error {
 	switch opts.Browser {
 	case "off":
-		if opts.SaveScreenshots != "" || len(opts.BrowserOrigins) != 0 {
-			return errors.New("browser saving and resource origins require --browser=navigate or --browser=screenshot")
+		if opts.SaveScreenshots != "" {
+			return errors.New("--save-screenshots requires --browser=screenshot")
+		}
+		if opts.BrowserPath != "" {
+			return errors.New("--browser-path requires --browser=navigate or --browser=screenshot")
+		}
+		if len(opts.BrowserOrigins) != 0 {
+			return errors.New("--browser-allow-origin requires --browser=navigate or --browser=screenshot")
 		}
 		return nil
 	case "navigate", "screenshot":

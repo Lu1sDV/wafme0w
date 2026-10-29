@@ -21,6 +21,36 @@ import smoke
 
 
 class ReleasePolicyTests(unittest.TestCase):
+    def test_tag_major_must_match_the_candidate_module(self):
+        for tag, module in (("v0.9.0", "example.test/tool"), ("v1.2.0", "example.test/tool"),
+                            ("v2.0.0-rc.1", "example.test/tool/v2"), ("v12.1.0", "example.test/tool/v12")):
+            release.require_module_version(tag, module)
+        for tag, module in (("v1.1.0", "example.test/tool/v2"), ("v3.0.0", "example.test/tool/v2"),
+                            ("v2.0.0", "example.test/tool"), ("v1.0.0", "example.test/tool/v1")):
+            with self.subTest(tag=tag, module=module), self.assertRaises(ValueError):
+                release.require_module_version(tag, module)
+
+    def test_candidate_module_is_read_from_commit_not_dispatch_checkout(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            git = ("git", "-C", str(root), "-c", "user.name=Release Test",
+                   "-c", "user.email=release-test@example.invalid")
+            release.command(*git, "init")
+            (root / "go.mod").write_text("module example.test/tool/v2\n\ngo 1.26.0\n")
+            release.command(*git, "add", "go.mod")
+            release.command(*git, "commit", "-m", "candidate")
+            candidate = release.command(*git, "rev-parse", "HEAD")
+            (root / "go.mod").write_text("module example.test/tool/v3\n\ngo 1.26.0\n")
+            release.command(*git, "commit", "-am", "different dispatch checkout")
+            previous = Path.cwd()
+            try:
+                os.chdir(root)
+                self.assertEqual(release.validate_candidate("v2.0.0", candidate), "example.test/tool/v2")
+                with self.assertRaisesRegex(ValueError, "major"):
+                    release.validate_candidate("v3.0.0", candidate)
+            finally:
+                os.chdir(previous)
+
     def test_semver_and_prerelease_policy(self):
         for tag in ("v0.0.0", "v1.2.3", "v2.0.0-rc.1", "v2.0.0-alpha-beta.0"):
             self.assertIsNotNone(release.version_key(tag))
@@ -76,9 +106,11 @@ class ReleasePolicyTests(unittest.TestCase):
             output = Path(temporary) / "outputs"
             with patch.dict(os.environ, {"GITHUB_OUTPUT": str(output)}), \
                     patch.object(release, "remote_revision", return_value="b" * 40) as resolve, \
-                    patch.object(release, "repository_releases", return_value=[]):
+                    patch.object(release, "repository_releases", return_value=[]), \
+                    patch.object(release, "validate_candidate") as validate:
                 release.prepare("v2.0.0-rc.1")
                 resolve.assert_called_once_with("origin", "v2.0.0-rc.1")
+                validate.assert_called_once_with("v2.0.0-rc.1", "b" * 40, fetch=True)
             self.assertEqual(output.read_text(),
                              f"tag=v2.0.0-rc.1\nrevision={'b' * 40}\nprerelease=true\n")
             with patch.object(release, "remote_revision", return_value="b" * 40), \
@@ -114,8 +146,16 @@ class ReleasePolicyTests(unittest.TestCase):
                                   "revision": "b" * 40, "go_version": release.GO_VERSION,
                                   "modified": False}
             manifest = {"schema_version": 1, "scanner": release.SCANNER,
-                        "tag": "v1.0.0", "revision": "b" * 40, "archives": archives}
+                        "tag": "v1.0.0", "revision": "b" * 40, "archives": archives,
+                        "module": "example.test/tool", "repository": "example/repo"}
+            formula = release.homebrew_formula("v1.0.0", "b" * 40, archives, "example/repo")
+            (dist / release.FORMULA).write_text(formula)
+            manifest["homebrew_formula_sha256"] = release.digest(dist / release.FORMULA)
             (dist / "manifest.json").write_text(json.dumps(manifest))
+            (dist / release.FORMULA).write_text(formula.replace("https://github.com/", "https://untrusted.invalid/"))
+            with self.assertRaisesRegex(ValueError, "Homebrew"):
+                release.check_bundle(dist, "v1.0.0", "b" * 40)
+            (dist / release.FORMULA).write_text(formula)
             release.check_bundle(dist, "v1.0.0", "b" * 40)
             mutations = (("schema_version", 2), ("scanner", "unapproved-scanner"))
             for key, value in mutations:
@@ -258,13 +298,42 @@ class ReleasePolicyTests(unittest.TestCase):
                 release.scan_published(SimpleNamespace(reports=Path("unused")))
             command.assert_not_called()
 
+    def test_historical_three_platform_releases_remain_scannable(self):
+        legacy = {"tag_name": "v1.0.0", "assets": [
+            {"name": name, "size": 1} for name in release.archive_names("v1.0.0", release.LEGACY_TARGETS)
+        ]}
+        self.assertEqual(len(release.published_assets(legacy)), 3)
+        current = {"tag_name": "v2.0.0", "assets": [
+            {"name": name, "size": 1} for name in release.archive_names("v2.0.0", release.LEGACY_TARGETS)
+        ]}
+        with self.assertRaisesRegex(ValueError, "Missing"):
+            release.published_assets(current)
+        legacy["assets"].append(legacy["assets"][0])
+        with self.assertRaisesRegex(ValueError, "Missing"):
+            release.published_assets(legacy)
+
+    def test_formula_has_exact_verified_unix_artifacts_and_rejects_interpolation(self):
+        archives = {name: {"archive_sha256": hashlib.sha256(name.encode()).hexdigest()}
+                    for name in release.archive_names("v2.0.0-rc.1")}
+        formula = release.homebrew_formula("v2.0.0-rc.1", "b" * 40, archives, "Lu1sDV/wafme0w")
+        for name, metadata in archives.items():
+            if "windows" in name:
+                self.assertNotIn(name, formula)
+            else:
+                self.assertIn(name, formula)
+                self.assertIn(metadata["archive_sha256"], formula)
+        self.assertEqual(formula.count('      url "'), 4)
+        self.assertIn('prefix.install "LICENSE.md"', formula)
+        with self.assertRaisesRegex(ValueError, "repository"):
+            release.homebrew_formula("v2.0.0-rc.1", "b" * 40, archives, 'owner/#{system("false")}')
+
     def test_moved_tag_never_reaches_release_creation(self):
         with tempfile.TemporaryDirectory() as temporary:
             dist = Path(temporary)
             (dist / "SHA256SUMS").write_text("")
             args = SimpleNamespace(dist=dist, tag="v1.0.0", revision="b" * 40)
             with patch.dict(os.environ, {"RUNNER_TEMP": temporary, "GH_REPO": "example/repo"}), \
-                    patch.object(release, "check_bundle"), \
+                    patch.object(release, "check_bundle", return_value={"repository": "example/repo"}), \
                     patch.object(release, "repository_releases", return_value=[]), \
                     patch.object(release, "remote_revision", return_value="c" * 40), \
                     patch.object(release, "command") as command:
@@ -278,7 +347,7 @@ class ReleasePolicyTests(unittest.TestCase):
             (dist / "SHA256SUMS").write_text("")
             args = SimpleNamespace(dist=dist, tag="v1.0.0", revision="b" * 40)
             with patch.dict(os.environ, {"RUNNER_TEMP": temporary, "GH_REPO": "example/repo"}), \
-                    patch.object(release, "check_bundle"), \
+                    patch.object(release, "check_bundle", return_value={"repository": "example/repo"}), \
                     patch.object(release, "repository_releases", return_value=[]), \
                     patch.object(release, "remote_revision", side_effect=["b" * 40, "c" * 40]), \
                     patch.object(release, "command") as command:

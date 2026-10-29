@@ -6,6 +6,57 @@ Wall-clock timings describe a specific build, workload, and environment. Offline
 conformance checks compare detector behavior with reviewed fixture expectations.
 Neither measures real-world detection accuracy or proves WAF enforcement.
 
+## Reproduce the current checkout
+
+Use a **clean, committed Linux checkout**, a supported Go compiler, Python 3.12
+or newer, and `bwrap` with working user, mount, PID and network namespaces.
+The comparison replays the checked-in synthetic corpus; it accepts no live target
+list and sends no requests to third-party targets. Package setup downloads
+dependencies; detector workers have no external network access.
+
+```sh
+python3 -m venv .offlinebench-venv
+.offlinebench-venv/bin/pip install -r tools/offlinebench/requirements.txt
+python3 tools/reproduce_benchmark.py \
+  --wafw00f-python "$PWD/.offlinebench-venv/bin/python" \
+  --output benchmarks/reproduction-01 --iterations 100 --blocks 4
+```
+
+Choose a new output directory for every run. The wrapper builds the benchmark
+binary itself, rejects dirty source or a mismatched binary VCS identity, verifies
+every pinned Python package (including wafw00f 2.4.2), runs the isolated comparison,
+and verifies its published generation. It records:
+
+- The source SHA, initial/final clean state, binary hash and embedded VCS identity.
+- Go version and build settings, Python version and dependency versions.
+- OS/kernel, CPU model, architecture, logical CPU count and allowed CPU affinity.
+- Corpus and requirements hashes, case counts/kinds, selection policy, iterations
+  and blocks. Every checked-in case is used; targets are not sampled or replaced.
+- The exact commands, stdout/stderr, manifest hash, timestamps and completion
+  status. A failed build, isolation check or result verification remains a failure
+  with `complete: false`; there is no fallback to an unisolated comparison.
+
+`reproduction.json` describes the host and run; `run/report.txt` and
+`run/summary.json` contain the measurements; `run/run-manifest.json` binds the
+published result files. Retain the complete output directory with any published
+claim. The CI artifact contains the same records for its exact checkout. A hosted
+CI runner is suitable for conformance and reproducibility checks, but variable
+shared-host load is a limitation for small timing differences.
+
+The wrapper's `launcher_gomaxprocs_env` is recorded for context only. The isolated
+workers clear inherited environment variables; Go chooses its worker runtime
+parallelism. For controlled comparisons, use the same CPU affinity and resource
+allocation for every candidate and retain repeated alternating blocks.
+
+The reported `wafw00f_over_wafme0w_latency_ratio` is the median of the per-case
+wafw00f/wafme0w ratios, using each case's median **saved-response classification
+latency** across blocks. Only paired, expected-complete, conformant cases in the
+shared-product profile contribute. The comparison times warm named-product
+classification, excluding generic detection, live DNS/HTTP work, initialization
+and preparation. It is not a number of Internet hosts per minute. Keep the
+full-native-catalogue profile distinct and retain the bootstrap interval and
+paired-case count. Do not substitute this ratio for a live CLI speedup.
+
 ## Live CLI comparison
 
 The following measurements were collected on **29 October 2026**, using 500
@@ -15,11 +66,18 @@ API and httpx importer; these timings do not measure those features.
 
 ### Wall-clock results
 
-| Workers / processes | wafme0w fast | wafme0w full | wafw00f 2.4.2 |
-| --- | ---: | ---: | ---: |
-| 1 | 6m 49.44s | 15m 51.93s | 14m 38.21s |
-| 10 | 52.89s | 1m 45.62s | 2m 53.39s |
-| 50 | 24.06s | 44.26s | 1m 50.93s |
+| Workers / processes | wafme0w mode | wafw00f 2.4.2 elapsed | wafme0w elapsed | Elapsed ratio, wafw00f / wafme0w |
+| ---: | --- | ---: | ---: | ---: |
+| 1 | Fast | 14m 38.21s | 6m 49.44s | 2.14× |
+| 1 | Full | 14m 38.21s | 15m 51.93s | 0.92× |
+| 10 | Fast | 2m 53.39s | 52.89s | 3.28× |
+| 10 | Full | 2m 53.39s | 1m 45.62s | 1.64× |
+| 50 | Fast | 1m 50.93s | 24.06s | 4.61× |
+| 50 | Full | 1m 50.93s | 44.26s | 2.51× |
+
+Each ratio is wafw00f's observed elapsed time divided by wafme0w's elapsed time
+for that mode and concurrency. Values above 1 mean less elapsed time for
+wafme0w; the one-worker full-mode ratio below 1 preserves the slower result.
 
 All nine configurations attempted the same targets and exited 0 without a
 watchdog timeout. Different probe sets, TLS policies, evidence completeness, and
@@ -120,6 +178,58 @@ before launching processes and stop it after every process exits. A
 watchdog-aborted configuration is not a completed timing. Account for missing
 upstream records as unknown, never negative.
 
+### A new 2,000-target run
+
+A Tranco top-2,000 comparison can extend the live evidence above. Freeze the
+Tranco list ID/date and its first 2,000 ranked rows, then restrict the actual scan
+input to authorized hosts. Retain the original selection, exclusions and final
+target-file hash. Tranco ranks sites; it does not grant testing permission. If
+the admitted input has fewer than 2,000 targets, report that actual count.
+
+Keep the following fixed and retain the records with the results:
+
+1. **Build identity.** Select a clean committed v2 candidate, record its full
+   SHA, `go version`, `go version -m` output and binary SHA256. The run should
+   identify the binary actually executed, including its `vcs.modified` value.
+   Pin wafw00f 2.4.2 and retain the Python version and package inventory. If an
+   upstream release is newer when testing begins, explicitly select and record
+   it rather than silently comparing different versions across cells.
+2. **Input and environment.** Use the same exact URL file, scheme, order, CPU
+   affinity, host, proxy policy and DNS configuration throughout. Retain
+   unreachable/error targets; do not replace them with more responsive sites.
+   Record CPU model, allocated CPUs, RAM, OS/kernel and the network environment.
+3. **Configurations.** Measure workers/processes 1, 10 and 50; use wafme0w fast
+   and full modes and stock wafw00f `--findall`. For upstream concurrency, use
+   N long-lived CLI processes over fixed round-robin shards, as above. Record
+   request/target timeouts, redirects, rate/connection/request/body limits,
+   retries and TLS behavior. Keep browser capture and journaling off for this
+   comparison. Equal target counts do not make the tools' probe sets identical.
+4. **Repeated timing.** Run at least three complete blocks, rotating the order
+   of wafw00f, fast and full within each concurrency. Time process startup
+   through the final exit/output flush; exclude compilation and partitioning.
+   Keep stdout/stderr out of the terminal. Record all timings and exits, and
+   choose the watchdog policy before the run. A killed or timed-out cell remains
+   an incomplete observation; preserve it alongside any retry.
+5. **Accounting.** Retain wafme0w JSONL, each wafw00f shard's JSON, stderr, exact
+   commands and exit statuses. Join every attempted target back to the original
+   input. Report attempted, returned, missing, complete, incomplete, failed,
+   named and generic counts separately where the tool supplies them. Do not
+   infer an upstream completeness value that its output does not provide.
+
+Publish the median elapsed time and spread for each configuration, alongside
+per-block returned/complete counts (and their range) and the ratio of the two
+tools' median elapsed times. Keep fast and full separate, including cells where
+wafme0w is slower.
+Use a table with these columns:
+
+| Workers / processes | Mode | wafw00f median elapsed | wafme0w median elapsed | wafw00f returned / attempted | wafme0w returned / complete / attempted | Median elapsed ratio |
+| --- | --- | --- | --- | --- | --- | --- |
+| One row per measured configuration | Fast or Full | Measured value and spread | Measured value and spread | Observed counts | Observed counts | wafw00f median / wafme0w median |
+
+No 2,000-target results are claimed here yet. Use the completed run's measured
+values and immutable identities when updating the README. A rate or “hosts in
+under a minute” claim must also say how many targets returned usable evidence.
+
 ## Local performance benchmarks
 
 Run from the repository root:
@@ -161,8 +271,21 @@ go run ./cmd/offlinebench -verify-run offlinebench-results
 
 Run from the repository root with usable `bwrap` namespaces. The output directory
 must be absent or empty. Gate thresholds must be finite and in `[0,1]`; product
-names must map uniquely to canonical identities within each detector. Worker
-input is limited to 8 MiB, including whitespace.
+names must map uniquely to canonical identities within each detector. The
+manifest is limited to 8 MiB and each body to 1 MiB. All referenced body bytes
+together must fit within 4 MiB; repeated references count again because worker
+JSON expands each response. Hash-verified repeated bodies share immutable
+storage during loading. Split larger corpora into separate runs. These limits
+are checked before workers start, and input-limit errors abort the run. The
+whole-run timeout includes corpus loading, and manifest/body inputs must be
+regular files. Worker input is limited to 8 MiB, including whitespace and
+base64-encoded bodies.
+
+Manifest structure is checked before allocating typed records: arrays hold at
+most 4,096 entries, narrowed to 64 responses per case and 256 headers per
+response. Objects hold at most 64 fields, nesting is limited to 16 levels, and
+the complete manifest holds at most 65,536 JSON values. The total-value limit
+also bounds collections spread across otherwise valid cases.
 
 Verify the published generation before consuming it. Cancellation before
 publication removes staging; it cannot roll back an already committed rename.
