@@ -34,6 +34,7 @@ type options struct {
 	HTTPXResponseEncoding  string        `long:"httpx-response-encoding" description:"httpx raw_header/body encoding: text or base64 (default text); requires --evidence-format=httpx"`
 	OutputFile             string        `short:"O" long:"output" description:"Atomic report file: JSON, JSONL, CSV or TXT by extension"`
 	JournalFile            string        `long:"diagnostics-journal" description:"Append and sync body-free result/diagnostic JSONL independently of the report"`
+	JournalBatchSize       int           `long:"journal-batch-size" description:"Results per durable journal sync (1..256); partial batches flush within 25ms"`
 	Browser                string        `long:"browser" description:"off, navigate or screenshot; local Chromium, no hard network/resource isolation"`
 	BrowserPath            string        `long:"browser-path" description:"Existing native Chromium executable (not a shell wrapper); never downloaded"`
 	BrowserTimeout         time.Duration `long:"browser-timeout" description:"Browser acquisition deadline, separate from HTTP target timeout"`
@@ -44,13 +45,14 @@ type options struct {
 	Headers                []string      `short:"H" long:"header" description:"Comma-separated Name: value headers; override defaults, repeatable; CSV-quote fields containing commas"`
 	FingerPrintFile        string        `long:"fingerprints" description:"File containing the JSON-formatted fingerprints"`
 	Concurrency            int           `short:"c" long:"concurrency" description:"Number of concurrent target workers"`
+	ProbeConcurrency       int           `long:"probe-concurrency" description:"Concurrent active probes per full-mode target (1..8); normal request runs first"`
 	MaxBodyBytes           int64         `long:"max-body-bytes" description:"Maximum decoded bytes retained per response"`
 	MaxResponseHeaderBytes int64         `long:"max-response-header-bytes" description:"Maximum response header bytes; 0 uses the 64 KiB default"`
 	MaxTargetEvidenceBytes int64         `long:"max-target-evidence-bytes" description:"Per-target retained HTTP evidence bytes; 0 uses the 16 MiB default; excludes browser"`
 	RequestTimeout         time.Duration `long:"request-timeout" description:"Per-request timeout, e.g. 5s"`
 	TargetTimeout          time.Duration `long:"target-timeout" description:"Total HTTP acquisition timeout per target, e.g. 30s; independent of browser"`
 	MaxRequests            int           `long:"max-requests" description:"Per-target HTTP acquisition request budget, including redirects"`
-	MaxConnections         int           `long:"max-connections" description:"Global maximum HTTP acquisition connections"`
+	MaxConnections         int           `long:"max-connections" description:"Global maximum HTTP acquisition connections; 0 follows target concurrency"`
 	Rate                   float64       `long:"rate" description:"Global HTTP acquisition requests per second; 0 disables pacing"`
 	PerOriginRate          float64       `long:"per-origin-rate" description:"HTTP acquisition requests per second per origin; 0 disables pacing"`
 	MaxRedirects           int           `long:"max-redirects" description:"Maximum redirects per request; 0 follows none"`
@@ -113,7 +115,7 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 		Concurrency: config.Concurrency, MaxBodyBytes: config.MaxBodyBytes,
 		MaxResponseHeaderBytes: config.MaxResponseHeaderBytes, MaxTargetEvidenceBytes: config.MaxTargetEvidenceBytes,
 		RequestTimeout: config.RequestTimeout, TargetTimeout: config.TargetTimeout,
-		MaxRequests: config.MaxRequests, MaxConnections: config.MaxConnections,
+		MaxRequests: config.MaxRequests, ProbeConcurrency: 1, JournalBatchSize: 1,
 		Rate: config.RequestsPerSecond, PerOriginRate: config.PerOriginRequestsPerSecond,
 		MaxRedirects: config.MaxRedirects, RedirectPolicy: config.RedirectPolicy,
 		Browser: "off", BrowserTimeout: 30 * time.Second, BrowserSettle: 2 * time.Second,
@@ -136,7 +138,7 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 	diagnostics := colorizer(stderr, opts.NoColors)
 	fail := func(err error) int {
 		fmt.Fprintf(stderr, "%s %s\n", diagnostics.Bold(diagnostics.Red("ERROR")), terminalText(err.Error()))
-		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		if ctx.Err() != nil && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
 			return 130
 		}
 		return 1
@@ -216,6 +218,7 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 	config.FastMode, config.BaselineOnly, config.ExcludeGeneric = opts.FastMode, opts.BaselineOnly, opts.ExcludeGeneric
 	config.RequestTimeout, config.TargetTimeout = opts.RequestTimeout, opts.TargetTimeout
 	config.MaxRequests, config.MaxConnections = opts.MaxRequests, opts.MaxConnections
+	config.ProbeConcurrency = opts.ProbeConcurrency
 	config.RequestsPerSecond, config.PerOriginRequestsPerSecond = opts.Rate, opts.PerOriginRate
 	config.MaxRedirects, config.RedirectPolicy, config.AllowedOrigins = opts.MaxRedirects, opts.RedirectPolicy, opts.AllowedOrigins
 	artifacts := newBrowserArtifacts(opts.SaveScreenshots)
@@ -277,14 +280,9 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 		if opts.EvidenceFile != "" {
 			runner = wafme0w.RunCaptured
 		}
-		emit := func(result wafme0w.Result) error {
-			if opts.EvidenceFile == "" {
-				addInputFormatHint(&result)
-			}
-			// Persist recovery evidence before touching fallible final-report sinks.
-			if err := journal.result(result); err != nil {
-				return err
-			}
+		runCtx, cancelRun := context.WithCancel(ctx)
+		defer cancelRun()
+		sink := newJournalSink(journal, opts.JournalBatchSize, func(result wafme0w.Result) error {
 			counts.add(result)
 			if err := report.add(result); err != nil {
 				return err
@@ -307,15 +305,26 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 				return printResult(stdout, stderr, result, opts.SuppressWarnings, console)
 			}
 			return nil
+		}, func() {
+			cancelRun()
+			closeInput()
+		})
+		emit := func(result wafme0w.Result) error {
+			if opts.EvidenceFile == "" {
+				addInputFormatHint(&result)
+			}
+			return sink.write(runCtx, result)
 		}
-		var err error
+		var runErr error
 		if opts.EvidenceFile != "" && opts.EvidenceFormat == "httpx" {
-			err = wafme0w.RunHTTPXCaptured(ctx, engine, input, config, wafme0w.HTTPXImportOptions{
+			runErr = wafme0w.RunHTTPXCaptured(runCtx, engine, input, config, wafme0w.HTTPXImportOptions{
 				ResponseEncoding: wafme0w.HTTPXResponseEncoding(opts.HTTPXResponseEncoding),
 			}, emit)
 		} else {
-			err = runner(ctx, engine, input, config, emit)
+			runErr = runner(runCtx, engine, input, config, emit)
 		}
+		// Join the journal owner before finalizing reports or writing diagnostics.
+		err := errors.Join(sink.close(), runErr)
 		if err == nil && output != nil {
 			err = output.Close()
 		}
@@ -371,8 +380,17 @@ func validateOptions(opts options) error {
 	default:
 		return fmt.Errorf("unknown httpx response encoding %q; choose text or base64", opts.HTTPXResponseEncoding)
 	}
-	if opts.Concurrency <= 0 || opts.MaxBodyBytes <= 0 || opts.MaxRequests <= 0 || opts.MaxConnections <= 0 {
-		return errors.New("concurrency, decoded body limit, request budget and connection limit must be positive")
+	if opts.Concurrency <= 0 || opts.MaxBodyBytes <= 0 || opts.MaxRequests <= 0 {
+		return errors.New("concurrency, decoded body limit and request budget must be positive")
+	}
+	if opts.MaxConnections < 0 {
+		return errors.New("connection limit must not be negative")
+	}
+	if opts.ProbeConcurrency < 1 || opts.ProbeConcurrency > 8 {
+		return errors.New("probe concurrency must be between 1 and 8")
+	}
+	if opts.JournalBatchSize < 1 || opts.JournalBatchSize > maxJournalBatchSize {
+		return fmt.Errorf("journal batch size must be between 1 and %d", maxJournalBatchSize)
 	}
 	if opts.MaxResponseHeaderBytes < 0 || opts.MaxTargetEvidenceBytes < 0 {
 		return errors.New("response header and retained evidence limits must not be negative")

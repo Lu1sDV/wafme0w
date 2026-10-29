@@ -73,7 +73,11 @@ func TestCLIRejectsInvalidArguments(t *testing.T) {
 		{"--request-timeout=0s", "--list"},
 		{"--target-timeout=-1s", "--list"},
 		{"--max-requests=0", "--list"},
-		{"--max-connections=0", "--list"},
+		{"--max-connections=-1", "--list"},
+		{"--probe-concurrency=0", "--list"},
+		{"--probe-concurrency=9", "--list"},
+		{"--journal-batch-size=0", "--list"},
+		{"--journal-batch-size=257", "--list"},
 		{"--rate=NaN", "--list"},
 		{"--per-origin-rate=+Inf", "--list"},
 		{"--max-redirects=-1", "--list"},
@@ -479,7 +483,7 @@ func TestCLIJournalSurvivesFinalPublicationFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	input := captureLines(t, wafme0w.Capture{Target: "saved", Evidence: []wafme0w.Evidence{{Role: "NormalRequest", StatusCode: 200, Body: []byte("saved-marker")}}})
-	code, _, stderr := runCLI(t, strings.NewReader(input), "--evidence=-", "--silent", "--strict", "--output", output, "--diagnostics-journal", journal, "--fingerprints", fixtureCatalogue(t))
+	code, _, stderr := runCLI(t, strings.NewReader(input), "--evidence=-", "--silent", "--strict", "--output", output, "--diagnostics-journal", journal, "--journal-batch-size=4", "--fingerprints", fixtureCatalogue(t))
 	if code != 1 || stderr == "" {
 		t.Fatalf("publication failure exit=%d stderr=%q", code, stderr)
 	}
@@ -727,6 +731,7 @@ func TestCLIBaselineUsesOneNormalRequest(t *testing.T) {
 	code, stdout, stderr := runCLI(t, nil,
 		"--target", target, "--baseline", "--jsonl", "--no-generic", "--fingerprints", fixtureCatalogue(t),
 		"--request-timeout=1s", "--target-timeout=2s", "--max-requests=1", "--max-connections=1",
+		"--probe-concurrency=3",
 		"--max-response-header-bytes=3072", "--max-target-evidence-bytes=8192",
 		"--rate=100", "--per-origin-rate=50", "--max-redirects=0",
 		"--redirect-policy=allowlist", "--allow-origin", server.URL, "--allow-origin=https://unused.example",
@@ -742,7 +747,7 @@ func TestCLIBaselineUsesOneNormalRequest(t *testing.T) {
 	if results[0].Provenance.ScanMode != "baseline" || !settings.BaselineOnly || settings.FastMode || settings.Passive ||
 		settings.RequestTimeout != time.Second || settings.TargetTimeout != 2*time.Second ||
 		settings.MaxResponseHeaderBytes != 3072 || settings.MaxTargetEvidenceBytes != 8192 ||
-		settings.MaxRequests != 1 || settings.MaxConnections != 1 || settings.RequestsPerSecond != 100 ||
+		settings.MaxRequests != 1 || settings.MaxConnections != 1 || settings.ProbeConcurrency != 3 || settings.RequestsPerSecond != 100 ||
 		settings.PerOriginRequestsPerSecond != 50 || settings.MaxRedirects != 0 || settings.RedirectPolicy != "allowlist" ||
 		len(settings.AllowedOrigins) != 2 {
 		t.Fatalf("published provenance does not describe effective CLI controls: %+v", results[0].Provenance)
@@ -882,5 +887,32 @@ func TestCLIZeroHTTPByteLimitsUseFiniteDefaults(t *testing.T) {
 	results := decodeResultLines(t, stdout)
 	if len(results) != 1 || results[0].Provenance.Settings.MaxResponseHeaderBytes != wafme0w.DefaultMaxResponseHeaderBytes || results[0].Provenance.Settings.MaxTargetEvidenceBytes != wafme0w.DefaultMaxTargetEvidenceBytes {
 		t.Fatalf("zero byte limits did not publish finite defaults: %+v", results)
+	}
+}
+
+func TestCLIAutomaticConnectionsFollowTargetConcurrency(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	for _, explicit := range []string{"", "0", "2"} {
+		t.Run("max-connections="+explicit, func(t *testing.T) {
+			args := []string{"--target", server.URL, "--baseline", "--jsonl", "--silent", "--concurrency=3"}
+			want := 3
+			if explicit != "" {
+				args = append(args, "--max-connections="+explicit)
+			}
+			if explicit == "2" {
+				want = 2
+			}
+			code, stdout, stderr := runCLI(t, nil, args...)
+			if code != 0 {
+				t.Fatalf("automatic connection limit rejected: exit=%d stderr=%q", code, stderr)
+			}
+			results := decodeResultLines(t, stdout)
+			if len(results) != 1 || results[0].Provenance.Settings.MaxConnections != want || results[0].Provenance.Settings.ProbeConcurrency != 1 {
+				t.Fatalf("effective CLI defaults or explicit cap changed: %+v", results)
+			}
+		})
 	}
 }

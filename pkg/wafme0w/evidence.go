@@ -105,7 +105,7 @@ type Outcome struct {
 	Diagnostics        []Diagnostic    `json:"diagnostics,omitempty"`
 }
 
-// One budget is shared by a target's concurrent fast probes. Charge actual
+// One budget is shared by a target's concurrent probes. Charge actual
 // decoded bytes, not an upfront reservation that could starve tiny responses.
 type httpEvidenceBudget struct {
 	mu        sync.Mutex

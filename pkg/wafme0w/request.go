@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
-	"time"
 )
 
 const (
@@ -17,8 +16,6 @@ const (
 	rceString  = "/bin/cat /etc/passwd; ping 127.0.0.1; curl google.com"
 	xxeString  = "<!ENTITY xxe SYSTEM \"file:///etc/shadow\">]><pwn>&hack;</pwn>"
 )
-
-const requestsDelay = 50 * time.Millisecond
 
 type requestOpts struct {
 	Method         string
@@ -74,34 +71,32 @@ func sendRequests(ctx context.Context, target string, client *http.Client, confi
 		defer cancel()
 		responses[i], _ = sendHTTP(requestCtx, options[i], client, config.MaxBodyBytes)
 	}
-	var pending sync.WaitGroup
-	for i := range options {
-		if config.FastMode && i != 0 {
-			timer := time.NewTimer(requestsDelay)
-			select {
-			case <-ctx.Done():
-				timer.Stop()
-			case <-timer.C:
-			}
+	first, workers := 0, len(options)
+	if !config.FastMode {
+		// Do not launch active probes against a target with no baseline metadata.
+		send(0)
+		if responses[0].StatusCode == 0 {
+			return responses[:1]
 		}
-		if ctx.Err() != nil {
-			break
-		}
-		if config.FastMode {
-			pending.Add(1)
-			go func(i int) {
-				defer pending.Done()
-				send(i)
-			}(i)
-		} else {
-			send(i)
-			if i == 0 && responses[i].StatusCode == 0 {
-				responses = responses[:1]
-				break
-			}
-		}
+		first, workers = 1, min(config.ProbeConcurrency, len(options)-1)
 	}
-	pending.Wait()
+	if workers <= 1 {
+		for i := first; i < len(options) && ctx.Err() == nil; i++ {
+			send(i)
+		}
+	} else {
+		var pending sync.WaitGroup
+		for worker := range workers {
+			pending.Add(1)
+			go func() {
+				defer pending.Done()
+				for i := first + worker; i < len(options) && ctx.Err() == nil; i += workers {
+					send(i)
+				}
+			}()
+		}
+		pending.Wait()
+	}
 	if err := ctx.Err(); err != nil {
 		for i := range responses {
 			if responses[i].StatusCode == 0 && responses[i].TransportError == "" {

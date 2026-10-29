@@ -7,6 +7,7 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"slices"
 	"strings"
@@ -53,7 +54,7 @@ func TestBaselinePreservesTargetIdentityAndEffectiveSettings(t *testing.T) {
 	}
 	defaults := DefaultConfig()
 	settings := result.Provenance.Settings
-	if settings.RequestTimeout != defaults.RequestTimeout || settings.TargetTimeout != defaults.TargetTimeout || settings.MaxRequests != defaults.MaxRequests || settings.MaxConnections != defaults.MaxConnections || settings.MaxRedirects != 0 {
+	if settings.RequestTimeout != defaults.RequestTimeout || settings.TargetTimeout != defaults.TargetTimeout || settings.MaxRequests != defaults.MaxRequests || settings.MaxConnections != config.Concurrency || settings.ProbeConcurrency != 1 || settings.MaxRedirects != 0 {
 		t.Fatalf("effective legacy configuration not reported: %+v", settings)
 	}
 	if settings.MaxResponseHeaderBytes != DefaultMaxResponseHeaderBytes || settings.MaxTargetEvidenceBytes != DefaultMaxTargetEvidenceBytes {
@@ -325,6 +326,8 @@ func TestPolicyConfigurationFailsBeforeInput(t *testing.T) {
 		{"negative target timeout", func(c *Config) { c.TargetTimeout = -time.Second }},
 		{"negative request budget", func(c *Config) { c.MaxRequests = -1 }},
 		{"negative connection cap", func(c *Config) { c.MaxConnections = -1 }},
+		{"negative probe concurrency", func(c *Config) { c.ProbeConcurrency = -1 }},
+		{"excess probe concurrency", func(c *Config) { c.ProbeConcurrency = 9 }},
 		{"negative response header budget", func(c *Config) { c.MaxResponseHeaderBytes = -1 }},
 		{"negative retained evidence budget", func(c *Config) { c.MaxTargetEvidenceBytes = -1 }},
 		{"negative redirect cap", func(c *Config) { c.MaxRedirects = -1 }},
@@ -363,7 +366,16 @@ func TestRequestBudgetSharedAcrossExistingFastRequests(t *testing.T) {
 		if err := Run(context.Background(), emptyEngine(t), strings.NewReader("http://fixture.invalid/"), config, func(value Result) error { result = value; return nil }); err != nil {
 			t.Fatal(err)
 		}
-		if requests.Load() != 1 || len(result.Evidence) != 3 || result.Evidence[0].StatusCode != 204 || result.Evidence[1].ErrorCode != "request_budget" || result.Evidence[2].ErrorCode != "request_budget" {
+		usable, exhausted := 0, 0
+		for _, observation := range result.Evidence {
+			if observation.StatusCode == 204 {
+				usable++
+			}
+			if observation.ErrorCode == "request_budget" {
+				exhausted++
+			}
+		}
+		if requests.Load() != 1 || len(result.Evidence) != 3 || usable != 1 || exhausted != 2 {
 			t.Fatalf("parallel requests exceeded shared target budget: requests=%d evidence=%+v", requests.Load(), result.Evidence)
 		}
 	})
@@ -474,7 +486,11 @@ func acquireHTTPFixture(t *testing.T, target string, config Config) []Evidence {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	policy := newOutboundPolicy(config)
-	return sendRequests(ctx, target, policy.client(target), config)
+	u, err := url.Parse(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return sendRequests(ctx, target, policy.client(normalizedOrigin(u)), config)
 }
 
 // Match the documented payload accounting, not allocator-dependent heap sizes.

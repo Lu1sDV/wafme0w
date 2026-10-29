@@ -44,6 +44,7 @@ type Engine struct {
 	wafs            []compiledWAF
 	digest          string
 	needsBody       bool
+	needsHeaders    bool
 	needsCookies    bool
 	needsFoldedBody bool
 	filterBody      bool
@@ -106,6 +107,7 @@ func Compile(definitions []WAF) (*Engine, error) {
 				compiledSchema.fingerprints[fi] = *matcher
 				engine.needsBody = engine.needsBody || fp.Type == "Content"
 				engine.needsCookies = engine.needsCookies || fp.Type == "Cookie"
+				engine.needsHeaders = engine.needsHeaders || fp.Type == "Header" || fp.Type == "Cookie"
 				if fp.Type == "Content" && (matcher.regex == nil && matcher.fold || len(matcher.required) > 0) {
 					engine.needsFoldedBody = true
 				}
@@ -180,7 +182,11 @@ func (e *Engine) Classify(evidence []Evidence) Outcome {
 	if e == nil {
 		return Outcome{State: Failed, Diagnostics: []Diagnostic{{Code: "invalid_engine", Evidence: -1, Message: "nil classifier engine"}}}
 	}
-	responses := make([]responseData, len(evidence))
+	var single [1]responseData
+	responses := single[:]
+	if len(evidence) != 1 {
+		responses = make([]responseData, len(evidence))
+	}
 	for i, observation := range evidence {
 		if err := validateEvidenceAvailability(observation); err != nil {
 			return Outcome{State: Failed, Diagnostics: []Diagnostic{{Code: "invalid_evidence", Evidence: i, Message: err.Error()}}}
@@ -206,7 +212,7 @@ func (e *Engine) Classify(evidence []Evidence) Outcome {
 				outcome.Diagnostics = append(outcome.Diagnostics, Diagnostic{Code: "missing_response", Evidence: i, Message: "response metadata is unavailable or invalid"})
 			}
 		}
-		if response.channels.headers && len(observation.Headers) != 0 {
+		if e.needsHeaders && response.channels.headers && len(observation.Headers) != 0 {
 			response.headers = make(http.Header, len(observation.Headers))
 			for _, header := range observation.Headers {
 				response.headers.Add(header.Name, header.Value)
@@ -215,13 +221,13 @@ func (e *Engine) Classify(evidence []Evidence) Outcome {
 		if e.needsBody && response.channels.body {
 			response.body = observation.Body
 			if e.needsFoldedBody {
-				response.foldedBody = foldBytes(response.body)
 				if e.filterBody {
 					response.allowIndex = true
+					response.foldedBody = foldBytes(response.body)
 					response.bodyMask = contentMask(response.foldedBody)
-					if response.bodyMask[0]&response.bodyMask[1]&response.bodyMask[2]&response.bodyMask[3] != ^uint64(0) {
-						response.bodyFilter = true
-					}
+					response.bodyFilter = response.bodyMask[0]&response.bodyMask[1]&response.bodyMask[2]&response.bodyMask[3] != ^uint64(0)
+				} else {
+					response.foldedBody = foldBytes(response.body)
 				}
 			}
 		}

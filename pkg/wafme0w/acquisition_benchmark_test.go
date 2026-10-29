@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"io"
@@ -107,24 +106,19 @@ func benchmarkAcquisitionPipeline(b *testing.B, engine *Engine, useTLS, baseline
 	}
 	b.Cleanup(server.Close)
 
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.Proxy = nil
-	// Preserve the production anti-replay policy: no keep-alive, HTTP/2 or TLS
-	// session cache. Every probe pays for a fresh HTTP/1 connection/handshake.
-	transport.DisableKeepAlives = true
-	transport.MaxResponseHeaderBytes = 64 << 10
-	transport.Protocols = new(http.Protocols)
-	transport.Protocols.SetHTTP1(true)
-	transport.TLSNextProto = nil
-	if useTLS {
-		roots := x509.NewCertPool()
-		roots.AddCert(server.Certificate())
-		transport.TLSClientConfig = &tls.Config{RootCAs: roots, NextProtos: []string{"http/1.1"}}
-	}
-	b.Cleanup(transport.CloseIdleConnections)
 	config := DefaultConfig()
 	config.Concurrency, config.MaxConnections = 4, 4
 	config.BaselineOnly = baseline
+	// Construct the actual owned transport, including its run-local session
+	// cache, then install only loopback trust/proxy settings outside the timer.
+	transport := newOutboundPolicy(config).base.Transport.(*http.Transport)
+	transport.Proxy = nil
+	if useTLS {
+		roots := x509.NewCertPool()
+		roots.AddCert(server.Certificate())
+		transport.TLSClientConfig.RootCAs = roots
+	}
+	b.Cleanup(transport.CloseIdleConnections)
 	config.Client = &http.Client{Transport: transport}
 	roles := []string{"Normal", "NoUserAgent", "NonExistent", "XssAttack", "XxeAttack", "LfiAttack", "CentralAttack", "SqliAttack", "RceAttack"}
 	if baseline {

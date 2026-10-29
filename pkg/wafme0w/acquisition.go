@@ -2,6 +2,7 @@ package wafme0w
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -131,9 +132,11 @@ func newOutboundPolicy(config Config) *outboundPolicy {
 			transport.Protocols = new(http.Protocols)
 			transport.Protocols.SetHTTP1(true)
 			transport.TLSNextProto = nil
-			if transport.TLSClientConfig != nil {
-				transport.TLSClientConfig.NextProtos = []string{"http/1.1"}
+			if transport.TLSClientConfig == nil {
+				transport.TLSClientConfig = new(tls.Config)
 			}
+			transport.TLSClientConfig.NextProtos = []string{"http/1.1"}
+			transport.TLSClientConfig.ClientSessionCache = tls.NewLRUClientSessionCache(256)
 			p.base.Transport = transport
 		}
 	}
@@ -154,46 +157,75 @@ func rateInterval(rate float64) time.Duration {
 	return max(time.Nanosecond, time.Duration(ns))
 }
 
+// Check pacing before taking a connection slot, then recheck after waiting for
+// one. Waiting origins cannot monopolize slots, and queued requests cannot spend
+// stale rate admissions in a burst when a slow response finally closes.
 func (p *outboundPolicy) acquire(ctx context.Context, origin string) error {
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case p.slots <- struct{}{}:
-	}
 	globalInterval := rateInterval(p.config.RequestsPerSecond)
 	originInterval := rateInterval(p.config.PerOriginRequestsPerSecond)
-	for {
+	if globalInterval == 0 && originInterval == 0 {
 		if err := ctx.Err(); err != nil {
-			<-p.slots
 			return err
 		}
-		p.mu.Lock()
-		now := time.Now()
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case p.slots <- struct{}{}:
+			return nil
+		}
+	}
+	nextAdmission := func(now time.Time) time.Time {
 		p.expireOrigins(now)
 		next := p.next
 		if p.origins[origin].After(next) {
 			next = p.origins[origin]
 		}
-		if !now.Before(next) {
-			if globalInterval != 0 {
-				p.next = now.Add(globalInterval)
-			}
-			if originInterval != 0 {
-				p.origins[origin] = now.Add(originInterval)
-				p.cooldowns = append(p.cooldowns, originCooldown{origin, p.origins[origin]})
-			}
-			p.mu.Unlock()
-			return nil
+		return next
+	}
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
 		}
+		p.mu.Lock()
+		next := nextAdmission(time.Now())
 		p.mu.Unlock()
-		timer := time.NewTimer(time.Until(next))
+		if delay := time.Until(next); delay > 0 {
+			timer := time.NewTimer(delay)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return ctx.Err()
+			case <-timer.C:
+			}
+			continue
+		}
 		select {
 		case <-ctx.Done():
-			timer.Stop()
-			<-p.slots
 			return ctx.Err()
-		case <-timer.C:
+		case p.slots <- struct{}{}:
 		}
+		p.mu.Lock()
+		now := time.Now()
+		next = nextAdmission(now)
+		if err := ctx.Err(); err != nil {
+			p.mu.Unlock()
+			<-p.slots
+			return err
+		}
+		if now.Before(next) {
+			p.mu.Unlock()
+			<-p.slots
+			continue
+		}
+		if globalInterval != 0 {
+			p.next = now.Add(globalInterval)
+		}
+		if originInterval != 0 {
+			p.origins[origin] = now.Add(originInterval)
+			p.cooldowns = append(p.cooldowns, originCooldown{origin, p.origins[origin]})
+		}
+		p.mu.Unlock()
+		return nil
 	}
 }
 

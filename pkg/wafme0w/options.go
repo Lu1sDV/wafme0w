@@ -20,8 +20,12 @@ const (
 )
 
 // Config is copied by Run. Concurrency and MaxBodyBytes must be positive.
-// Zero timeouts, header/evidence limits and request/connection budgets use finite
-// defaults; zero MaxRedirects means no redirects, and zero rates disable pacing.
+// Zero timeouts, header/evidence limits and request budgets use finite defaults.
+// Zero MaxConnections follows Concurrency; DefaultConfig retains an explicit 20.
+// ProbeConcurrency bounds full-mode probes after Normal (1..8, zero uses 1).
+// Normal completes before full-mode fan-out; fast mode keeps its three probes.
+// Parallel probes share budgets, so allocation of a tight budget can vary.
+// Zero MaxRedirects means no redirects, and zero rates disable pacing.
 // AllowedOrigins, when nonempty, also restrict starting URLs.
 // RedirectPolicy defaults to canonical-host: the starting origin and its exact
 // www/non-www counterpart, with the same scheme and effective port.
@@ -29,10 +33,11 @@ const (
 // Read calls. Run invokes it once on cancellation/failure, never on normal EOF.
 // It must return promptly; Run never closes an arbitrary caller-owned reader.
 // Injected clients/transports must honor request contexts, as net/http does.
-// The built-in transport uses fresh HTTP/1 connections to prevent transparent
-// retries from bypassing request budgets and pacing. Caller-supplied transports
-// retain their own connection/retry behavior; their internal network effects
-// cannot be bounded by Run's limits on RoundTrip calls.
+// The built-in transport uses fresh HTTP/1 connections and a bounded run-local TLS
+// session cache. Resumption retains certificate verification; fresh connections
+// prevent transparent retries from bypassing request budgets and pacing.
+// Caller-supplied transports retain their own connection/retry behavior; their
+// internal network effects cannot be bounded by Run's limits on RoundTrip calls.
 // MaxResponseHeaderBytes bounds wire headers on owned stdlib transports and
 // parsed headers at the retention boundary for every transport. Injected
 // transports still own their wire-level allocation and retry policies.
@@ -47,6 +52,7 @@ const (
 // Durations in JSON provenance are nanoseconds.
 type Config struct {
 	Concurrency                int
+	ProbeConcurrency           int
 	FastMode                   bool
 	BaselineOnly               bool
 	Passive                    bool
@@ -74,7 +80,7 @@ type Config struct {
 
 func DefaultConfig() Config {
 	return Config{
-		Concurrency: 20, MaxBodyBytes: DefaultMaxBodyBytes,
+		Concurrency: 20, ProbeConcurrency: 1, MaxBodyBytes: DefaultMaxBodyBytes,
 		MaxResponseHeaderBytes: DefaultMaxResponseHeaderBytes, MaxTargetEvidenceBytes: DefaultMaxTargetEvidenceBytes,
 		RequestTimeout: 5 * time.Second, TargetTimeout: 30 * time.Second,
 		MaxRequests: 54, MaxConnections: 20, MaxRedirects: 5,
@@ -84,6 +90,9 @@ func DefaultConfig() Config {
 
 func (c Config) normalized() Config {
 	defaults := DefaultConfig()
+	if c.ProbeConcurrency == 0 {
+		c.ProbeConcurrency = defaults.ProbeConcurrency
+	}
 	if c.MaxResponseHeaderBytes == 0 {
 		c.MaxResponseHeaderBytes = defaults.MaxResponseHeaderBytes
 	}
@@ -100,7 +109,7 @@ func (c Config) normalized() Config {
 		c.MaxRequests = defaults.MaxRequests
 	}
 	if c.MaxConnections == 0 {
-		c.MaxConnections = defaults.MaxConnections
+		c.MaxConnections = c.Concurrency
 	}
 	if c.RedirectPolicy == "" {
 		c.RedirectPolicy = defaults.RedirectPolicy
@@ -141,6 +150,9 @@ func (c Config) normalized() Config {
 func (c Config) validate() error {
 	if c.Concurrency <= 0 {
 		return errors.New("concurrency must be positive")
+	}
+	if c.ProbeConcurrency < 1 || c.ProbeConcurrency > 8 {
+		return errors.New("probe concurrency must be between 1 and 8")
 	}
 	if c.MaxBodyBytes <= 0 {
 		return errors.New("decoded body limit must be positive")

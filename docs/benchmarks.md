@@ -2,7 +2,71 @@
 
 [Quick start](../README.md) · [Operational checks](operations.md)
 
-## Current hardening measurements · 29 October 2026
+## Throughput follow-up · 29 October 2026
+
+This comparison uses commit `74a28977b9b59cc7608b69596f40632d41bf7856`
+as the baseline and the `perf-throughput` worktree as the changed version.
+Both binaries used Go `1.26.10-X:nodwarf5`, Linux, and the same Intel Core Ultra
+9 275HX. These results are separate from the earlier hardening measurements below.
+
+Four alternating before/after benchmark blocks used CPU affinity 0–1,
+`GOMAXPROCS=2`, and 250 ms per workload. Selected medians:
+
+| Workload | Before (µs/op) | After (µs/op) | Time change |
+| --- | ---: | ---: | ---: |
+| Full-catalogue synthetic corpus | 8.124 | 8.380 | +3.1% |
+| 32 KiB diverse ASCII classification | 93.150 | 91.880 | −1.4% |
+| 256 KiB ASCII classification | 275.909 | 247.583 | −10.3% |
+| 512 KiB prefix-heavy HTML classification | 5,475.741 | 2,228.014 | −59.3% |
+| 32 KiB malformed UTF-8 classification | 91.695 | 97.202 | +6.0% |
+| Full HTTP target, nine 32 KiB responses | 1,071.443 | 916.496 | −14.5% |
+| Full HTTP target, nine gzip responses | 1,200.385 | 1,282.001 | +6.8% |
+| Full TLS target, nine small responses | 5,836.989 | 2,896.145 | −50.4% |
+| Full TLS target, nine 32 KiB responses | 6,706.839 | 3,825.046 | −43.0% |
+
+The full HTTP 32 KiB workload allocated 29.5% fewer bytes. Single-response
+classification removed one allocation; the single-body and small-catalogue
+benchmarks reached zero allocations. TLS session resumption retained fresh
+HTTP/1 TCP connections and certificate verification, but increased allocation
+counts by approximately 12–13%; small-response allocated bytes rose about 11%.
+The cache is bounded and run-local. Not every workload improved; short samples
+and single-host timing do not establish small differences as statistically
+significant or predict Internet performance.
+
+Actual CLI scenarios used owned loopback servers and CPU affinity 0–3 with
+`GOMAXPROCS=4`. Repeated rows below are medians of three runs; probe schedule
+rows are single observations. Output counts, evidence roles and ordering were
+checked, not just elapsed time.
+
+| CLI scenario | Before | After |
+| --- | ---: | ---: |
+| Other-origin wait behind a paced origin | 450.6 ms | 1.0 ms |
+| Fast mode, three 50 ms responses | 159.4 ms | 60.0 ms |
+| Full mode, nine 50 ms responses; after uses `--probe-concurrency=4` | 468.4 ms | 163.6 ms |
+| 64 targets, 10 ms responses, `--concurrency=64`, default connection setting | 53.5 ms | 35.8 ms |
+| 1,000 ordered offline captures, 32 KiB bodies, four workers | 196.6 ms | 99.6 ms |
+
+Default full mode remains serial; its observed 470.0 ms after time was similar
+to baseline. The CLI's default connection setting now follows target concurrency
+instead of silently capping it at 20; an explicit limit still applies.
+Offline admission remains bounded by worker count and raw record bytes.
+
+For 2,000 disk-backed journal records, the changed binary's default per-record
+sync took 2.15–11.53 seconds across three runs; opt-in batch size 32 took
+0.093–0.406 seconds. Storage latency varied substantially, so these are ranges,
+not a portable speedup claim. Every emitted record was checked against its
+journal entry. A partial batch flushed while stdin stayed open, and SIGTERM
+then exited with code 130. Batching preserves sync-before-output but may lose
+accepted, unflushed records on abrupt process or machine failure; it defaults
+to one record. See [operations](operations.md).
+
+The attempted combined Unicode-folding/mask loop was discarded after profiles
+and comparisons showed regressions. Required regexp guards instead check the
+strongest literal group first, then remaining mandatory groups, before exact
+regexp confirmation. Decoder pooling was not retained because decoder state
+can retain response fragments.
+
+## Earlier hardening measurements · 29 October 2026
 
 The table below reports selected observed medians, not projections from the
 historical network runs below. “Before” is the saved

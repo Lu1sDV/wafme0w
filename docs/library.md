@@ -46,10 +46,20 @@ func main() {
 them. Callers must not mutate evidence during a call.
 
 `Run` performs bounded live acquisition and emits serially in completion order.
-`RunCaptured` performs no network access and emits serially in input order.
+Its HTTP workers remain free while the optional single-browser stage acquires a
+fresh Chromium capture; bounded export workers may overlap sanitized asset saves.
+`RunCaptured` decodes and classifies with at most `min(Config.Concurrency,
+GOMAXPROCS)` workers, then emits serially in input order. At most twice that many
+records and 32 MiB of raw records are admitted ahead of emission.
 Readers, injected clients/transports, and writers remain caller-owned. Blocking
 input needs `Config.CancelInput` or another caller-provided wakeup; callbacks and
 transports must honor cancellation and return.
+
+`Config.ProbeConcurrency` defaults to 1; values up to 8 parallelize later
+full-mode probes after the normal response. `Config.MaxConnections == 0`
+follows `Config.Concurrency`; `DefaultConfig()` retains its explicit limit of 20.
+Set it to zero when changing library target concurrency should also resize the
+connection limit. The CLI selects zero by default.
 
 ## v2 evidence API
 

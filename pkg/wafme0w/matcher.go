@@ -22,7 +22,7 @@ type fingerprintMatcher struct {
 	regex       *regexp.Regexp
 	foldedRegex *regexp.Regexp
 	literal     string
-	required    []string
+	required    [][]string
 	mask        [4]uint64
 	fold        bool
 	start       bool
@@ -76,6 +76,19 @@ func compileFingerprint(fp FingerPrint) (*fingerprintMatcher, error) {
 	}
 	if fp.Type == "Content" {
 		m.required, m.mask = requiredContent(expression)
+		best, bestLength := 0, 0
+		for i, guard := range m.required {
+			shortest := len(guard[0])
+			for _, literal := range guard[1:] {
+				shortest = min(shortest, len(literal))
+			}
+			if shortest > bestLength {
+				best, bestLength = i, shortest
+			}
+		}
+		if best != 0 {
+			m.required[0], m.required[best] = m.required[best], m.required[0]
+		}
 	}
 	m.regex, err = regexp.Compile(m.pattern)
 	// Reuse text required by the guard; unguarded regexps can match immediately.
@@ -216,9 +229,9 @@ func (m *fingerprintMatcher) matchBody(response *responseData) bool {
 		return false
 	}
 	if m.regex != nil {
-		if len(m.required) > 0 {
+		for _, alternatives := range m.required {
 			found := false
-			for _, literal := range m.required {
+			for _, literal := range alternatives {
 				if response.containsFolded(literal) {
 					found = true
 					break
@@ -379,24 +392,27 @@ func foldBytes(value []byte) []byte {
 		folded := make([]byte, index, len(value)+utf8.UTFMax)
 		copy(folded, value[:index])
 		folded = utf8.AppendRune(folded, mapped)
-		value = value[index+width:]
-		for index = 0; index < len(value); {
-			b := value[index]
-			if b < utf8.RuneSelf {
-				if b >= 'A' && b <= 'Z' {
-					b += 'a' - 'A'
-				}
-				folded = append(folded, b)
-				index++
-			} else {
-				r, width = utf8.DecodeRune(value[index:])
-				folded = utf8.AppendRune(folded, foldNonASCII(r))
-				index += width
-			}
-		}
-		return folded
+		return appendFolded(folded, value[index+width:])
 	}
 	return value
+}
+
+func appendFolded(folded, value []byte) []byte {
+	for index := 0; index < len(value); {
+		b := value[index]
+		if b < utf8.RuneSelf {
+			if b >= 'A' && b <= 'Z' {
+				b += 'a' - 'A'
+			}
+			folded = append(folded, b)
+			index++
+		} else {
+			r, width := utf8.DecodeRune(value[index:])
+			folded = utf8.AppendRune(folded, foldNonASCII(r))
+			index += width
+		}
+	}
+	return folded
 }
 
 func foldNonASCII(r rune) rune {
@@ -412,10 +428,10 @@ func foldNonASCII(r rune) rune {
 	return least
 }
 
-// At least one returned folded literal must occur; an empty list cannot reject.
-// Sequences select a mandatory child; alternatives retain every branch.
-// Byte-pair masks combine sequences by union and alternatives by intersection.
-func requiredContent(node *syntax.Regexp) (literals []string, mask [4]uint64) {
+// Every guard must have at least one folded literal present. Concatenations
+// retain mandatory children; alternatives choose one guard from every branch.
+// Masks combine sequences by union and alternatives by intersection.
+func requiredContent(node *syntax.Regexp) (guards [][]string, mask [4]uint64) {
 	switch node.Op {
 	case syntax.OpLiteral:
 		for _, r := range node.Rune {
@@ -424,7 +440,7 @@ func requiredContent(node *syntax.Regexp) (literals []string, mask [4]uint64) {
 			}
 		}
 		literal := foldText(string(node.Rune))
-		return []string{literal}, contentMask([]byte(literal))
+		return [][]string{{literal}}, contentMask([]byte(literal))
 	case syntax.OpCapture, syntax.OpPlus:
 		return requiredContent(node.Sub[0])
 	case syntax.OpRepeat:
@@ -432,46 +448,57 @@ func requiredContent(node *syntax.Regexp) (literals []string, mask [4]uint64) {
 			return requiredContent(node.Sub[0])
 		}
 	case syntax.OpConcat:
-		bestLength := 0
 		for _, child := range node.Sub {
 			required, childMask := requiredContent(child)
-			shortest := 0
-			for i, literal := range required {
-				if i == 0 || len(literal) < shortest {
-					shortest = len(literal)
+			// ponytail: bound guard work; omitted guards only weaken rejection.
+			for _, guard := range required {
+				if len(guards) == 16 {
+					break
 				}
-			}
-			if shortest > bestLength {
-				literals, bestLength = required, shortest
+				guards = append(guards, guard)
 			}
 			for i := range mask {
 				mask[i] |= childMask[i]
 			}
 		}
 	case syntax.OpAlternate:
+		var alternatives []string
 		filterable := true
 		for index, child := range node.Sub {
 			required, childMask := requiredContent(child)
-			// ponytail: cap alternative searches at 16; wider expressions retain regexp.
-			if len(required) == 0 || len(literals)+len(required) > 16 {
+			var best []string
+			bestLength := 0
+			for _, guard := range required {
+				shortest := 0
+				for i, literal := range guard {
+					if i == 0 || len(literal) < shortest {
+						shortest = len(literal)
+					}
+				}
+				if shortest > bestLength {
+					best, bestLength = guard, shortest
+				}
+			}
+			// A branch without a guard can match without any literal.
+			if len(best) == 0 || len(alternatives)+len(best) > 16 {
 				filterable = false
 			}
 			if filterable {
-				literals = append(literals, required...)
+				alternatives = append(alternatives, best...)
 			}
 			if index == 0 {
 				mask = childMask
-				continue
-			}
-			for i := range mask {
-				mask[i] &= childMask[i]
+			} else {
+				for i := range mask {
+					mask[i] &= childMask[i]
+				}
 			}
 		}
-		if !filterable {
-			literals = nil
+		if filterable {
+			guards = [][]string{alternatives}
 		}
 	}
-	return literals, mask
+	return guards, mask
 }
 
 // foldContent enables regexp's case-sensitive prefix search on the shared folded

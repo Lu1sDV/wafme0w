@@ -1,7 +1,6 @@
 package wafme0w
 
 import (
-	"bytes"
 	"compress/gzip"
 	"compress/zlib"
 	"context"
@@ -153,8 +152,8 @@ func sendHTTP(ctx context.Context, options requestOpts, client *http.Client, max
 	if err != nil {
 		return evidence, fmt.Errorf("send request: %w", err)
 	}
-	var reader io.Reader = resp.Body
 	coding := strings.ToLower(strings.TrimSpace(strings.Join(resp.Header.Values("Content-Encoding"), ",")))
+	var reader io.Reader = resp.Body
 	switch coding {
 	case "", "identity":
 	case "gzip":
@@ -179,16 +178,10 @@ func sendHTTP(ctx context.Context, options requestOpts, client *http.Client, max
 	}
 	defer finishBody(&evidence)
 	limited := &retainedBodyReader{reader: reader, budget: budget}
-	bodyReader := io.LimitReader(limited, maxBodyBytes)
-	if (coding == "" || coding == "identity") && resp.ContentLength > bytes.MinRead && maxBodyBytes > bytes.MinRead {
-		// Content-Length is only a bounded capacity hint, never an EOF or
-		// admission decision. Leave room for ReadFrom's final EOF read.
-		hint := min(resp.ContentLength, maxBodyBytes, 32<<10)
-		buffer := bytes.NewBuffer(make([]byte, 0, int(hint)+bytes.MinRead))
-		_, err = buffer.ReadFrom(bodyReader)
-		evidence.Body = buffer.Bytes()
+	if coding == "" || coding == "identity" {
+		evidence.Body, err = readBoundedBody(limited, maxBodyBytes, resp.ContentLength)
 	} else {
-		evidence.Body, err = io.ReadAll(bodyReader)
+		evidence.Body, err = io.ReadAll(io.LimitReader(limited, maxBodyBytes))
 	}
 	if err != nil {
 		evidence.ErrorCode = "body_read"
@@ -233,4 +226,46 @@ func (r *retainedBodyReader) Read(p []byte) (int, error) {
 		return int(retained), &acquisitionError{"evidence_budget", "per-target retained HTTP evidence byte budget exhausted"}
 	}
 	return n, err
+}
+
+// Content-Length is a bounded capacity hint, never an EOF or admission decision.
+// Probe a full buffer before growing it so exact-sized bodies need no final copy.
+func readBoundedBody(reader io.Reader, limit, hint int64) ([]byte, error) {
+	reader = io.LimitReader(reader, limit)
+	maxCapacity := int(min(limit, int64(int(^uint(0)>>1))))
+	capacity := int(min(limit, max(hint, 512), 32<<10))
+	body := make([]byte, 0, capacity)
+	var extra [1]byte
+	emptyReads := 0
+	for {
+		var n int
+		var err error
+		if len(body) == cap(body) {
+			n, err = reader.Read(extra[:])
+			if n != 0 {
+				capacity = cap(body) + min(cap(body), maxCapacity-cap(body))
+				grown := make([]byte, len(body)+1, capacity)
+				copy(grown, body)
+				grown[len(body)] = extra[0]
+				body = grown
+			}
+		} else {
+			n, err = reader.Read(body[len(body):cap(body)])
+			body = body[:len(body)+n]
+		}
+		if n == 0 && err == nil {
+			emptyReads++
+			if emptyReads == 100 {
+				return body, io.ErrNoProgress
+			}
+		} else {
+			emptyReads = 0
+		}
+		if err != nil {
+			if err == io.EOF {
+				err = nil
+			}
+			return body, err
+		}
+	}
 }

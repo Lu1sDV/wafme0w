@@ -21,7 +21,11 @@ type journalRecord struct {
 // complete record reaches Sync before any report or console sink sees it.
 // It is evidence for recovery, never a list of work to resume automatically.
 type diagnosticsJournal struct {
-	file    *os.File
+	file interface {
+		io.Writer
+		Sync() error
+		Close() error
+	}
 	encoder *json.Encoder
 	err     error
 }
@@ -65,8 +69,30 @@ func (journal *diagnosticsJournal) write(record journalRecord) error {
 	}
 	if err := journal.encoder.Encode(record); err != nil {
 		journal.err = fmt.Errorf("append diagnostics journal: %w", err)
-	} else if err := journal.file.Sync(); err != nil {
-		journal.err = fmt.Errorf("sync diagnostics journal: %w", err)
+		return journal.err
+	}
+	return journal.sync()
+}
+
+func (journal *diagnosticsJournal) append(encoded []byte) error {
+	if journal.err != nil {
+		return journal.err
+	}
+	n, err := journal.file.Write(encoded)
+	if err == nil && n != len(encoded) {
+		err = io.ErrShortWrite
+	}
+	if err != nil {
+		journal.err = fmt.Errorf("append diagnostics journal: %w", err)
+	}
+	return journal.err
+}
+
+func (journal *diagnosticsJournal) sync() error {
+	if journal.err == nil {
+		if err := journal.file.Sync(); err != nil {
+			journal.err = fmt.Errorf("sync diagnostics journal: %w", err)
+		}
 	}
 	return journal.err
 }

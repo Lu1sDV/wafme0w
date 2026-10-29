@@ -177,6 +177,104 @@ func TestClassifySchemaLogic(t *testing.T) {
 	}
 }
 
+func TestClassifyGuardedPartialEvidence(t *testing.T) {
+	content := FingerPrint{Type: "Content", Pattern: `(?i)lengthy-prefix.*(tail|ending).*finish`}
+	header := FingerPrint{Type: "Header", HeaderKey: "X-Guard", HeaderValue: "^marker$"}
+	definitions := []WAF{
+		{Name: "guarded", Schemas: []Scheme{
+			{FingerPrints: []FingerPrint{{Type: "Status", Pattern: "999"}}},
+			{FingerPrints: []FingerPrint{content, header}},
+		}},
+		{Name: "alternative", Schemas: []Scheme{{Any: true, FingerPrints: []FingerPrint{content, header}}}},
+	}
+	// Exercise shared filters without making incomplete filler rules observable.
+	for i := range 16 {
+		definitions = append(definitions, WAF{Name: fmt.Sprintf("filler-%d", i), Schemas: []Scheme{{FingerPrints: []FingerPrint{
+			{Type: "Status", Pattern: "999"},
+			{Type: "Content", Pattern: fmt.Sprintf("(?i)absent-filler-%d", i)},
+		}}}})
+	}
+	engine, err := Compile(definitions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name       string
+		first      Evidence
+		later      []Evidence
+		state      EvaluationState
+		matches    []Match
+		incomplete []string
+	}{
+		{
+			name:       "truncated hit remains unknown",
+			first:      Evidence{StatusCode: 200, Body: []byte("LENGTHY-PREFIX tail FINISH"), BodyTruncated: true},
+			state:      Incomplete,
+			matches:    []Match{{Product: "alternative", Schema: 1, Fingerprints: []FingerprintMatch{{Fingerprint: 2, Evidence: 0}}}},
+			incomplete: []string{"guarded"},
+		},
+		{
+			name:       "body error remains unknown",
+			first:      Evidence{StatusCode: 200, Body: []byte("LENGTHY-PREFIX tail FINISH"), ErrorCode: "body_read_error", TransportError: "interrupted"},
+			state:      Incomplete,
+			matches:    []Match{{Product: "alternative", Schema: 1, Fingerprints: []FingerprintMatch{{Fingerprint: 2, Evidence: 0}}}},
+			incomplete: []string{"guarded"},
+		},
+		{
+			name:  "later complete hit retains source indices",
+			first: Evidence{StatusCode: 200, Body: []byte("LENGTHY-PREFIX tail FINISH"), BodyTruncated: true},
+			later: []Evidence{{StatusCode: 200, Body: []byte("lengthy-prefix")}, {StatusCode: 200, Body: []byte("LENGTHY-PREFIX ending FINISH")}},
+			state: Complete,
+			matches: []Match{
+				{Product: "guarded", Schema: 2, Fingerprints: []FingerprintMatch{{Fingerprint: 1, Evidence: 2}, {Fingerprint: 2, Evidence: 0}}},
+				{Product: "alternative", Schema: 1, Fingerprints: []FingerprintMatch{{Fingerprint: 1, Evidence: 2}}},
+			},
+		},
+		{
+			name:    "complete prefix without suffix is a known miss",
+			first:   Evidence{StatusCode: 200, Body: []byte(strings.Repeat("lengthy-prefix ", 1024))},
+			state:   Complete,
+			matches: []Match{{Product: "alternative", Schema: 1, Fingerprints: []FingerprintMatch{{Fingerprint: 2, Evidence: 0}}}},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			test.first.Headers = []Header{{Name: "x-guard", Value: "marker"}}
+			evidence := append([]Evidence{test.first}, test.later...)
+			got := engine.Classify(evidence)
+			if got.State != test.state || !reflect.DeepEqual(got.Matches, test.matches) || !reflect.DeepEqual(got.IncompleteProducts, test.incomplete) {
+				t.Fatalf("got %+v; want state %s, matches %+v, incomplete %v", got, test.state, test.matches, test.incomplete)
+			}
+		})
+	}
+}
+
+func TestClassifyTrivialMissAllocations(t *testing.T) {
+	evidence := []Evidence{{
+		StatusCode: 200, Body: []byte("ordinary response"),
+		Headers: []Header{{Name: "Server", Value: "ordinary"}, {Name: "Set-Cookie", Value: "session=ordinary"}},
+	}}
+	for _, fp := range []FingerPrint{
+		{Type: "Status", Pattern: "403"},
+		{Type: "Content", Pattern: "absent"},
+		{Type: "Content", Pattern: "(?i)absent"},
+	} {
+		t.Run(fp.Type+"/"+fp.Pattern, func(t *testing.T) {
+			engine, err := Compile([]WAF{{Name: "fixture", Schemas: []Scheme{{FingerPrints: []FingerPrint{fp}}}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if allocations := testing.AllocsPerRun(100, func() {
+				got := engine.Classify(evidence)
+				if got.State != Complete || len(got.Matches) != 0 {
+					panic("trivial miss changed classification")
+				}
+			}); allocations != 0 {
+				t.Fatalf("trivial miss allocated %g times", allocations)
+			}
+		})
+	}
+}
+
 func TestClassifyThreeValuedLogic(t *testing.T) {
 	body := FingerPrint{Type: "Content", Pattern: "blocked"}
 	present := FingerPrint{Type: "Header", HeaderKey: "Server", HeaderValue: "firewall"}
