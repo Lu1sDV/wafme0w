@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Wafme0w cat climbing a brick firewall</title>
+  <g stroke="#2B292E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="23" y="25" width="37" height="35" rx="2" fill="#F28B66"/>
+    <path d="M24 37h35M24 48h35M42 26v11M32 37v11m19-11v11M42 48v11" fill="none" stroke="#AD5138"/>
+    <path d="M17 56c-3-6 1-14 5-22l4-8c-5-3-5-8-3-12L22 6c4 0 7 3 10 6l5-2 7-7 4 14c4 4 4 9-1 12l-9 10-5 15c-1 4-4 7-8 7h-8Z" fill="#797679"/>
+    <path d="M23 42C9 46 15 29 7 30c-7 1-4 9-1 11 2 12 10 15 18 9" fill="#797679"/>
+    <path d="M6 31c-4 2-2 6 0 7l5-2c-1-4-3-6-5-5Z" fill="#FAF6F1" stroke="none"/>
+    <path d="M29 57c4-5 4-11 7-19l10-10c3-1 4-4 2-6s-5-1-8 2l-9 9" fill="#FAF6F1"/>
+    <path d="M18 55c-3 2-4 6 0 6h5m5-7c-3 3-3 7 1 7h3" fill="#FAF6F1"/>
+    <path d="m29 16-2 5m9-6-2 6m-9 9 5 2m-8 7 6 2" fill="none" stroke="#555257"/>
+  </g>
+</svg>

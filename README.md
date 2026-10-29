@@ -13,8 +13,8 @@
 </p>
 
 <p align="center">
-  <a href="#4-automate-and-save-results"><img src="assets/badges/output.svg" alt="Export: JSONL, JSON, CSV and TXT" height="26"></a>
-  <a href="#2-try-it-offline"><img src="assets/badges/offline.svg" alt="Offline captures: no network" height="26"></a>
+  <a href="#3-automate-and-save-results"><img src="assets/badges/output.svg" alt="Export: JSONL, JSON, CSV and TXT" height="26"></a>
+  <a href="docs/usage.md#offline-captures"><img src="assets/badges/offline.svg" alt="Offline captures: no network" height="26"></a>
   <a href="https://github.com/Lu1sDV/wafme0w/actions/workflows/ci.yml"><img src="assets/badges/ci.svg" alt="CI: view workflows" height="26"></a>
 </p>
 
@@ -35,16 +35,7 @@ go build -o wafme0w ./cmd/wafme0w
 hardening. Use a newly scanned patch release for production; source changes do
 not update existing downloads. [Installation, Docker and release details](docs/releases.md).
 
-## 2. Try it offline
-
-```sh
-./wafme0w --evidence assets/demo/captures.jsonl --jsonl
-```
-
-No network requests. The synthetic examples demonstrate a match, a clean response,
-and incomplete evidence. [Captures](assets/demo/captures.jsonl) · [Demo recording](assets/demo/demo.cast).
-
-## 3. Scan an authorized target
+## 2. Scan an authorized target
 
 ```sh
 # Use your own local HTTP server on port 8080.
@@ -54,7 +45,7 @@ and incomplete evidence. [Captures](assets/demo/captures.jsonl) · [Demo recordi
 `--baseline` sends a normal request; default mode sends up to nine active probes,
 and `--fast` selects three. Redirects remain subject to scope and request budgets.
 
-## 4. Automate and save results
+## 3. Automate and save results
 
 ```sh
 # targets.txt: one authorized URL per line.
@@ -69,7 +60,7 @@ Configuration, input and output failures exit **1**; cancellation exits **130**.
 
 Historical **wafme0w vs wafw00f**, 1,000 targets. Saved wall-clock timings—not measurements of this checkout:
 
-| Workers / processes | wafme0w fast | wafme0w full | wafw00f |
+| Workers / processes | <img src="assets/wafme0w.svg" width="20" height="20" alt=""> wafme0w fast | <img src="assets/wafme0w.svg" width="20" height="20" alt=""> wafme0w full | wafw00f |
 | --- | ---: | ---: | ---: |
 | 1 | 19m 10.43s | 30m 2.91s | 47m 3.94s |
 | 10 | 3m 39.69s | 2m 49.17s | 9m 31.50s |

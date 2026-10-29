@@ -17,6 +17,17 @@ wafme0w --silent --list --no-colors
 | `--fast` | Three selected active requests; fewer requests, **not passive** or a latency guarantee |
 | `--baseline` | One normal request, subject to redirect and request budgets |
 
+## Offline captures
+
+From the repository root after building:
+
+```sh
+./wafme0w --evidence assets/demo/captures.jsonl --jsonl
+```
+
+No network requests. The synthetic examples demonstrate a match, a clean response,
+and incomplete evidence. [Captures](../assets/demo/captures.jsonl) · [Demo recording](../assets/demo/demo.cast).
+
 ## Request headers
 
 Use `-H` / `--header` to add comma-separated `Name: value` entries. Names are case-insensitive: later entries and repeated flags replace earlier values and built-in defaults, including `Origin` and `User-Agent`.
