@@ -83,9 +83,19 @@ func TestCLIHelpShowsWorkflowAndGroups(t *testing.T) {
 		if code != 0 || stderr.Len() != 0 {
 			t.Fatalf("help: exit=%d stderr=%q", code, stderr.String())
 		}
-		for _, want := range []string{"Input:", "Detection:", "HTTP requests:", "Limits:", "Output:", "Browser:", "Information:", "--target-file", "--input", "--target=URL", "--output=FILE", "Examples:", "--evidence captures.jsonl", "Exit codes:", "--strict"} {
+		for _, want := range []string{"Input:", "Detection:", "HTTP requests:", "Limits:", "Output:", "Browser:", "Information:", "Examples:", "--evidence captures.jsonl", "Exit codes:", "--strict"} {
 			if !strings.Contains(stdout.String(), want) {
 				t.Errorf("help omits %q", want)
+			}
+		}
+		// go-flags displays /name:VALUE on Windows and --name=VALUE on
+		// POSIX systems (or forceposix builds). Both accept the documented
+		// --name VALUE syntax. Verify the option/value contract in either
+		// supported rendering instead of requiring a platform's punctuation.
+		for name, value := range map[string]string{"target": "URL", "target-file": "FILE", "input": "FILE", "output": "FILE"} {
+			posix, windows := "--"+name+"="+value, "/"+name+":"+value
+			if !strings.Contains(stdout.String(), posix) && !strings.Contains(stdout.String(), windows) {
+				t.Errorf("help omits %s with value name %s", name, value)
 			}
 		}
 	}

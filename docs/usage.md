@@ -9,6 +9,10 @@ wafme0w --help
 wafme0w --silent --list --no-colors
 ```
 
+The `--flag value` spellings below work on every supported platform. Windows
+help also presents native `/flag:value` spellings; the option names and values
+have the same meaning.
+
 ## Choose input
 
 | Source | Flags | Behavior |
