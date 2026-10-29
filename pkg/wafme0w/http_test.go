@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -220,5 +221,111 @@ func TestRequestComponentsAndNoUserAgentOnWire(t *testing.T) {
 	}
 	if got := <-requests; got.userAgent != "explicit-client" {
 		t.Fatalf("explicit User-Agent did not override no-UA default: %+v", got)
+	}
+}
+
+func TestHTTPDiagnosticRetentionIsBounded(t *testing.T) {
+	client := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return nil, errors.New(strings.Repeat("remote failure ", 1<<17))
+	})}
+	evidence, err := sendHTTP(context.Background(), requestOpts{Method: http.MethodGet, Target: "http://fixture.invalid"}, client, DefaultMaxBodyBytes)
+	if err == nil || evidence.ErrorCode != "transport_error" || len(evidence.TransportError) != 1024 {
+		t.Fatalf("diagnostic failure or retention limit lost: code=%q bytes=%d err=%v", evidence.ErrorCode, len(evidence.TransportError), err != nil)
+	}
+}
+
+func TestRetainedHTTPBudgetDoesNotSpendLaterEvidenceOnBodySlack(t *testing.T) {
+	client := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader("x"))}, nil
+	})}
+	budget := &httpEvidenceBudget{remaining: 600, maxHeader: DefaultMaxResponseHeaderBytes}
+	options := requestOpts{Method: http.MethodGet, Target: "http://fixture.invalid", evidenceBudget: budget}
+	for i := range 2 {
+		evidence, err := sendHTTP(context.Background(), options, client, DefaultMaxBodyBytes)
+		if err != nil || evidence.StatusCode != 200 || string(evidence.Body) != "x" || evidence.BodyTruncated {
+			t.Fatalf("response %d lost usable evidence to spare capacity: %+v, %v", i, evidence, err)
+		}
+	}
+}
+
+type bodyReadSizeRecorder struct {
+	io.Reader
+	firstRead int
+}
+
+func (r *bodyReadSizeRecorder) Read(p []byte) (int, error) {
+	if r.firstRead == 0 {
+		r.firstRead = len(p)
+	}
+	return r.Reader.Read(p)
+}
+
+func TestContentLengthHintPreservesBodyReadSemantics(t *testing.T) {
+	content := strings.Repeat("x", 32<<10)
+	readErr := errors.New("late body failure")
+	for _, test := range []struct {
+		name          string
+		contentLength int64
+		content       string
+		encoding      string
+		limit         int64
+		readErr       error
+		wantTruncated bool
+	}{
+		{name: "known exact length", contentLength: int64(len(content)), content: content},
+		{name: "explicit identity", contentLength: int64(len(content)), content: content, encoding: "IDENTITY"},
+		{name: "understated length", contentLength: 513, content: content},
+		{name: "overstated length", contentLength: int64(len(content)), content: "short"},
+		{name: "hostile length is bounded", contentLength: math.MaxInt64, content: "short"},
+		{name: "body limit exact fit", contentLength: int64(len(content)), content: content[:2048], limit: 2048},
+		{name: "body limit overflow", contentLength: int64(len(content)), content: content, limit: 2048, wantTruncated: true},
+		{name: "late read failure", contentLength: int64(len(content)), content: content, readErr: readErr},
+		{name: "late unexpected EOF", contentLength: int64(len(content)), content: content, readErr: io.ErrUnexpectedEOF},
+		{name: "cancelled read", contentLength: int64(len(content)), content: content[:1024], readErr: context.Canceled},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			limit := test.limit
+			if limit == 0 {
+				limit = DefaultMaxBodyBytes
+			}
+			var reader io.Reader = strings.NewReader(test.content)
+			if test.readErr != nil {
+				reader = io.MultiReader(reader, failingResponseReader{err: test.readErr})
+			}
+			recorded := &bodyReadSizeRecorder{Reader: reader}
+			body := &trackedResponseBody{Reader: recorded}
+			client := &http.Client{Transport: bodyTrackingTransport{response: &http.Response{
+				StatusCode: http.StatusOK, ContentLength: test.contentLength,
+				Header: http.Header{"Content-Encoding": {test.encoding}}, Body: body,
+			}}}
+			evidence, err := sendHTTP(context.Background(), requestOpts{Method: http.MethodGet, Target: "http://fixture.invalid"}, client, limit)
+			if !errors.Is(err, test.readErr) {
+				t.Fatalf("read error = %v, want %v", err, test.readErr)
+			}
+			wantBody := test.content[:min(int64(len(test.content)), limit)]
+			if evidence.StatusCode != http.StatusOK || string(evidence.Body) != wantBody || evidence.BodyTruncated != test.wantTruncated || cap(evidence.Body) != len(evidence.Body) || body.closes != 1 {
+				t.Fatalf("body semantics changed: bytes=%d/%d cap=%d truncated=%t/%t status=%d closes=%d", len(evidence.Body), len(wantBody), cap(evidence.Body), evidence.BodyTruncated, test.wantTruncated, evidence.StatusCode, body.closes)
+			}
+			if (evidence.ErrorCode != "") != (test.readErr != nil) || (evidence.TransportError != "") != (test.readErr != nil) {
+				t.Fatalf("body failure lost its diagnostic: %+v", evidence)
+			}
+			if recorded.firstRead > 32<<10+bytes.MinRead {
+				t.Fatalf("untrusted length caused an oversized first read: %d", recorded.firstRead)
+			}
+		})
+	}
+}
+
+func TestContentLengthHintDoesNotReserveSharedBodyBudget(t *testing.T) {
+	client := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusOK, ContentLength: math.MaxInt64, Body: io.NopCloser(strings.NewReader("x"))}, nil
+	})}
+	budget := &httpEvidenceBudget{remaining: 600, maxHeader: DefaultMaxResponseHeaderBytes}
+	options := requestOpts{Method: http.MethodGet, Target: "http://fixture.invalid", evidenceBudget: budget}
+	for i := range 2 {
+		evidence, err := sendHTTP(context.Background(), options, client, DefaultMaxBodyBytes)
+		if err != nil || string(evidence.Body) != "x" || cap(evidence.Body) != 1 || evidence.BodyTruncated {
+			t.Fatalf("response %d lost actual evidence to a length hint: %+v, %v", i, evidence, err)
+		}
 	}
 }

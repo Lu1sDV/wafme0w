@@ -21,14 +21,15 @@ const (
 const requestsDelay = 50 * time.Millisecond
 
 type requestOpts struct {
-	Method       string
-	Target       string
-	Path         string
-	Headers      map[string]string
-	ExtraHeaders []Header
-	Params       map[string]string
-	Type         string
-	PostBody     io.Reader
+	Method         string
+	Target         string
+	Path           string
+	Headers        map[string]string
+	ExtraHeaders   []Header
+	Params         map[string]string
+	Type           string
+	PostBody       io.Reader
+	evidenceBudget *httpEvidenceBudget
 }
 
 // newTypeOptions builds the existing ordered probe catalogue once per target.
@@ -62,9 +63,11 @@ func sendRequests(ctx context.Context, target string, client *http.Client, confi
 		options = []requestOpts{options[0], options[1], options[6]}
 	}
 	responses := make([]Evidence, len(options))
+	budget := &httpEvidenceBudget{remaining: config.MaxTargetEvidenceBytes, maxHeader: config.MaxResponseHeaderBytes}
 	for i, option := range options {
 		responses[i].Role = option.Type
 		options[i].ExtraHeaders = config.Headers
+		options[i].evidenceBudget = budget
 	}
 	send := func(i int) {
 		requestCtx, cancel := context.WithTimeout(ctx, config.RequestTimeout)

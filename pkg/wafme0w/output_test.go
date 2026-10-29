@@ -16,14 +16,14 @@ import (
 func TestSerializersRetainAllEvaluationStates(t *testing.T) {
 	results := []Result{
 		{Target: "invalid://clean", Outcome: Outcome{State: Complete}},
-		{Target: "invalid://partial,quoted\"", Outcome: Outcome{State: Incomplete, Matches: []Match{{Product: "Named, WAF", Schema: 2}}, IncompleteProducts: []string{"Unknown"}, Diagnostics: []Diagnostic{{Code: "body_truncated", Evidence: 0, Message: "partial\nbody"}}}, Generic: GenericDetection{Reason: "generic\nanomaly"}},
+		{Target: "invalid://partial,quoted\"", Outcome: Outcome{State: Incomplete, Matches: []Match{{Product: "Named, WAF\u202e", Schema: 2}}, IncompleteProducts: []string{"Unknown\u202e"}, Diagnostics: []Diagnostic{{Code: "body_truncated", Evidence: 0, Message: "partial\nbody\u202e"}}}, Generic: GenericDetection{Reason: "generic\nanomaly\u202e"}},
 		{Target: "invalid://failed", Outcome: Outcome{State: Failed, Diagnostics: []Diagnostic{{Code: "transport_error", Evidence: 0, Message: "connection failed"}}}},
 	}
 	results[1].SchemaVersion = ResultSchemaVersion
-	results[1].Origin = "https://captured.example"
-	results[1].Provenance = ResultProvenance{ProgramVersion: "fixture-version", CatalogueSHA256: strings.Repeat("a", 64)}
+	results[1].Origin = "https://captured.example/\u202e"
+	results[1].Provenance = ResultProvenance{ProgramVersion: "fixture-version\u202e", CatalogueSHA256: strings.Repeat("a", 64)}
 	results[1].Outcome.Matches[0].Fingerprints = []FingerprintMatch{{Fingerprint: 1, Evidence: 0}}
-	results[1].Evidence = []EvidenceSummary{{Index: 0, Role: "NormalRequest", RequestURL: "https://captured.example/path", EffectiveURL: "https://captured.example/end", RedirectChain: []string{"https://captured.example/end"}, StatusCode: 200, BodyTruncated: true, ErrorCode: "body_limit"}}
+	results[1].Evidence = []EvidenceSummary{{Index: 0, Role: "NormalRequest\u202e", RequestURL: "https://captured.example/path", EffectiveURL: "https://captured.example/end", RedirectChain: []string{"https://captured.example/end"}, StatusCode: 200, BodyTruncated: true, ErrorCode: "body_limit"}}
 	results[1].Browser = &BrowserReport{ID: "capture-2", Mode: "screenshot", State: "partial", Reason: "image_failed\u202e\U000e0001", DOM: BrowserAsset{State: "complete", Saved: "/private/text.json"}, Screenshot: BrowserAsset{State: "failed"}}
 	for _, format := range []string{"json", "jsonl", "csv", "txt"} {
 		t.Run(format, func(t *testing.T) {
@@ -74,7 +74,7 @@ func TestSerializersRetainAllEvaluationStates(t *testing.T) {
 				}
 			case "txt":
 				if strings.ContainsAny(buffer.String(), "\u202e\U000e0001") {
-					t.Fatalf("browser formatting controls entered TXT output: %q", buffer.String())
+					t.Fatalf("formatting controls entered TXT output: %q", buffer.String())
 				}
 				rows := strings.Split(strings.TrimSuffix(buffer.String(), "\n"), "\n")
 				if len(rows) != len(results) {

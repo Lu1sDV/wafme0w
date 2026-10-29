@@ -57,6 +57,8 @@ type ScanSettings struct {
 	Passive                    bool          `json:"passive"`
 	ExcludeGeneric             bool          `json:"exclude_generic"`
 	MaxBodyBytes               int64         `json:"max_body_bytes"`
+	MaxResponseHeaderBytes     int64         `json:"max_response_header_bytes"`
+	MaxTargetEvidenceBytes     int64         `json:"max_target_evidence_bytes"`
 	RequestTimeout             time.Duration `json:"request_timeout"`
 	TargetTimeout              time.Duration `json:"target_timeout"`
 	MaxRequests                int           `json:"max_requests"`
@@ -103,6 +105,7 @@ func makeResult(engine *Engine, target, origin string, evidence []Evidence, conf
 			Settings: ScanSettings{
 				Concurrency: config.Concurrency, FastMode: config.FastMode, BaselineOnly: config.BaselineOnly,
 				Passive: config.Passive, ExcludeGeneric: config.ExcludeGeneric, MaxBodyBytes: config.MaxBodyBytes,
+				MaxResponseHeaderBytes: config.MaxResponseHeaderBytes, MaxTargetEvidenceBytes: config.MaxTargetEvidenceBytes,
 				RequestTimeout: config.RequestTimeout, TargetTimeout: config.TargetTimeout,
 				MaxRequests: config.MaxRequests, MaxConnections: config.MaxConnections,
 				RequestsPerSecond: config.RequestsPerSecond, PerOriginRequestsPerSecond: config.PerOriginRequestsPerSecond,

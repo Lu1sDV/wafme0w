@@ -92,10 +92,12 @@ func (out *ResultWriter) Write(result Result) error {
 		out.csv.Flush()
 		out.err = errors.Join(out.err, out.csv.Error())
 	} else {
+		for i := 2; i < len(row); i++ {
+			row[i] = printableJSON(row[i])
+		}
 		browserState := "off"
 		if result.Browser != nil {
 			browserState = result.Browser.State
-			row[10] = printableJSON(row[10])
 		}
 		_, out.err = fmt.Fprintf(out.writer, "%s\tstate=%s\tmatches=%s\tgeneric=%s\tincomplete_products=%s\tdiagnostics=%s\tschema_version=%s\torigin=%s\tprovenance=%s\tevidence=%s\tbrowser=%s\tbrowser_state=%s\n",
 			strconv.QuoteToGraphic(row[0]), strconv.QuoteToGraphic(row[1]), row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10], strconv.QuoteToGraphic(browserState))
@@ -103,8 +105,8 @@ func (out *ResultWriter) Write(result Result) error {
 	return out.err
 }
 
-// Keep the browser JSON cell valid JSON while making invisible formatting visible
-// in TXT reports. Machine JSON/CSV retain the original Unicode values.
+// Keep JSON cells valid JSON while making invisible formatting visible in TXT
+// reports. Machine JSON/CSV retain the original Unicode values.
 func printableJSON(value string) string {
 	if strings.IndexFunc(value, func(r rune) bool { return !unicode.IsPrint(r) }) < 0 {
 		return value

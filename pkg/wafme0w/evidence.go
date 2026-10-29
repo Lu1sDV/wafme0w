@@ -1,8 +1,15 @@
 package wafme0w
 
+import (
+	"net/http"
+	"sync"
+)
+
 // Evidence is one captured response, not a request to perform. A zero status
-// means response metadata is unavailable. A transport error may coexist with
-// usable headers; BodyTruncated, ErrorCode or TransportError makes body evidence incomplete.
+// means response metadata is unavailable, including a rejected whole header set.
+// Header sets are never partially retained by HTTP acquisition. A transport error
+// may coexist with usable headers; BodyTruncated, ErrorCode or TransportError
+// makes body evidence incomplete.
 type Evidence struct {
 	Role           string   `json:"role"`
 	RequestURL     string   `json:"request_url,omitempty"`
@@ -71,4 +78,63 @@ type Outcome struct {
 	Matches            []Match         `json:"matches,omitempty"`
 	IncompleteProducts []string        `json:"incomplete_products,omitempty"`
 	Diagnostics        []Diagnostic    `json:"diagnostics,omitempty"`
+}
+
+// One budget is shared by a target's concurrent fast probes. Charge actual
+// decoded bytes, not an upfront reservation that could starve tiny responses.
+type httpEvidenceBudget struct {
+	mu        sync.Mutex
+	remaining int64
+	maxHeader int64
+}
+
+func (b *httpEvidenceBudget) retainMetadata(evidence *Evidence, headers http.Header) bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	remaining := b.remaining
+	take := func(n int64) bool {
+		if n > remaining {
+			return false
+		}
+		remaining -= n
+		return true
+	}
+	fits := take(int64(len(evidence.RequestURL))) && take(int64(len(evidence.EffectiveURL))) && take(int64(len(evidence.Reason)))
+	for _, destination := range evidence.RedirectChain {
+		fits = fits && take(16) && take(int64(len(destination)))
+	}
+	for name, values := range headers {
+		for _, value := range values {
+			fits = fits && take(32) && take(int64(len(name))) && take(int64(len(value)))
+		}
+	}
+	if !fits {
+		*evidence = Evidence{Role: evidence.Role}
+		return false
+	}
+	b.remaining = remaining
+	return true
+}
+
+func (b *httpEvidenceBudget) retainBody(bytes int64) int64 {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	retained := min(bytes, b.remaining)
+	b.remaining -= retained
+	return retained
+}
+
+func finishBody(evidence *Evidence) {
+	if len(evidence.Body) == 0 {
+		evidence.Body = nil
+		return
+	}
+	if cap(evidence.Body) == len(evidence.Body) {
+		return
+	}
+	// Spare capacity must not exclude a later probe's actual evidence.
+	// The body budget has already charged every retained byte.
+	body := make([]byte, len(evidence.Body))
+	copy(body, evidence.Body)
+	evidence.Body = body
 }

@@ -122,6 +122,20 @@ func newOutboundPolicy(config Config) *outboundPolicy {
 	}
 	if p.base.Transport == nil {
 		p.base.Transport = http.DefaultTransport
+		if transport, ok := http.DefaultTransport.(*http.Transport); ok {
+			transport = transport.Clone()
+			// A fresh HTTP/1 connection cannot transparently replay a probe
+			// inside RoundTrip, bypassing the request budget and rate limits.
+			transport.DisableKeepAlives = true
+			transport.MaxResponseHeaderBytes = config.MaxResponseHeaderBytes
+			transport.Protocols = new(http.Protocols)
+			transport.Protocols.SetHTTP1(true)
+			transport.TLSNextProto = nil
+			if transport.TLSClientConfig != nil {
+				transport.TLSClientConfig.NextProtos = []string{"http/1.1"}
+			}
+			p.base.Transport = transport
+		}
 	}
 	if config.PerOriginRequestsPerSecond != 0 {
 		p.origins = make(map[string]time.Time)
@@ -293,6 +307,13 @@ func (t *targetTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		trace.urls = append(trace.urls, req.URL.String())
 	}
 	response, err := p.base.Transport.RoundTrip(req)
+	if response != nil && !responseHeadersWithinLimit(response, p.config.MaxResponseHeaderBytes) {
+		if response.Body != nil {
+			response.Body.Close()
+		}
+		release()
+		return nil, &acquisitionError{"response_header_limit", "response headers exceed configured byte limit"}
+	}
 	if response != nil {
 		if response.Body != nil {
 			response.Body = &releaseBody{ReadCloser: response.Body, release: release}
@@ -333,4 +354,27 @@ func (b *releaseBody) Close() error {
 		b.release()
 	})
 	return b.err
+}
+
+// Parsed-header accounting also protects callers that inject a transport with
+// a larger wire limit. Check before redirects can retain or follow Location.
+func responseHeadersWithinLimit(response *http.Response, limit int64) bool {
+	take := func(n int) bool {
+		if int64(n) > limit {
+			return false
+		}
+		limit -= int64(n)
+		return true
+	}
+	if !take(len(response.Proto)) || !take(1) || !take(len(response.Status)) || !take(4) {
+		return false
+	}
+	for name, values := range response.Header {
+		for _, value := range values {
+			if !take(len(name)) || !take(len(value)) || !take(4) {
+				return false
+			}
+		}
+	}
+	return true
 }

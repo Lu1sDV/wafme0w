@@ -18,3 +18,14 @@ func TestValidHeaderNameTokenBytes(t *testing.T) {
 		}
 	}
 }
+
+func TestValidHeaderValueControlBytes(t *testing.T) {
+	for value := range 256 {
+		c := byte(value)
+		field := "before" + string([]byte{c}) + "after"
+		want := c == '\t' || c >= ' ' && c != 0x7f
+		if got := ValidHeaderValue(field); got != want {
+			t.Fatalf("field value containing byte %#02x: valid=%t, want %t", c, got, want)
+		}
+	}
+}

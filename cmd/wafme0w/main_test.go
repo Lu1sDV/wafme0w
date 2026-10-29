@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -67,6 +68,8 @@ func TestCLIRejectsInvalidArguments(t *testing.T) {
 		{"--concurrency=-1", "--list"},
 		{"--max-body-bytes=0", "--list"},
 		{"--max-body-bytes=-1", "--list"},
+		{"--max-response-header-bytes=-1", "--list"},
+		{"--max-target-evidence-bytes=-1", "--list"},
 		{"--request-timeout=0s", "--list"},
 		{"--target-timeout=-1s", "--list"},
 		{"--max-requests=0", "--list"},
@@ -561,6 +564,79 @@ type failedConsole struct{}
 
 func (failedConsole) Write([]byte) (int, error) { return 0, errors.New("console closed") }
 
+func TestCLIHelpReportsOutputFailure(t *testing.T) {
+	for _, args := range [][]string{nil, {"--help"}} {
+		var stderr bytes.Buffer
+		code := runContext(context.Background(), args, nil, false, failedConsole{}, &stderr)
+		if code != 1 || !strings.Contains(stderr.String(), "console closed") {
+			t.Fatalf("help sink failure: args=%q exit=%d stderr=%q", args, code, stderr.String())
+		}
+	}
+}
+
+func TestCLICancellationUnblocksInheritedStdin(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Linux inherited stdin pollability regression")
+	}
+	for _, test := range []struct{ evidence, restricted bool }{
+		{false, false}, {true, false}, {false, true}, {true, true},
+	} {
+		t.Run(fmt.Sprintf("evidence=%t/restricted=%t", test.evidence, test.restricted), func(t *testing.T) {
+			executable, err := os.Executable()
+			if err != nil {
+				t.Fatal(err)
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			args := []string{"--jsonl", "--silent"}
+			input := "invalid://completed\n"
+			if test.evidence {
+				args = append(args, "--evidence=-")
+				input = captureLines(t, wafme0w.Capture{Target: "saved", Evidence: []wafme0w.Evidence{}})
+			}
+			reader, writer, err := os.Pipe()
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer reader.Close()
+			defer writer.Close()
+			if test.restricted {
+				// Reading the inherited fd is still permitted, but reopening
+				// the pipe inode is not (as after dropping privileges).
+				if err := reader.Chmod(0); err != nil {
+					t.Fatal(err)
+				}
+			}
+			cmd := exec.CommandContext(ctx, executable, args...)
+			cmd.Env = append(os.Environ(), "WAFME0W_CLI_TEST_PROCESS=1")
+			cmd.Stdin = reader
+			stdout, err := cmd.StdoutPipe()
+			if err != nil {
+				t.Fatal(err)
+			}
+			var stderr bytes.Buffer
+			cmd.Stderr = &stderr
+			if err := cmd.Start(); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := io.WriteString(writer, input); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := bufio.NewReader(stdout).ReadString('\n'); err != nil {
+				t.Fatalf("initial result: %v", err)
+			}
+			if err := cmd.Process.Signal(os.Interrupt); err != nil {
+				t.Fatal(err)
+			}
+			err = cmd.Wait()
+			var exitErr *exec.ExitError
+			if ctx.Err() != nil || !errors.As(err, &exitErr) || exitErr.ExitCode() != 130 {
+				t.Fatalf("open stdin cancellation: err=%v context=%v stderr=%q", err, ctx.Err(), stderr.String())
+			}
+		})
+	}
+}
+
 func TestCLIConsoleFailureUnblocksOwnedInput(t *testing.T) {
 	reader, writer := io.Pipe()
 	defer reader.Close()
@@ -651,6 +727,7 @@ func TestCLIBaselineUsesOneNormalRequest(t *testing.T) {
 	code, stdout, stderr := runCLI(t, nil,
 		"--target", target, "--baseline", "--jsonl", "--no-generic", "--fingerprints", fixtureCatalogue(t),
 		"--request-timeout=1s", "--target-timeout=2s", "--max-requests=1", "--max-connections=1",
+		"--max-response-header-bytes=3072", "--max-target-evidence-bytes=8192",
 		"--rate=100", "--per-origin-rate=50", "--max-redirects=0",
 		"--redirect-policy=allowlist", "--allow-origin", server.URL, "--allow-origin=https://unused.example",
 	)
@@ -664,6 +741,7 @@ func TestCLIBaselineUsesOneNormalRequest(t *testing.T) {
 	settings := results[0].Provenance.Settings
 	if results[0].Provenance.ScanMode != "baseline" || !settings.BaselineOnly || settings.FastMode || settings.Passive ||
 		settings.RequestTimeout != time.Second || settings.TargetTimeout != 2*time.Second ||
+		settings.MaxResponseHeaderBytes != 3072 || settings.MaxTargetEvidenceBytes != 8192 ||
 		settings.MaxRequests != 1 || settings.MaxConnections != 1 || settings.RequestsPerSecond != 100 ||
 		settings.PerOriginRequestsPerSecond != 50 || settings.MaxRedirects != 0 || settings.RedirectPolicy != "allowlist" ||
 		len(settings.AllowedOrigins) != 2 {
@@ -787,5 +865,23 @@ func TestCLIInvalidHeadersFailBeforeRequests(t *testing.T) {
 				t.Fatalf("invalid header reached acquisition: exit=%d requests=%d", code, requests.Load())
 			}
 		})
+	}
+}
+
+func TestCLIZeroHTTPByteLimitsUseFiniteDefaults(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, "saved-marker")
+	}))
+	defer server.Close()
+	code, stdout, stderr := runCLI(t, nil,
+		"--target", server.URL, "--baseline", "--jsonl", "--no-generic", "--fingerprints", fixtureCatalogue(t),
+		"--max-response-header-bytes=0", "--max-target-evidence-bytes=0",
+	)
+	if code != 0 {
+		t.Fatalf("zero byte limits rejected: exit=%d stderr=%q", code, stderr)
+	}
+	results := decodeResultLines(t, stdout)
+	if len(results) != 1 || results[0].Provenance.Settings.MaxResponseHeaderBytes != wafme0w.DefaultMaxResponseHeaderBytes || results[0].Provenance.Settings.MaxTargetEvidenceBytes != wafme0w.DefaultMaxTargetEvidenceBytes {
+		t.Fatalf("zero byte limits did not publish finite defaults: %+v", results)
 	}
 }

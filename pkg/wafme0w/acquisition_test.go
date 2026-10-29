@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
@@ -54,6 +55,9 @@ func TestBaselinePreservesTargetIdentityAndEffectiveSettings(t *testing.T) {
 	settings := result.Provenance.Settings
 	if settings.RequestTimeout != defaults.RequestTimeout || settings.TargetTimeout != defaults.TargetTimeout || settings.MaxRequests != defaults.MaxRequests || settings.MaxConnections != defaults.MaxConnections || settings.MaxRedirects != 0 {
 		t.Fatalf("effective legacy configuration not reported: %+v", settings)
+	}
+	if settings.MaxResponseHeaderBytes != DefaultMaxResponseHeaderBytes || settings.MaxTargetEvidenceBytes != DefaultMaxTargetEvidenceBytes {
+		t.Fatalf("effective HTTP evidence limits not reported: %+v", settings)
 	}
 	if result.SchemaVersion != ResultSchemaVersion || result.Provenance.ProgramVersion != Version() || result.Provenance.CatalogueSHA256 != emptyEngine(t).Digest() || result.Provenance.ScanMode != "baseline" {
 		t.Fatalf("result provenance missing: %+v", result.Provenance)
@@ -321,6 +325,8 @@ func TestPolicyConfigurationFailsBeforeInput(t *testing.T) {
 		{"negative target timeout", func(c *Config) { c.TargetTimeout = -time.Second }},
 		{"negative request budget", func(c *Config) { c.MaxRequests = -1 }},
 		{"negative connection cap", func(c *Config) { c.MaxConnections = -1 }},
+		{"negative response header budget", func(c *Config) { c.MaxResponseHeaderBytes = -1 }},
+		{"negative retained evidence budget", func(c *Config) { c.MaxTargetEvidenceBytes = -1 }},
 		{"negative redirect cap", func(c *Config) { c.MaxRedirects = -1 }},
 		{"nonfinite global rate", func(c *Config) { c.RequestsPerSecond = math.NaN() }},
 		{"nonfinite origin rate", func(c *Config) { c.PerOriginRequestsPerSecond = math.Inf(1) }},
@@ -361,4 +367,357 @@ func TestRequestBudgetSharedAcrossExistingFastRequests(t *testing.T) {
 			t.Fatalf("parallel requests exceeded shared target budget: requests=%d evidence=%+v", requests.Load(), result.Evidence)
 		}
 	})
+}
+
+func TestDefaultTransportDoesNotRetryOutsideRequestBudget(t *testing.T) {
+	var connections sync.Map
+	var retries atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, reused := connections.LoadOrStore(r.RemoteAddr, struct{}{})
+		if r.URL.Path == "/retry" {
+			retries.Add(1)
+			if reused {
+				connection, _, err := w.(http.Hijacker).Hijack()
+				if err != nil {
+					t.Error(err)
+					return
+				}
+				_ = connection.Close()
+				return
+			}
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	config := DefaultConfig()
+	config.Concurrency, config.MaxConnections, config.MaxRequests = 1, 1, 1
+	config.BaselineOnly = true
+	var results []Result
+	input := strings.NewReader(server.URL + "/warm\n" + server.URL + "/retry\n")
+	if err := Run(context.Background(), emptyEngine(t), input, config, func(result Result) error {
+		results = append(results, result)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if got := retries.Load(); got != 1 {
+		t.Fatalf("one-request target budget sent %d requests after a reused connection failed", got)
+	}
+	connectionCount := 0
+	connections.Range(func(_, _ any) bool {
+		connectionCount++
+		return true
+	})
+	if connectionCount != 2 {
+		t.Fatalf("two bounded requests used %d connections, want 2 fresh connections", connectionCount)
+	}
+	if len(results) != 2 {
+		t.Fatalf("emitted %d results, want 2", len(results))
+	}
+	for _, result := range results {
+		if len(result.Evidence) != 1 || result.Evidence[0].StatusCode != http.StatusNoContent || result.Evidence[0].ErrorCode != "" {
+			t.Fatalf("lost successful target evidence: %+v", result)
+		}
+	}
+}
+
+func TestDefaultTransportRetainsUnansweredRequestFailure(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		connection, _, err := w.(http.Hijacker).Hijack()
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		_ = connection.Close()
+	}))
+	defer server.Close()
+	config := DefaultConfig()
+	config.MaxRequests = 1
+	result := runBaseline(t, server.URL, config)
+	if requests.Load() != 1 || len(result.Evidence) != 1 || result.Evidence[0].StatusCode != 0 ||
+		result.Evidence[0].ErrorCode != "transport_error" || len(result.Outcome.Diagnostics) == 0 {
+		t.Fatalf("unanswered probe was replayed or lost its failure: requests=%d result=%+v", requests.Load(), result)
+	}
+}
+
+func TestRunPreservesCallerTransportConnectionReuse(t *testing.T) {
+	var connections sync.Map
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		connections.Store(r.RemoteAddr, struct{}{})
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	config := DefaultConfig()
+	config.Client = server.Client()
+	defer config.Client.CloseIdleConnections()
+	for range 2 {
+		result := runBaseline(t, server.URL, config)
+		if result.Evidence[0].StatusCode != http.StatusNoContent || result.Evidence[0].ErrorCode != "" {
+			t.Fatalf("caller transport lost response: %+v", result)
+		}
+	}
+	connectionCount := 0
+	connections.Range(func(_, _ any) bool {
+		connectionCount++
+		return true
+	})
+	if connectionCount != 1 {
+		t.Fatalf("Run changed or closed caller transport reuse: observed %d connections", connectionCount)
+	}
+}
+
+func acquireHTTPFixture(t *testing.T, target string, config Config) []Evidence {
+	t.Helper()
+	config = config.normalized()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	policy := newOutboundPolicy(config)
+	return sendRequests(ctx, target, policy.client(target), config)
+}
+
+// Match the documented payload accounting, not allocator-dependent heap sizes.
+func retainedHTTPFixtureBytes(evidence []Evidence) int64 {
+	var total int64
+	for _, observation := range evidence {
+		total += int64(len(observation.RequestURL) + len(observation.EffectiveURL) + len(observation.Reason) + cap(observation.Body))
+		for _, destination := range observation.RedirectChain {
+			total += 16 + int64(len(destination))
+		}
+		for _, header := range observation.Headers {
+			total += 32 + int64(len(header.Name)+len(header.Value))
+		}
+	}
+	return total
+}
+
+func TestHostileResponseHeadersRejectedBeforeRetention(t *testing.T) {
+	huge := strings.Repeat("h", 2<<20)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Hostile", huge)
+		_, _ = io.WriteString(w, "x")
+	}))
+	defer server.Close()
+	for _, injected := range []bool{false, true} {
+		t.Run(map[bool]string{false: "owned transport", true: "injected transport"}[injected], func(t *testing.T) {
+			config := DefaultConfig()
+			config.MaxBodyBytes, config.BaselineOnly = 1, true
+			if injected {
+				transport := http.DefaultTransport.(*http.Transport).Clone()
+				transport.MaxResponseHeaderBytes = 4 << 20
+				defer transport.CloseIdleConnections()
+				config.Client = &http.Client{Transport: transport}
+			}
+			evidence := acquireHTTPFixture(t, server.URL, config)
+			if len(evidence) != 1 || evidence[0].StatusCode != 0 || len(evidence[0].Headers) != 0 || len(evidence[0].Body) != 0 || evidence[0].ErrorCode == "" {
+				t.Fatalf("hostile headers retained or accepted as complete: %+v", evidence)
+			}
+			if injected && config.Client.Transport.(*http.Transport).MaxResponseHeaderBytes != 4<<20 {
+				t.Fatal("caller transport header policy was mutated")
+			}
+			engine, err := Compile([]WAF{{Name: "header fixture", Schemas: []Scheme{{FingerPrints: []FingerPrint{{Type: "Header", HeaderKey: "X-Hostile", HeaderValue: "h"}}}}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if outcome := engine.Classify(evidence); outcome.State != Incomplete || len(outcome.Diagnostics) == 0 {
+				t.Fatalf("rejected headers became a clean negative: %+v", outcome)
+			}
+		})
+	}
+}
+
+func TestRetainedHTTPBudgetExactAndOverflow(t *testing.T) {
+	var bodyBytes atomic.Int64
+	bodyBytes.Store(64)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Date", "Mon, 01 Jan 2024 00:00:00 GMT")
+		w.Header().Set("Server", "fixture")
+		_, _ = io.WriteString(w, strings.Repeat("x", int(bodyBytes.Load())))
+	}))
+	defer server.Close()
+	config := DefaultConfig()
+	config.BaselineOnly = true
+	original := acquireHTTPFixture(t, server.URL, config)
+	exact := retainedHTTPFixtureBytes(original) - int64(cap(original[0].Body)) + int64(len(original[0].Body))
+	config.MaxTargetEvidenceBytes = exact
+	evidence := acquireHTTPFixture(t, server.URL, config)
+	if len(evidence) != 1 || evidence[0].StatusCode != 200 || len(evidence[0].Body) != 64 || evidence[0].BodyTruncated || evidence[0].ErrorCode != "" || retainedHTTPFixtureBytes(evidence) != exact {
+		t.Fatalf("exact retained budget rejected: %+v", evidence)
+	}
+	bodyBytes.Store(65)
+	evidence = acquireHTTPFixture(t, server.URL, config)
+	if evidence[0].StatusCode != 200 || len(evidence[0].Body) != 64 || !evidence[0].BodyTruncated || evidence[0].ErrorCode != "evidence_budget" || retainedHTTPFixtureBytes(evidence) > exact {
+		t.Fatalf("body overflow lost metadata or exceeded budget: %+v", evidence)
+	}
+	engine, err := Compile([]WAF{
+		{Name: "header", Schemas: []Scheme{{FingerPrints: []FingerPrint{{Type: "Header", HeaderKey: "Server", HeaderValue: "fixture"}}}}},
+		{Name: "body", Schemas: []Scheme{{FingerPrints: []FingerPrint{{Type: "Content", Pattern: "x"}}}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	outcome := engine.Classify(evidence)
+	if outcome.State != Incomplete || len(outcome.Matches) != 1 || outcome.Matches[0].Product != "header" || !slices.Equal(outcome.IncompleteProducts, []string{"body"}) {
+		t.Fatalf("body budget changed three-valued matching: %+v", outcome)
+	}
+	config.MaxTargetEvidenceBytes = exact - 65 // One byte less than metadata alone.
+	evidence = acquireHTTPFixture(t, server.URL, config)
+	if evidence[0].StatusCode != 0 || len(evidence[0].Headers) != 0 || len(evidence[0].Body) != 0 || evidence[0].ErrorCode != "evidence_budget" || retainedHTTPFixtureBytes(evidence) != 0 {
+		t.Fatalf("partial metadata retained as a usable header set: %+v", evidence)
+	}
+}
+
+func TestRetainedHTTPBudgetConcurrentFastProbes(t *testing.T) {
+	arrived := make(chan struct{}, 3)
+	release := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		arrived <- struct{}{}
+		select {
+		case <-release:
+		case <-r.Context().Done():
+			return
+		}
+		w.Header().Set("Server", "fixture")
+		_, _ = io.WriteString(w, strings.Repeat("x", 4096))
+	}))
+	defer server.Close()
+	config := DefaultConfig()
+	config.FastMode, config.MaxBodyBytes, config.MaxTargetEvidenceBytes = true, 4096, 5000
+	done := make(chan []Evidence, 1)
+	go func() {
+		policy := newOutboundPolicy(config)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		done <- sendRequests(ctx, server.URL, policy.client(server.URL), config)
+	}()
+	for range 3 {
+		select {
+		case <-arrived:
+		case <-time.After(3 * time.Second):
+			close(release)
+			<-done
+			t.Fatal("fast probes did not overlap")
+		}
+	}
+	close(release)
+	evidence := <-done
+	if len(evidence) != 3 || retainedHTTPFixtureBytes(evidence) > config.MaxTargetEvidenceBytes {
+		t.Fatalf("concurrent probes exceeded shared retained budget: %+v", evidence)
+	}
+	var usable, diagnosed bool
+	for _, observation := range evidence {
+		usable = usable || observation.StatusCode == 200
+		diagnosed = diagnosed || observation.ErrorCode == "evidence_budget"
+	}
+	if !usable || !diagnosed {
+		t.Fatalf("budget did not preserve usable evidence and report overflow: %+v", evidence)
+	}
+}
+
+func TestDefaultRetainedHTTPBudgetPreservesNineFullBodies(t *testing.T) {
+	body := strings.Repeat("x", int(DefaultMaxBodyBytes))
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Server", "fixture")
+		_, _ = io.WriteString(w, body)
+	}))
+	defer server.Close()
+	evidence := acquireHTTPFixture(t, server.URL, DefaultConfig())
+	if len(evidence) != 9 {
+		t.Fatalf("captured %d probes, want 9", len(evidence))
+	}
+	for _, observation := range evidence {
+		if observation.StatusCode != 200 || len(observation.Body) != len(body) || observation.BodyTruncated || observation.ErrorCode != "" {
+			t.Fatalf("ordinary full body lost to default retained budget: %+v", observation)
+		}
+	}
+	if retainedHTTPFixtureBytes(evidence) > DefaultMaxTargetEvidenceBytes {
+		t.Fatal("default evidence exceeded its retained budget")
+	}
+}
+
+func TestConfiguredHeaderLimitStillHonorsAggregateBudget(t *testing.T) {
+	huge := strings.Repeat("h", 2<<20)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Large", huge)
+		_, _ = io.WriteString(w, "x")
+	}))
+	defer server.Close()
+	config := DefaultConfig()
+	config.MaxBodyBytes = 1
+	config.MaxResponseHeaderBytes = 3 << 20
+	config.MaxTargetEvidenceBytes = 5 << 20
+	evidence := acquireHTTPFixture(t, server.URL, config)
+	if len(evidence) != 9 || retainedHTTPFixtureBytes(evidence) > config.MaxTargetEvidenceBytes {
+		t.Fatalf("configured large headers escaped aggregate bound: observations=%d bytes=%d", len(evidence), retainedHTTPFixtureBytes(evidence))
+	}
+	for i, observation := range evidence {
+		if i < 2 {
+			if observation.StatusCode != 200 || observation.ErrorCode != "" || len(observation.Body) != 1 {
+				t.Fatalf("usable early response %d lost: %+v", i, observation)
+			}
+		} else if observation.StatusCode != 0 || len(observation.Headers) != 0 || observation.ErrorCode != "evidence_budget" {
+			t.Fatalf("overflow response %d retained partial metadata: %+v", i, observation)
+		}
+	}
+}
+
+func TestRetainedHTTPBudgetExtremeLimitsDoNotOverflow(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, "small response")
+	}))
+	defer server.Close()
+	config := DefaultConfig()
+	config.BaselineOnly = true
+	config.MaxTargetEvidenceBytes, config.MaxResponseHeaderBytes, config.MaxBodyBytes = math.MaxInt64, math.MaxInt64, math.MaxInt64
+	evidence := acquireHTTPFixture(t, server.URL, config)
+	if len(evidence) != 1 || evidence[0].StatusCode != 200 || string(evidence[0].Body) != "small response" || evidence[0].BodyTruncated || evidence[0].ErrorCode != "" {
+		t.Fatalf("large configured limits overflowed: %+v", evidence)
+	}
+}
+
+func TestRetainedHTTPBudgetDoesNotReserveUnusedFastBodyLimits(t *testing.T) {
+	arrived := make(chan struct{}, 3)
+	release := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", "1")
+		w.Header().Set("Server", "fixture")
+		w.WriteHeader(http.StatusOK)
+		w.(http.Flusher).Flush()
+		arrived <- struct{}{}
+		select {
+		case <-release:
+			_, _ = io.WriteString(w, "x")
+		case <-r.Context().Done():
+		}
+	}))
+	defer server.Close()
+	config := DefaultConfig()
+	config.FastMode, config.MaxTargetEvidenceBytes = true, 4<<10
+	done := make(chan []Evidence, 1)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		policy := newOutboundPolicy(config)
+		done <- sendRequests(ctx, server.URL, policy.client(server.URL), config)
+	}()
+	for range 3 {
+		select {
+		case <-arrived:
+		case <-time.After(3 * time.Second):
+			close(release)
+			<-done
+			t.Fatal("fast response headers did not overlap blocked body reads")
+		}
+	}
+	close(release)
+	evidence := <-done
+	if len(evidence) != 3 || retainedHTTPFixtureBytes(evidence) > config.MaxTargetEvidenceBytes {
+		t.Fatalf("small concurrent responses exceeded budget: %+v", evidence)
+	}
+	for _, observation := range evidence {
+		if observation.StatusCode != 200 || string(observation.Body) != "x" || observation.BodyTruncated || observation.ErrorCode != "" {
+			t.Fatalf("unused 1 MiB body allowance starved a tiny response: %+v", evidence)
+		}
+	}
 }

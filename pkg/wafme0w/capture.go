@@ -121,7 +121,7 @@ func validateCapture(capture Capture, maxBodyBytes int64) error {
 		if observation.StatusCode != 0 && (observation.StatusCode < 100 || observation.StatusCode > 999) {
 			return fmt.Errorf("evidence %d: status must be zero or a three-digit HTTP status", i)
 		}
-		if strings.ContainsAny(observation.Reason, "\x00\r\n") {
+		if !httpmeta.ValidHeaderValue(observation.Reason) {
 			return fmt.Errorf("evidence %d: invalid status reason", i)
 		}
 		if int64(len(observation.Body)) > maxBodyBytes {
@@ -131,7 +131,7 @@ func validateCapture(capture Capture, maxBodyBytes int64) error {
 			return fmt.Errorf("evidence %d: more than 4096 header values", i)
 		}
 		for _, header := range observation.Headers {
-			if !httpmeta.ValidHeaderName(header.Name) || strings.ContainsAny(header.Value, "\x00\r\n") {
+			if !httpmeta.ValidHeaderName(header.Name) || !httpmeta.ValidHeaderValue(header.Value) {
 				return fmt.Errorf("evidence %d: invalid HTTP header", i)
 			}
 		}

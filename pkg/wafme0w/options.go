@@ -13,11 +13,15 @@ import (
 	"github.com/Lu1sDV/wafme0w/internal/httpmeta"
 )
 
-const DefaultMaxBodyBytes int64 = 1 << 20
+const (
+	DefaultMaxBodyBytes           int64 = 1 << 20
+	DefaultMaxResponseHeaderBytes int64 = 64 << 10
+	DefaultMaxTargetEvidenceBytes int64 = 16 << 20
+)
 
 // Config is copied by Run. Concurrency and MaxBodyBytes must be positive.
-// Zero timeouts and request/connection budgets use finite legacy defaults;
-// zero MaxRedirects means no redirects, and zero rates disable added pacing.
+// Zero timeouts, header/evidence limits and request/connection budgets use finite
+// defaults; zero MaxRedirects means no redirects, and zero rates disable pacing.
 // AllowedOrigins, when nonempty, also restrict starting URLs.
 // RedirectPolicy defaults to canonical-host: the starting origin and its exact
 // www/non-www counterpart, with the same scheme and effective port.
@@ -25,6 +29,20 @@ const DefaultMaxBodyBytes int64 = 1 << 20
 // Read calls. Run invokes it once on cancellation/failure, never on normal EOF.
 // It must return promptly; Run never closes an arbitrary caller-owned reader.
 // Injected clients/transports must honor request contexts, as net/http does.
+// The built-in transport uses fresh HTTP/1 connections to prevent transparent
+// retries from bypassing request budgets and pacing. Caller-supplied transports
+// retain their own connection/retry behavior; their internal network effects
+// cannot be bounded by Run's limits on RoundTrip calls.
+// MaxResponseHeaderBytes bounds wire headers on owned stdlib transports and
+// parsed headers at the retention boundary for every transport. Injected
+// transports still own their wire-level allocation and retry policies.
+// MaxTargetEvidenceBytes bounds retained HTTP acquisition payload per target:
+// body backing capacity, header names/values plus 32 bytes per header, reason,
+// request/effective URLs, and redirect URLs plus 16 bytes per redirect.
+// Fixed observation fields and diagnostic text (at most 1024 bytes each) are
+// additional bounded overhead. This is not a process-RSS or classifier/browser
+// memory limit. Header sets are retained atomically; unavailable metadata has
+// status zero, never a partially retained header set treated as a clean miss.
 // Passive is set by RunCaptured; Run rejects it rather than issuing requests.
 // Durations in JSON provenance are nanoseconds.
 type Config struct {
@@ -34,6 +52,8 @@ type Config struct {
 	Passive                    bool
 	ExcludeGeneric             bool
 	MaxBodyBytes               int64
+	MaxResponseHeaderBytes     int64
+	MaxTargetEvidenceBytes     int64
 	RequestTimeout             time.Duration
 	TargetTimeout              time.Duration
 	MaxRequests                int
@@ -55,6 +75,7 @@ type Config struct {
 func DefaultConfig() Config {
 	return Config{
 		Concurrency: 20, MaxBodyBytes: DefaultMaxBodyBytes,
+		MaxResponseHeaderBytes: DefaultMaxResponseHeaderBytes, MaxTargetEvidenceBytes: DefaultMaxTargetEvidenceBytes,
 		RequestTimeout: 5 * time.Second, TargetTimeout: 30 * time.Second,
 		MaxRequests: 54, MaxConnections: 20, MaxRedirects: 5,
 		RedirectPolicy: "canonical-host",
@@ -63,6 +84,12 @@ func DefaultConfig() Config {
 
 func (c Config) normalized() Config {
 	defaults := DefaultConfig()
+	if c.MaxResponseHeaderBytes == 0 {
+		c.MaxResponseHeaderBytes = defaults.MaxResponseHeaderBytes
+	}
+	if c.MaxTargetEvidenceBytes == 0 {
+		c.MaxTargetEvidenceBytes = defaults.MaxTargetEvidenceBytes
+	}
 	if c.RequestTimeout == 0 {
 		c.RequestTimeout = defaults.RequestTimeout
 	}
@@ -117,6 +144,9 @@ func (c Config) validate() error {
 	}
 	if c.MaxBodyBytes <= 0 {
 		return errors.New("decoded body limit must be positive")
+	}
+	if c.MaxResponseHeaderBytes <= 0 || c.MaxTargetEvidenceBytes <= 0 {
+		return errors.New("response header and retained evidence limits must be positive")
 	}
 	if c.RequestTimeout <= 0 || c.TargetTimeout <= 0 {
 		return errors.New("request and target timeouts must be positive")

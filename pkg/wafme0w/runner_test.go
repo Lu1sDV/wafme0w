@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -236,5 +237,115 @@ func TestSuccessfulRunDoesNotCancelInput(t *testing.T) {
 	config.CancelInput = func() { t.Error("normal EOF cancelled caller input") }
 	if err := Run(context.Background(), emptyEngine(t), strings.NewReader("invalid://fixture\n"), config, func(Result) error { return nil }); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestRunProvenanceIncludesAcquisitionEvidenceLimits(t *testing.T) {
+	for _, configured := range []bool{false, true} {
+		config := DefaultConfig()
+		wantHeaders, wantEvidence := config.MaxResponseHeaderBytes, config.MaxTargetEvidenceBytes
+		if configured {
+			config.MaxResponseHeaderBytes, config.MaxTargetEvidenceBytes = 3072, 8192
+			wantHeaders, wantEvidence = 3072, 8192
+		} else {
+			config.MaxResponseHeaderBytes, config.MaxTargetEvidenceBytes = 0, 0
+		}
+		var settings ScanSettings
+		err := Run(context.Background(), emptyEngine(t), strings.NewReader("invalid://fixture"), config, func(result Result) error {
+			settings = result.Provenance.Settings
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if settings.MaxResponseHeaderBytes != wantHeaders || settings.MaxTargetEvidenceBytes != wantEvidence {
+			t.Fatalf("configured=%t: effective evidence limits missing from provenance: %+v", configured, settings)
+		}
+	}
+}
+
+type oneTargetPerRead struct {
+	remaining int
+	reads     int
+}
+
+func (input *oneTargetPerRead) Read(buffer []byte) (int, error) {
+	if input.remaining == 0 {
+		return 0, io.EOF
+	}
+	input.remaining--
+	input.reads++
+	return copy(buffer, "invalid://fixture\n"), nil
+}
+
+func TestRunBackpressureBoundsRetainedResults(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		config := DefaultConfig()
+		config.Concurrency = 2
+		const total = 100
+		input := &oneTargetPerRead{remaining: total}
+		started, release := make(chan struct{}), make(chan struct{})
+		done := make(chan error, 1)
+		engine := emptyEngine(t)
+		calls := 0
+		go func() {
+			done <- Run(context.Background(), engine, input, config, func(Result) error {
+				calls++
+				if calls == 1 {
+					close(started)
+					<-release
+				}
+				return nil
+			})
+		}()
+		<-started
+		synctest.Wait()
+		// Two workers may hold results, one is inside emit, and the scanner
+		// may have read one target while waiting for worker admission.
+		if got, want := input.reads, config.Concurrency+2; got != want {
+			t.Errorf("blocked sink admitted %d targets, want %d", got, want)
+		}
+		close(release)
+		if err := <-done; err != nil {
+			t.Fatal(err)
+		}
+		if calls != total {
+			t.Fatalf("emitted %d results, want %d", calls, total)
+		}
+	})
+}
+
+func TestRunEmitsInCompletionOrder(t *testing.T) {
+	started, release := make(chan struct{}), make(chan struct{})
+	config := DefaultConfig()
+	config.Concurrency, config.BaselineOnly = 2, true
+	config.Client = &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		if request.URL.Hostname() == "slow.invalid" {
+			close(started)
+			select {
+			case <-release:
+			case <-request.Context().Done():
+				return nil, request.Context().Err()
+			}
+		} else {
+			<-started
+		}
+		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader("")), Request: request}, nil
+	})}
+	var targets []string
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	err := Run(ctx, emptyEngine(t), strings.NewReader("http://slow.invalid\nhttp://fast.invalid"), config, func(result Result) error {
+		targets = append(targets, result.Target)
+		if len(targets) == 1 {
+			close(release)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(targets) != 2 || targets[0] != "http://fast.invalid" || targets[1] != "http://slow.invalid" {
+		t.Fatalf("results were not emitted in completion order: %v", targets)
 	}
 }

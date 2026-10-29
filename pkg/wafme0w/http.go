@@ -1,6 +1,7 @@
 package wafme0w
 
 import (
+	"bytes"
 	"compress/gzip"
 	"compress/zlib"
 	"context"
@@ -61,17 +62,21 @@ func requestURL(options requestOpts) (string, error) {
 func sendHTTP(ctx context.Context, options requestOpts, client *http.Client, maxBodyBytes int64) (evidence Evidence, err error) {
 	evidence.Role = options.Type
 	trace := &requestTrace{}
+	budget := options.evidenceBudget
+	if budget == nil {
+		budget = &httpEvidenceBudget{remaining: DefaultMaxTargetEvidenceBytes, maxHeader: DefaultMaxResponseHeaderBytes}
+	}
+	metadataRetained := false
 	defer func() {
-		if len(trace.urls) != 0 {
-			if evidence.EffectiveURL == "" {
-				evidence.EffectiveURL = trace.urls[len(trace.urls)-1]
-			}
-			if len(trace.urls) > 1 {
-				evidence.RedirectChain = trace.urls[1:]
+		if !metadataRetained {
+			applyRequestTrace(&evidence, trace)
+			if !budget.retainMetadata(&evidence, nil) {
+				err = &acquisitionError{"evidence_budget", "per-target retained HTTP evidence byte budget exhausted"}
 			}
 		}
 		if err != nil {
-			evidence.TransportError = err.Error()
+			message := err.Error()
+			evidence.TransportError = strings.Clone(message[:min(len(message), 1024)])
 			if evidence.ErrorCode == "" {
 				evidence.ErrorCode = acquisitionCode(err)
 			}
@@ -111,6 +116,10 @@ func sendHTTP(ctx context.Context, options requestOpts, client *http.Client, max
 		if resp.Body != nil {
 			defer resp.Body.Close()
 		}
+		if !responseHeadersWithinLimit(resp, budget.maxHeader) {
+			evidence.ErrorCode = "response_header_limit"
+			return evidence, &acquisitionError{"response_header_limit", "response headers exceed configured byte limit"}
+		}
 		evidence.StatusCode = resp.StatusCode
 		evidence.Reason = strings.TrimSpace(strings.TrimPrefix(resp.Status, strconv.Itoa(resp.StatusCode)))
 		evidence.EffectiveURL = endPoint
@@ -119,6 +128,17 @@ func sendHTTP(ctx context.Context, options requestOpts, client *http.Client, max
 		} else if len(trace.urls) != 0 {
 			evidence.EffectiveURL = trace.urls[len(trace.urls)-1]
 		}
+		applyRequestTrace(&evidence, trace)
+		metadataRetained = true
+		if !budget.retainMetadata(&evidence, resp.Header) {
+			return evidence, &acquisitionError{"evidence_budget", "per-target retained HTTP evidence byte budget exhausted"}
+		}
+		evidence.Reason = strings.Clone(evidence.Reason)
+		headerCount := 0
+		for _, values := range resp.Header {
+			headerCount += len(values)
+		}
+		evidence.Headers = make([]Header, 0, headerCount)
 		names := make([]string, 0, len(resp.Header))
 		for name := range resp.Header {
 			names = append(names, name)
@@ -126,7 +146,7 @@ func sendHTTP(ctx context.Context, options requestOpts, client *http.Client, max
 		sort.Strings(names)
 		for _, name := range names {
 			for _, value := range resp.Header[name] {
-				evidence.Headers = append(evidence.Headers, Header{Name: name, Value: value})
+				evidence.Headers = append(evidence.Headers, Header{Name: strings.Clone(name), Value: strings.Clone(value)})
 			}
 		}
 	}
@@ -157,9 +177,24 @@ func sendHTTP(ctx context.Context, options requestOpts, client *http.Client, max
 		evidence.ErrorCode = "unsupported_content_encoding"
 		return evidence, fmt.Errorf("unsupported content encoding %q", coding)
 	}
-	evidence.Body, err = io.ReadAll(io.LimitReader(reader, maxBodyBytes))
+	defer finishBody(&evidence)
+	limited := &retainedBodyReader{reader: reader, budget: budget}
+	bodyReader := io.LimitReader(limited, maxBodyBytes)
+	if (coding == "" || coding == "identity") && resp.ContentLength > bytes.MinRead && maxBodyBytes > bytes.MinRead {
+		// Content-Length is only a bounded capacity hint, never an EOF or
+		// admission decision. Leave room for ReadFrom's final EOF read.
+		hint := min(resp.ContentLength, maxBodyBytes, 32<<10)
+		buffer := bytes.NewBuffer(make([]byte, 0, int(hint)+bytes.MinRead))
+		_, err = buffer.ReadFrom(bodyReader)
+		evidence.Body = buffer.Bytes()
+	} else {
+		evidence.Body, err = io.ReadAll(bodyReader)
+	}
 	if err != nil {
 		evidence.ErrorCode = "body_read"
+		if acquisitionCode(err) == "evidence_budget" {
+			evidence.ErrorCode, evidence.BodyTruncated = "evidence_budget", true
+		}
 		return evidence, fmt.Errorf("read decoded body: %w", err)
 	}
 	// Probe one decoded byte without retaining it to distinguish an exact fit.
@@ -171,4 +206,31 @@ func sendHTTP(ctx context.Context, options requestOpts, client *http.Client, max
 		return evidence, fmt.Errorf("read decoded body: %w", readErr)
 	}
 	return evidence, nil
+}
+
+func applyRequestTrace(evidence *Evidence, trace *requestTrace) {
+	if len(trace.urls) == 0 {
+		return
+	}
+	if evidence.EffectiveURL == "" {
+		evidence.EffectiveURL = trace.urls[len(trace.urls)-1]
+	}
+	if len(trace.urls) > 1 {
+		evidence.RedirectChain = make([]string, len(trace.urls)-1)
+		copy(evidence.RedirectChain, trace.urls[1:])
+	}
+}
+
+type retainedBodyReader struct {
+	reader io.Reader
+	budget *httpEvidenceBudget
+}
+
+func (r *retainedBodyReader) Read(p []byte) (int, error) {
+	n, err := r.reader.Read(p)
+	retained := r.budget.retainBody(int64(n))
+	if retained < int64(n) {
+		return int(retained), &acquisitionError{"evidence_budget", "per-target retained HTTP evidence byte budget exhausted"}
+	}
+	return n, err
 }

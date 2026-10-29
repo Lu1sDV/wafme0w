@@ -38,7 +38,7 @@ func TestRunCapturedClassifiesWithoutAcquisition(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	capture := Capture{Target: "saved-origin", Evidence: []Evidence{{Role: "Normal", StatusCode: 200, Body: []byte("saved marker: private body"), Headers: []Header{{Name: "X-Private", Value: "private header"}}}}}
+	capture := Capture{Target: "saved-origin", Evidence: []Evidence{{Role: "Normal", StatusCode: 200, Reason: "OK\tcaptured", Body: []byte("saved marker: private body"), Headers: []Header{{Name: "X-Private", Value: "private header\tvalue"}}}}}
 	var input bytes.Buffer
 	if err := json.NewEncoder(&input).Encode(capture); err != nil {
 		t.Fatal(err)
@@ -156,5 +156,54 @@ func TestRunCapturedSinkFailureStopsStream(t *testing.T) {
 	})
 	if !errors.Is(err, sentinel) || calls != 1 || !woke {
 		t.Fatalf("sink shutdown failed: calls=%d woke=%v err=%v", calls, woke, err)
+	}
+}
+
+func TestRunCapturedRejectsHTTPControlBytes(t *testing.T) {
+	engine := emptyEngine(t)
+	for _, field := range []string{"header", "reason"} {
+		for _, control := range []byte{0x01, 0x0b, 0x1f, 0x7f} {
+			t.Run(field+"/"+string([]byte{control}), func(t *testing.T) {
+				observation := Evidence{Role: "Normal", StatusCode: 200}
+				value := "before" + string([]byte{control}) + "after"
+				if field == "header" {
+					observation.Headers = []Header{{Name: "X-Test", Value: value}}
+				} else {
+					observation.Reason = value
+				}
+				var input bytes.Buffer
+				if err := json.NewEncoder(&input).Encode(Capture{Target: "saved", Evidence: []Evidence{observation}}); err != nil {
+					t.Fatal(err)
+				}
+				err := RunCaptured(context.Background(), engine, &input, DefaultConfig(), func(Result) error {
+					t.Error("invalid HTTP value emitted a result")
+					return nil
+				})
+				if err == nil {
+					t.Fatal("invalid HTTP control byte accepted")
+				}
+			})
+		}
+	}
+}
+
+func TestRunCapturedInputFailurePreservesEarlierResults(t *testing.T) {
+	sentinel := errors.New("capture input failed")
+	for _, tail := range []io.Reader{failingReader{sentinel}, strings.NewReader("{invalid}\n")} {
+		input := &trackedReader{Reader: io.MultiReader(strings.NewReader("{\"target\":\"first\",\"evidence\":[]}\n"), tail)}
+		var targets []string
+		err := RunCaptured(context.Background(), emptyEngine(t), input, DefaultConfig(), func(result Result) error {
+			targets = append(targets, result.Target)
+			return nil
+		})
+		if err == nil || len(targets) != 1 || targets[0] != "first" {
+			t.Fatalf("earlier capture lost on later input failure: targets=%v err=%v", targets, err)
+		}
+		if _, failed := tail.(failingReader); failed && !errors.Is(err, sentinel) {
+			t.Fatalf("capture input error lost: %v", err)
+		}
+		if input.closed {
+			t.Fatal("caller-owned capture reader was closed")
+		}
 	}
 }

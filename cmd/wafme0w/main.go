@@ -27,41 +27,43 @@ import (
 var embeddedFingerPrints []byte
 
 type options struct {
-	Target           string        `short:"t" long:"target" description:"HTTP(S) target URL (active unless --baseline)"`
-	InputFile        string        `short:"I" long:"input" description:"File with one target URL per line"`
-	EvidenceFile     string        `long:"evidence" description:"Classify saved capture JSONL with zero network access; - reads stdin"`
-	OutputFile       string        `short:"O" long:"output" description:"Atomic report file: JSON, JSONL, CSV or TXT by extension"`
-	JournalFile      string        `long:"diagnostics-journal" description:"Append and sync body-free result/diagnostic JSONL independently of the report"`
-	Browser          string        `long:"browser" description:"off, navigate or screenshot; local Chromium, no hard network/resource isolation"`
-	BrowserPath      string        `long:"browser-path" description:"Existing native Chromium executable (not a shell wrapper); never downloaded"`
-	BrowserTimeout   time.Duration `long:"browser-timeout" description:"Browser acquisition deadline, separate from HTTP target timeout"`
-	BrowserSettle    time.Duration `long:"browser-settle" description:"Required browser quiet interval"`
-	BrowserOrigins   []string      `long:"browser-allow-origin" description:"Extra exact resource origin, intersected with --allow-origin; repeatable"`
-	SaveScreenshots  string        `long:"save-screenshots" description:"Save sanitized viewport PNGs under a private run directory; requires --browser=screenshot"`
-	Debug            bool          `long:"debug" description:"Print body-free per-request evidence and error details to stderr after each target"`
-	Headers          []string      `short:"H" long:"header" description:"Comma-separated Name: value headers; override defaults, repeatable; CSV-quote fields containing commas"`
-	FingerPrintFile  string        `long:"fingerprints" description:"File containing the JSON-formatted fingerprints"`
-	Concurrency      int           `short:"c" long:"concurrency" description:"Number of concurrent target workers"`
-	MaxBodyBytes     int64         `long:"max-body-bytes" description:"Maximum decoded bytes retained per response"`
-	RequestTimeout   time.Duration `long:"request-timeout" description:"Per-request timeout, e.g. 5s"`
-	TargetTimeout    time.Duration `long:"target-timeout" description:"Total HTTP acquisition timeout per target, e.g. 30s; independent of browser"`
-	MaxRequests      int           `long:"max-requests" description:"Per-target HTTP acquisition request budget, including redirects"`
-	MaxConnections   int           `long:"max-connections" description:"Global maximum HTTP acquisition connections"`
-	Rate             float64       `long:"rate" description:"Global HTTP acquisition requests per second; 0 disables pacing"`
-	PerOriginRate    float64       `long:"per-origin-rate" description:"HTTP acquisition requests per second per origin; 0 disables pacing"`
-	MaxRedirects     int           `long:"max-redirects" description:"Maximum redirects per request; 0 follows none"`
-	RedirectPolicy   string        `long:"redirect-policy" description:"Redirect policy: canonical-host (www/non-www), same-origin, none or allowlist"`
-	AllowedOrigins   []string      `long:"allow-origin" description:"Allowed exact HTTP(S) origin; repeat for multiple origins"`
-	FastMode         bool          `long:"fast" description:"Use the reduced ACTIVE request set; not passive"`
-	BaselineOnly     bool          `long:"baseline" description:"Send only the normal request; no active probe requests"`
-	ExcludeGeneric   bool          `long:"no-generic" description:"Exclude generic anomaly checks"`
-	JSONL            bool          `long:"jsonl" description:"Stream only result JSONL to stdout; human summary goes to stderr"`
-	Strict           bool          `long:"strict" description:"Exit 2 for failed, incomplete or diagnosed HTTP targets or browser/artifact failures after report publication"`
-	Version          bool          `long:"version" description:"Print the program version and exit"`
-	ListWAFS         bool          `long:"list" description:"List all detectable WAFs"`
-	Silent           bool          `long:"silent" description:"Suppress human scan output; requires --output or --jsonl"`
-	NoColors         bool          `long:"no-colors" description:"Disable ANSI color (also honors NO_COLOR and redirected output)"`
-	SuppressWarnings bool          `long:"no-warning" description:"Suppress human diagnostics, not result state or journal records"`
+	Target                 string        `short:"t" long:"target" description:"HTTP(S) target URL (active unless --baseline)"`
+	InputFile              string        `short:"I" long:"input" description:"File with one target URL per line"`
+	EvidenceFile           string        `long:"evidence" description:"Classify saved capture JSONL with zero network access; - reads stdin"`
+	OutputFile             string        `short:"O" long:"output" description:"Atomic report file: JSON, JSONL, CSV or TXT by extension"`
+	JournalFile            string        `long:"diagnostics-journal" description:"Append and sync body-free result/diagnostic JSONL independently of the report"`
+	Browser                string        `long:"browser" description:"off, navigate or screenshot; local Chromium, no hard network/resource isolation"`
+	BrowserPath            string        `long:"browser-path" description:"Existing native Chromium executable (not a shell wrapper); never downloaded"`
+	BrowserTimeout         time.Duration `long:"browser-timeout" description:"Browser acquisition deadline, separate from HTTP target timeout"`
+	BrowserSettle          time.Duration `long:"browser-settle" description:"Required browser quiet interval"`
+	BrowserOrigins         []string      `long:"browser-allow-origin" description:"Extra exact resource origin, intersected with --allow-origin; repeatable"`
+	SaveScreenshots        string        `long:"save-screenshots" description:"Save sanitized viewport PNGs under a private run directory; requires --browser=screenshot"`
+	Debug                  bool          `long:"debug" description:"Print body-free per-request evidence and error details to stderr after each target"`
+	Headers                []string      `short:"H" long:"header" description:"Comma-separated Name: value headers; override defaults, repeatable; CSV-quote fields containing commas"`
+	FingerPrintFile        string        `long:"fingerprints" description:"File containing the JSON-formatted fingerprints"`
+	Concurrency            int           `short:"c" long:"concurrency" description:"Number of concurrent target workers"`
+	MaxBodyBytes           int64         `long:"max-body-bytes" description:"Maximum decoded bytes retained per response"`
+	MaxResponseHeaderBytes int64         `long:"max-response-header-bytes" description:"Maximum response header bytes; 0 uses the 64 KiB default"`
+	MaxTargetEvidenceBytes int64         `long:"max-target-evidence-bytes" description:"Per-target retained HTTP evidence bytes; 0 uses the 16 MiB default; excludes browser"`
+	RequestTimeout         time.Duration `long:"request-timeout" description:"Per-request timeout, e.g. 5s"`
+	TargetTimeout          time.Duration `long:"target-timeout" description:"Total HTTP acquisition timeout per target, e.g. 30s; independent of browser"`
+	MaxRequests            int           `long:"max-requests" description:"Per-target HTTP acquisition request budget, including redirects"`
+	MaxConnections         int           `long:"max-connections" description:"Global maximum HTTP acquisition connections"`
+	Rate                   float64       `long:"rate" description:"Global HTTP acquisition requests per second; 0 disables pacing"`
+	PerOriginRate          float64       `long:"per-origin-rate" description:"HTTP acquisition requests per second per origin; 0 disables pacing"`
+	MaxRedirects           int           `long:"max-redirects" description:"Maximum redirects per request; 0 follows none"`
+	RedirectPolicy         string        `long:"redirect-policy" description:"Redirect policy: canonical-host (www/non-www), same-origin, none or allowlist"`
+	AllowedOrigins         []string      `long:"allow-origin" description:"Allowed exact HTTP(S) origin; repeat for multiple origins"`
+	FastMode               bool          `long:"fast" description:"Use the reduced ACTIVE request set; not passive"`
+	BaselineOnly           bool          `long:"baseline" description:"Send only the normal request; no active probe requests"`
+	ExcludeGeneric         bool          `long:"no-generic" description:"Exclude generic anomaly checks"`
+	JSONL                  bool          `long:"jsonl" description:"Stream only result JSONL to stdout; human summary goes to stderr"`
+	Strict                 bool          `long:"strict" description:"Exit 2 for failed, incomplete or diagnosed HTTP targets or browser/artifact failures after report publication"`
+	Version                bool          `long:"version" description:"Print the program version and exit"`
+	ListWAFS               bool          `long:"list" description:"List all detectable WAFs"`
+	Silent                 bool          `long:"silent" description:"Suppress human scan output; requires --output or --jsonl"`
+	NoColors               bool          `long:"no-colors" description:"Disable ANSI color (also honors NO_COLOR and redirected output)"`
+	SuppressWarnings       bool          `long:"no-warning" description:"Suppress human diagnostics, not result state or journal records"`
 }
 
 func main() {
@@ -78,6 +80,7 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 	config := wafme0w.DefaultConfig()
 	opts := options{
 		Concurrency: config.Concurrency, MaxBodyBytes: config.MaxBodyBytes,
+		MaxResponseHeaderBytes: config.MaxResponseHeaderBytes, MaxTargetEvidenceBytes: config.MaxTargetEvidenceBytes,
 		RequestTimeout: config.RequestTimeout, TargetTimeout: config.TargetTimeout,
 		MaxRequests: config.MaxRequests, MaxConnections: config.MaxConnections,
 		Rate: config.RequestsPerSecond, PerOriginRate: config.PerOriginRequestsPerSecond,
@@ -88,7 +91,10 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 	positional, err := parser.ParseArgs(args)
 	if err != nil {
 		if flagErr, ok := err.(*flags.Error); ok && flagErr.Type == flags.ErrHelp {
-			parser.WriteHelp(stdout)
+			if err := writeHelp(parser, stdout); err != nil {
+				fmt.Fprintln(stderr, terminalText(err.Error()))
+				return 1
+			}
 			return 0
 		}
 		fmt.Fprintln(stderr, terminalText(err.Error()))
@@ -113,7 +119,9 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 		}
 	}
 	if len(args) == 0 && !piped {
-		parser.WriteHelp(stdout)
+		if err := writeHelp(parser, stdout); err != nil {
+			return fail(err)
+		}
 		return 0
 	}
 	if err := validateOptions(opts); err != nil {
@@ -166,6 +174,7 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 	defer stopInput()
 	config.CancelInput = closeInput
 	config.Concurrency, config.MaxBodyBytes = opts.Concurrency, opts.MaxBodyBytes
+	config.MaxResponseHeaderBytes, config.MaxTargetEvidenceBytes = opts.MaxResponseHeaderBytes, opts.MaxTargetEvidenceBytes
 	config.FastMode, config.BaselineOnly, config.ExcludeGeneric = opts.FastMode, opts.BaselineOnly, opts.ExcludeGeneric
 	config.RequestTimeout, config.TargetTimeout = opts.RequestTimeout, opts.TargetTimeout
 	config.MaxRequests, config.MaxConnections = opts.MaxRequests, opts.MaxConnections
@@ -281,9 +290,19 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 	return 0
 }
 
+func writeHelp(parser *flags.Parser, writer io.Writer) error {
+	var help bytes.Buffer
+	parser.WriteHelp(&help)
+	_, err := help.WriteTo(writer)
+	return err
+}
+
 func validateOptions(opts options) error {
 	if opts.Concurrency <= 0 || opts.MaxBodyBytes <= 0 || opts.MaxRequests <= 0 || opts.MaxConnections <= 0 {
 		return errors.New("concurrency, decoded body limit, request budget and connection limit must be positive")
+	}
+	if opts.MaxResponseHeaderBytes < 0 || opts.MaxTargetEvidenceBytes < 0 {
+		return errors.New("response header and retained evidence limits must not be negative")
 	}
 	if opts.RequestTimeout <= 0 || opts.TargetTimeout <= 0 {
 		return errors.New("request and target timeouts must be positive")
@@ -401,6 +420,13 @@ func resolveInput(opts options, stdin io.Reader, piped bool) (io.Reader, func(),
 		input = stdin
 	} else {
 		return nil, nil, errors.New("no targets provided")
+	}
+	if input == os.Stdin {
+		var err error
+		input, err = cancellableStdin()
+		if err != nil {
+			return nil, nil, fmt.Errorf("open cancellable stdin: %w", err)
+		}
 	}
 	var once sync.Once
 	closeInput := func() {
