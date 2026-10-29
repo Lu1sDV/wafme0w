@@ -25,7 +25,8 @@ import (
 )
 
 // Names are exact after lowercasing and removing non-ASCII-alphanumeric
-// separators. Acquisition uses this same set for secret-field rectangles.
+// separators. DOM export and screenshot geometry recognize these values in
+// name/id/property, autocomplete tokens, and data-* names or values.
 var browserCredentialFields = []string{
 	"authorization", "proxyauthorization", "password", "currentpassword", "newpassword", "passwd", "pwd",
 	"passphrase", "secret", "token", "accesstoken", "refreshtoken", "idtoken",
@@ -496,8 +497,19 @@ func browserProjectDOM(ctx context.Context, node *html.Node, depth int) (browser
 	secret := false
 	metaHeader := ""
 	for _, attr := range node.Attr {
-		if (attr.Key == "name" || attr.Key == "id" || attr.Key == "autocomplete" || attr.Key == "property") && browserCredentialName(attr.Val) || attr.Key == "type" && strings.EqualFold(attr.Val, "password") || strings.HasPrefix(attr.Key, "data-") && browserCredentialName(strings.TrimPrefix(attr.Key, "data-")) {
+		if (attr.Key == "name" || attr.Key == "id" || attr.Key == "autocomplete" || attr.Key == "property") && browserCredentialName(attr.Val) || attr.Key == "type" && strings.EqualFold(attr.Val, "password") || strings.HasPrefix(attr.Key, "data-") && (browserCredentialName(strings.TrimPrefix(attr.Key, "data-")) || browserCredentialName(attr.Val)) {
 			secret = true
+		}
+		if attr.Key == "autocomplete" {
+			for token := range strings.FieldsFuncSeq(attr.Val, func(r rune) bool {
+				// Match JavaScript \s in browserGeometryScript, including BOM but not NEL.
+				return r == '\ufeff' || r != '\u0085' && unicode.IsSpace(r)
+			}) {
+				if browserCredentialName(token) {
+					secret = true
+					break
+				}
+			}
 		}
 		if node.Data == "meta" && attr.Key == "http-equiv" && strings.EqualFold(attr.Val, "refresh") {
 			return browserDOMNode{}, nil

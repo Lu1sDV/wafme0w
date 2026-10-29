@@ -151,6 +151,73 @@ func TestBrowserExportSanitizesStructuredContentWithoutChangingAcquisition(t *te
 	}
 }
 
+func TestBrowserExportRecognizesCredentialAttributeValues(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		markup string
+	}{
+		{"autocomplete section", `<input id="field" type="text" autocomplete="section-login current-password" value="AUDIT-CREDENTIAL-SECRET">`},
+		{"autocomplete whitespace", "<input id=\"field\" type=\"text\" autocomplete=\"section-login\tCURRENT-password\nwebauthn\" value=\"AUDIT-CREDENTIAL-SECRET\">"},
+		{"autocomplete ECMAScript whitespace", `<input id="field" type="text" autocomplete="section-login` + "\ufeff" + `current-password" value="AUDIT-CREDENTIAL-SECRET">`},
+		{"autocomplete new password", `<input id="field" type="text" autocomplete="section-signup new-password" value="AUDIT-CREDENTIAL-SECRET">`},
+		{"data attribute value", `<div id="field" data-field="password">AUDIT-CREDENTIAL-SECRET</div>`},
+		{"data attribute normalized value", `<div id="field" data-field="CLIENT_secret">AUDIT-CREDENTIAL-SECRET</div>`},
+		{"data attribute name", `<div id="field" data-api-key="AUDIT-CREDENTIAL-SECRET">AUDIT-CREDENTIAL-SECRET</div>`},
+		{"password type on non-input", `<div id="field" type="password">AUDIT-CREDENTIAL-SECRET</div>`},
+		{"password type Unicode folding", `<div id="field" type="paſſword">AUDIT-CREDENTIAL-SECRET</div>`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			raw := `<html><head></head><body>` + test.markup + `<input id="ordinary" autocomplete="section-login current-password-hint" data-field="passwordHint" data-kind="apiKey" data-apİkey="ordinary-data-value" type="password&#10;" value="ordinary-field-value"><div id="ordinary-text" data-field="description">ordinary visible text</div></body></html>`
+			capture := browserCapture{report: BrowserReport{
+				ID: "credential-fields", Occurrence: 7, State: "complete",
+				DOM: BrowserAsset{State: "acquired", Bytes: len(raw)},
+			}, dom: raw}
+			var saved []byte
+			report := exportBrowserCapture(context.Background(), &capture, BrowserConfig{Mode: "navigate", SaveText: func(_ context.Context, artifact BrowserArtifact) (string, error) {
+				if artifact.MIME != "application/json" || artifact.CaptureID != "credential-fields" || artifact.Occurrence != 7 {
+					t.Fatalf("artifact identity or format changed: %+v", artifact)
+				}
+				var err error
+				saved, err = io.ReadAll(artifact.Content)
+				return "sanitized-dom.json", err
+			}})
+			if bytes.Contains(saved, []byte("AUDIT-CREDENTIAL-SECRET")) {
+				t.Fatal("recognized credential reached SaveText callback")
+			}
+			var artifact struct {
+				Format string         `json:"format"`
+				DOM    browserDOMNode `json:"dom"`
+			}
+			if err := json.Unmarshal(saved, &artifact); err != nil {
+				t.Fatal(err)
+			}
+			if artifact.Format != "wafme0w.browser-dom.v1" || report.State != "complete" || report.DOM.State != "acquired" || report.DOM.SaveState != "saved" || report.DOM.Bytes != len(saved) {
+				t.Fatalf("sanitized format or artifact state changed: %+v", report)
+			}
+			digest := sha256.Sum256(saved)
+			if report.DOM.SHA256 != hex.EncodeToString(digest[:]) {
+				t.Fatal("saved digest does not identify sanitized callback content")
+			}
+			nodes := browserExportNodes(artifact.DOM)
+			field := browserExportNodeByID(t, nodes, "field")
+			if field.Tag == "input" && field.Attributes["value"] != browserRedacted || field.Tag == "div" && (field.Text != browserRedacted || len(field.Children) != 0) {
+				t.Fatalf("credential field not redacted: %+v", field)
+			}
+			ordinary := browserExportNodeByID(t, nodes, "ordinary")
+			if ordinary.Attributes["value"] != "ordinary-field-value" || ordinary.Attributes["data-field"] != "passwordHint" || ordinary.Attributes["autocomplete"] != "section-login current-password-hint" || ordinary.Attributes["data-kind"] != "apiKey" || ordinary.Attributes["type"] != "password\n" {
+				t.Fatalf("ordinary field changed: %+v", ordinary)
+			}
+			ordinaryText := browserExportNodeByID(t, nodes, "ordinary-text")
+			if len(ordinaryText.Children) != 1 || ordinaryText.Children[0].Text != "ordinary visible text" {
+				t.Fatalf("ordinary text changed: %+v", ordinaryText)
+			}
+			if capture.dom != raw || capture.report.DOM.SaveState != "" || capture.report.DOM.SHA256 != "" || capture.report.DOM.Bytes != len(raw) {
+				t.Fatal("export mutated acquisition-owned state")
+			}
+		})
+	}
+}
+
 func TestBrowserExportMasksClampedPixelsWithoutChangingRawImage(t *testing.T) {
 	capture := browserExportImageFixture(t, 4, 3)
 	capture.secrets = []browserRect{{X: -1, Y: 0.25, Width: 2.2, Height: 1.1}, {X: 3.5, Y: 2.2, Width: 20, Height: 20}, {X: 20, Y: 20, Width: 1, Height: 1}}

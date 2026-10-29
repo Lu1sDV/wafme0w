@@ -5,6 +5,7 @@ package wafme0w
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"image"
 	"image/color"
@@ -308,4 +309,83 @@ func TestBrowserCertificateAndDOMLimits(t *testing.T) {
 			t.Fatalf("DOM limit not preserved: %+v, bytes=%d", capture.report, len(capture.dom))
 		}
 	})
+}
+
+func TestBrowserCredentialAttributeExportAndGeometry(t *testing.T) {
+	config := browserFixtureConfig(t, "screenshot")
+	fixture := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		io.WriteString(w, `<!doctype html><html><head><style>
+body{margin:0}
+input,div{position:absolute;left:20px;width:300px;height:30px;border:0;padding:0;background:rgb(255,0,0)}
+#autocomplete{top:20px}
+#data-field{top:80px}
+#unicode-type{top:140px}
+#bom{top:200px}
+#ordinary{top:260px;background:rgb(0,0,255)}
+</style></head><body>
+<input id="autocomplete" type="text" autocomplete="section-login current-password" value="AUDIT-CREDENTIAL-SECRET">
+<div id="data-field" data-field="password">AUDIT-CREDENTIAL-SECRET</div>
+<div id="unicode-type" type="paſſword">AUDIT-CREDENTIAL-SECRET</div>
+<input id="bom" type="text" autocomplete="section-login`+"\ufeff"+`current-password" value="AUDIT-CREDENTIAL-SECRET">
+<div id="ordinary" data-field="passwordHint" data-kind="apiKey" data-apİkey="ordinary-data-value" type="password&#10;">ordinary visible text</div>
+</body></html>`)
+	}))
+	defer fixture.Close()
+	capture := captureBrowser(context.Background(), fixture.URL+"/", "credential-attributes", 1, config)
+	if capture.report.State != "complete" || !capture.geometryOK || len(capture.secrets) != 4 {
+		t.Fatalf("credential attribute capture or geometry incomplete: %+v, geometry=%t rects=%+v", capture.report, capture.geometryOK, capture.secrets)
+	}
+	var dom, screenshot []byte
+	config.Browser.SaveText = func(_ context.Context, artifact BrowserArtifact) (string, error) {
+		var err error
+		dom, err = io.ReadAll(artifact.Content)
+		return "sanitized-dom.json", err
+	}
+	config.Browser.SaveScreenshot = func(_ context.Context, artifact BrowserArtifact) (string, error) {
+		var err error
+		screenshot, err = io.ReadAll(artifact.Content)
+		return "masked.png", err
+	}
+	report := exportBrowserCapture(context.Background(), &capture, *config.Browser)
+	if report.State != "complete" || report.DOM.SaveState != "saved" || report.Screenshot.SaveState != "saved" {
+		t.Fatalf("credential artifacts failed export: %+v", report)
+	}
+	if bytes.Contains(dom, []byte("AUDIT-CREDENTIAL-SECRET")) {
+		t.Fatal("recognized credential leaked into actual SaveText callback")
+	}
+	var artifact struct {
+		DOM browserDOMNode `json:"dom"`
+	}
+	if err := json.Unmarshal(dom, &artifact); err != nil {
+		t.Fatal(err)
+	}
+	nodes := browserExportNodes(artifact.DOM)
+	for _, id := range []string{"autocomplete", "data-field", "unicode-type", "bom"} {
+		field := browserExportNodeByID(t, nodes, id)
+		if field.Tag == "input" && field.Attributes["value"] != browserRedacted || field.Tag == "div" && (field.Text != browserRedacted || len(field.Children) != 0) {
+			t.Fatalf("credential field %q not redacted: %+v", id, field)
+		}
+	}
+	ordinary := browserExportNodeByID(t, nodes, "ordinary")
+	if ordinary.Attributes["data-field"] != "passwordHint" || ordinary.Attributes["data-kind"] != "apiKey" || ordinary.Attributes["type"] != "password\n" || len(ordinary.Children) != 1 || ordinary.Children[0].Text != "ordinary visible text" {
+		t.Fatalf("ordinary DOM field changed: %+v", ordinary)
+	}
+	masked, err := png.Decode(bytes.NewReader(screenshot))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, y := range []int{35, 95, 155, 215, 275} {
+		want := color.RGBA{A: 255}
+		if y == 275 {
+			want.B = 255
+		}
+		if got := color.RGBAModel.Convert(masked.At(300, y)).(color.RGBA); got != want {
+			t.Fatalf("masked pixel (300,%d) = %v, want %v", y, got, want)
+		}
+	}
 }

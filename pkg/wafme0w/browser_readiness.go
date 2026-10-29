@@ -282,15 +282,17 @@ var browserDOMScript = fmt.Sprintf(`(() => {
 const browserGeometryScript = `(fields) => {
   const state = globalThis.__wafCapture;
   const names = new Set(fields);
-  const normalized = value => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const normalized = value => value.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
   let ok = innerWidth === 1440 && innerHeight === 900 && scrollX === 0 && scrollY === 0;
   if (document.getAnimations().some(animation => animation.playState === "running" || animation.pending)) ok = false;
   const rects = [];
   for (const element of document.querySelectorAll("*")) {
     if (element.localName === "iframe" || element.localName === "frame" || element.shadowRoot) ok = false;
-    let secret = element.localName === "input" && element.type.toLowerCase() === "password";
+    let secret = false;
     for (const attr of element.attributes) {
-      const key = attr.name.toLowerCase();
+      const key = attr.name.replace(/[A-Z]/g, c => c.toLowerCase());
+      // Match Go EqualFold; length excludes the final newline accepted by $.
+      if (key === "type" && attr.value.length === 8 && /^password$/iu.test(attr.value)) secret = true;
       if (key === "name" || key === "id" || key === "property" || key === "autocomplete") {
         if (names.has(normalized(attr.value))) secret = true;
         if (key === "autocomplete" && attr.value.split(/\s+/).some(v => names.has(normalized(v)))) secret = true;
