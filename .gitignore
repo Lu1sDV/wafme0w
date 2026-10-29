@@ -25,11 +25,15 @@ __pycache__/
 # Live scan artifacts (Tranco runs, logs, comparison outputs)
 benchmarks/
 
-# Local AI-assistant instructions and state
-AGENTS.md
+# Local AI-assistant state and installed skills (AGENTS.md stays versioned)
+.agents/
+.omc/
 .omp/
 .codex/
 .claude/
+.serena/
+.aider*
+/skills-lock.json
 /.worktree-archive/
 
 # Local build outputs and scan scratch files
