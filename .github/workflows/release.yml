@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing version tag to build and publish
+        description: Existing vMAJOR.MINOR.PATCH[-PRERELEASE] tag (no build metadata)
         required: true
         type: string
 
@@ -14,189 +14,198 @@ permissions:
   contents: read
 
 env:
-  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+  GOTOOLCHAIN: local
 
 concurrency:
   group: release-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
+  prepare:
+    name: Validate tag and freeze peeled source SHA
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.prepare.outputs.tag }}
+      revision: ${{ steps.prepare.outputs.revision }}
+      prerelease: ${{ steps.prepare.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Resolve supplied tag once, including annotated tags
+        id: prepare
+        env:
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: python tools/release.py prepare --tag "$RELEASE_TAG"
+
+  ci:
+    name: Required complete CI on frozen source
+    needs: prepare
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.prepare.outputs.revision }}
+
   native:
     name: Test and package ${{ matrix.os }}/${{ matrix.arch }}
+    needs: prepare
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
         include:
-          - runner: ubuntu-24.04
-            os: linux
-            arch: amd64
-            suffix: ''
-            extension: tar.gz
-          - runner: macos-15
-            os: darwin
-            arch: arm64
-            suffix: ''
-            extension: tar.gz
-          - runner: windows-2022
-            os: windows
-            arch: amd64
-            suffix: .exe
-            extension: zip
+          - {runner: ubuntu-24.04, os: linux, arch: amd64, suffix: '', extension: tar.gz}
+          - {runner: macos-15, os: darwin, arch: arm64, suffix: '', extension: tar.gz}
+          - {runner: windows-2022, os: windows, arch: amd64, suffix: .exe, extension: zip}
     env:
       CGO_ENABLED: '0'
-      GOTOOLCHAIN: local
       BINARY_SUFFIX: ${{ matrix.suffix }}
       RELEASE_OS: ${{ matrix.os }}
       RELEASE_ARCH: ${{ matrix.arch }}
       RELEASE_EXTENSION: ${{ matrix.extension }}
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+      RELEASE_SHA: ${{ needs.prepare.outputs.revision }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: refs/tags/${{ env.RELEASE_TAG }}
+          ref: ${{ needs.prepare.outputs.revision }}
           persist-credentials: false
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26.x'
-      - uses: actions/setup-python@v7
+          go-version: '1.27.3'
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
+      - name: Set up Linux isolation before tests
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes bubblewrap python3-venv
+          cat > "$RUNNER_TEMP/wafme0w-bwrap" <<'PROFILE'
+          abi <abi/4.0>,
+          profile wafme0w-bwrap /usr/bin/bwrap flags=(default_allow) {
+            userns,
+          }
+          PROFILE
+          sudo apparmor_parser -r "$RUNNER_TEMP/wafme0w-bwrap"
       - name: Run native package tests
-        run: go test ./...
+        timeout-minutes: 10
+        run: go test -timeout=5m ./...
       - name: Build native CLI with VCS identity
         shell: bash
+        timeout-minutes: 5
         run: go build -trimpath -buildvcs=true -o "$RUNNER_TEMP/wafme0w$BINARY_SUFFIX" ./cmd/wafme0w
-      - name: Smoke the actual binary with synthetic offline evidence
-        shell: python {0}
+      - name: Verify binary identity and archive release files
+        shell: bash
         run: |
-          import json
-          import os
-          from pathlib import Path
-          import subprocess
-
-          binary = Path(os.environ['RUNNER_TEMP']) / ('wafme0w' + os.environ['BINARY_SUFFIX'])
-          subprocess.run([str(binary), '--help'], check=True)
-          version = subprocess.check_output([str(binary), '--version'], text=True).strip()
-          print(version)
-          assert version.startswith('wafme0w ') and version != 'wafme0w devel', version
-          output = subprocess.check_output([
-              str(binary), '--evidence', 'assets/demo/captures.jsonl', '--jsonl',
-          ], text=True)
-          records = [json.loads(line) for line in output.splitlines()]
-          by_target = {record['target']: record for record in records}
-          assert len(records) == len(by_target) == 3, output
-          assert set(by_target) == {'synthetic-cloudflare', 'synthetic-clean', 'synthetic-truncated'}, output
-          cloudflare = by_target['synthetic-cloudflare']['outcome']
-          assert cloudflare['state'] == 'complete', cloudflare
-          assert {match['product'] for match in cloudflare.get('matches', [])} == {'Cloudflare (Cloudflare Inc.)'}, cloudflare
-          clean = by_target['synthetic-clean']['outcome']
-          assert clean['state'] == 'complete' and not clean.get('matches'), clean
-          truncated = by_target['synthetic-truncated']['outcome']
-          assert truncated['state'] == 'incomplete', truncated
-          assert {match['product'] for match in truncated.get('matches', [])} == {'Cloudflare (Cloudflare Inc.)'}, truncated
-          for record in records:
-              assert record['provenance']['scan_mode'] == 'passive', record
-              assert 'wafme0w ' + record['provenance']['program_version'] == version, record
-          print(output, end='')
-      - name: Archive binary, license and synthetic captures
-        shell: python {0}
-        run: |
-          import os
-          from pathlib import Path
-          import re
-          import tarfile
-          import zipfile
-
-          tag = os.environ['RELEASE_TAG']
-          if not re.fullmatch(r'v[0-9][0-9A-Za-z.+-]*', tag):
-              raise SystemExit('Release tags must be filename-safe versions, such as v0.3.0')
-          name = 'wafme0w' + os.environ['BINARY_SUFFIX']
-          files = [
-              (Path(os.environ['RUNNER_TEMP']) / name, name),
-              (Path('LICENSE.md'), 'LICENSE.md'),
-              (Path('assets/demo/captures.jsonl'), 'assets/demo/captures.jsonl'),
-          ]
-          dist = Path('dist')
-          dist.mkdir()
-          archive = dist / f"wafme0w_{tag}_{os.environ['RELEASE_OS']}_{os.environ['RELEASE_ARCH']}.{os.environ['RELEASE_EXTENSION']}"
-          if os.environ['RELEASE_EXTENSION'] == 'zip':
-              with zipfile.ZipFile(archive, 'x', compression=zipfile.ZIP_DEFLATED) as package:
-                  for source, destination in files:
-                      package.write(source, arcname=destination)
-          else:
-              with tarfile.open(archive, 'x:gz') as package:
-                  for source, destination in files:
-                      package.add(source, arcname=destination)
-          print(archive)
-      - uses: actions/upload-artifact@v7
+          python tools/release.py package --tag "$RELEASE_TAG" --revision "$RELEASE_SHA" \
+            --os "$RELEASE_OS" --arch "$RELEASE_ARCH" --binary "$RUNNER_TEMP/wafme0w$BINARY_SUFFIX"
+      - name: Smoke the extracted native archive outside checkout
+        shell: bash
+        timeout-minutes: 5
+        run: python tools/smoke.py archive "dist/wafme0w_${RELEASE_TAG}_${RELEASE_OS}_${RELEASE_ARCH}.${RELEASE_EXTENSION}"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: release-${{ matrix.os }}-${{ matrix.arch }}
-          path: dist/wafme0w_${{ env.RELEASE_TAG }}_${{ matrix.os }}_${{ matrix.arch }}.${{ matrix.extension }}
+          name: release-raw-${{ matrix.os }}-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error
+          compression-level: 0
+          overwrite: false
+
+  verify:
+    name: Verify downloaded identities, hashes and actual packaged binaries
+    needs: [prepare, native]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    env:
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+      RELEASE_SHA: ${{ needs.prepare.outputs.revision }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.revision }}
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.27.3'
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: release-raw-*
+          path: dist
+          merge-multiple: true
+      - name: Install pinned binary scanner
+        timeout-minutes: 5
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+      - name: Scan all extracted binaries and generate verified manifest
+        timeout-minutes: 17
+        run: python tools/release.py verify --tag "$RELEASE_TAG" --revision "$RELEASE_SHA"
+      - name: Retain scanner reports even on findings
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-binary-vulnerability-reports
+          path: security-reports
+          if-no-files-found: error
+          retention-days: 90
+      - name: Attest exact source manifest and verified assets
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: dist/*
+          # A custom predicate records the actual prepared source even when a
+          # dispatch builds a tag different from the workflow's triggering ref.
+          predicate-type: https://github.com/${{ github.repository }}/release-manifest/v1
+          predicate-path: dist/manifest.json
+          create-storage-record: false
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-verified
+          path: dist/*
           if-no-files-found: error
           compression-level: 0
           overwrite: false
 
   publish:
-    name: Publish tested release assets
-    needs: native
+    name: Publish verified assets without overwrite
+    # Serialize cross-tag latest promotion without serializing validation.
+    concurrency:
+      group: release-publication-${{ github.repository }}
+      cancel-in-progress: false
+      queue: max
+    needs: [prepare, ci, native, verify]
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     permissions:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+      RELEASE_SHA: ${{ needs.prepare.outputs.revision }}
     steps:
-      - uses: actions/download-artifact@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          pattern: release-*
+          ref: ${{ needs.prepare.outputs.revision }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: release-verified
           path: dist
-          merge-multiple: true
-      - name: Generate checksums and release notes
-        shell: python3 {0}
-        run: |
-          import hashlib
-          import os
-          from pathlib import Path
-
-          tag = os.environ['RELEASE_TAG']
-          dist = Path('dist')
-          expected = {
-              f'wafme0w_{tag}_linux_amd64.tar.gz',
-              f'wafme0w_{tag}_darwin_arm64.tar.gz',
-              f'wafme0w_{tag}_windows_amd64.zip',
-          }
-          assert {path.name for path in dist.iterdir()} == expected, 'Missing or unexpected release archives'
-          with (dist / 'SHA256SUMS').open('x', encoding='utf-8', newline='\n') as checksums:
-              for name in sorted(expected):
-                  with (dist / name).open('rb') as archive:
-                      digest = hashlib.file_digest(archive, 'sha256').hexdigest()
-                  checksums.write(f'{digest}  {name}\n')
-          base = f"https://github.com/{os.environ['GH_REPO']}/blob/{tag}"
-          notes = f'''## wafme0w {tag}
-
-          Blazingfast, lightweight WAF detector.
-
-          AI-assisted development, not runtime detection: wafme0w uses static fingerprints, not an AI model or a hosted AI service.
-
-          This release follows the v1 compatibility baseline: result schema 1 (with the optional browser field), the CSV column layout, CLI flags and exit codes, and the documented Go library API. New in v1.0.0: optional local headless Chromium navigation and viewport screenshots on Linux. Upgrading from a pre-1.0 release involves breaking Go library and structured-output changes; review the current library API and result records before upgrading integrations.
-
-          - [README: installation, CLI and Go library]({base}/README.md)
-          - [Offline CLI demo]({base}/assets/demo/demo.gif)
-          - [Synthetic demo captures]({base}/assets/demo/captures.jsonl)
-
-          Each archive includes the native CLI binary, LICENSE.md and assets/demo/captures.jsonl. Native package tests and binary help/version/offline-evidence smoke checks run on Linux x64, macOS ARM64 and Windows x64 before publication. SHA256SUMS covers all three archives. The binary reports its embedded build/VCS identity, which need not equal the release tag.
-
-          Demo captures are synthetic examples, not observations of deployed WAFs or evidence of detection accuracy. Use network scanning only where authorized.
-          '''
-          Path('release-notes.txt').write_text('\n'.join(line.strip() for line in notes.splitlines()) + '\n', encoding='utf-8')
-      - name: Create release without replacing existing assets
-        shell: bash
-        run: |
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            echo "Release $RELEASE_TAG already exists; refusing to replace assets."
-            exit 1
-          fi
-          # Create refuses existing published releases and uploads before publication.
-          # Never use release upload --clobber or delete an existing release on retry.
-          gh release create "$RELEASE_TAG" dist/* \
-            --verify-tag --title "wafme0w $RELEASE_TAG" --notes-file release-notes.txt
+      - name: Recheck hashes and remote tag, stage draft, recheck then publish
+        run: python tools/release.py publish --tag "$RELEASE_TAG" --revision "$RELEASE_SHA"

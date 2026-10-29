@@ -3,22 +3,52 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_call:
+    inputs:
+      ref:
+        description: Immutable source SHA for release validation (empty uses triggering ref)
+        required: false
+        type: string
 
 permissions:
   contents: read
 
+# Only superseded PR runs cancel. A reusable release call has a unique run group
+# and must not cancel its caller or a different release validation.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  GOTOOLCHAIN: local
+
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        go: ['1.26.x', '1.27.x']
+        go: ['1.26.10', '1.27.3']
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: ${{ matrix.go }}
+      - name: Set up isolation before any tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes bubblewrap python3-venv
+          cat > "$RUNNER_TEMP/wafme0w-bwrap" <<'PROFILE'
+          abi <abi/4.0>,
+          profile wafme0w-bwrap /usr/bin/bwrap flags=(default_allow) {
+            userns,
+          }
+          PROFILE
+          sudo apparmor_parser -r "$RUNNER_TEMP/wafme0w-bwrap"
       - name: Verify formatting
         shell: bash
         run: |
@@ -28,12 +58,33 @@ jobs:
             exit 1
           fi
       - name: Vet
+        timeout-minutes: 5
         run: go vet ./...
+      - name: Check reachable dependency vulnerabilities
+        if: matrix.go == '1.27.3'
+        timeout-minutes: 10
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+      - name: Test release helper policies
+        run: python3 -m unittest discover -s tools -p '*_test.py'
       - name: Test with race detector
-        run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
+        timeout-minutes: 15
+        run: go test -timeout=5m -race -covermode=atomic -coverprofile=coverage.out ./...
+      - name: Fuzz regexp matcher equivalence
+        id: matcher-fuzz
+        if: matrix.go == '1.27.3'
+        timeout-minutes: 5
+        run: go test ./pkg/wafme0w -run '^$' -fuzz '^FuzzMatcherRegexpEquivalence$' -fuzztime=30s -parallel=2 -timeout=3m
+      - name: Retain failing matcher fuzz corpus
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure() && steps.matcher-fuzz.outcome == 'failure'
+        with:
+          name: matcher-fuzz-failure-${{ matrix.go }}
+          path: pkg/wafme0w/testdata/fuzz/FuzzMatcherRegexpEquivalence
+          if-no-files-found: warn
+          retention-days: 30
       - name: Export statement coverage
         run: go tool cover -func=coverage.out > coverage-statements.txt
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: go-statement-coverage-${{ matrix.go }}
@@ -43,22 +94,11 @@ jobs:
           if-no-files-found: error
           retention-days: 30
       - name: Build
+        timeout-minutes: 5
         run: go build ./cmd/wafme0w
-      - name: Set up isolated benchmark runtime
-        if: matrix.go == '1.27.x'
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes bubblewrap python3-venv
-          # Allow namespaces for the sandbox helper, not every unprivileged process.
-          cat > "$RUNNER_TEMP/wafme0w-bwrap" <<'PROFILE'
-          abi <abi/4.0>,
-          profile wafme0w-bwrap /usr/bin/bwrap flags=(default_allow) {
-            userns,
-          }
-          PROFILE
-          sudo apparmor_parser -r "$RUNNER_TEMP/wafme0w-bwrap"
       - name: Run offline detector coverage metric
-        if: matrix.go == '1.27.x'
+        if: matrix.go == '1.27.3'
+        timeout-minutes: 15
         run: |
           /usr/bin/python3 -m venv .offlinebench-venv
           .offlinebench-venv/bin/pip install --requirement tools/offlinebench/requirements.txt
@@ -71,32 +111,105 @@ jobs:
             -min-coverage 1 \
             -min-accuracy 1
           go run ./cmd/offlinebench -verify-run offlinebench-results >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v7
-        if: always() && matrix.go == '1.27.x'
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always() && matrix.go == '1.27.3'
         with:
           name: offline-semantic-coverage-and-profiles
           path: offlinebench-results
           if-no-files-found: error
           retention-days: 30
-      - name: Docker build and help smoke test
-        if: matrix.go == '1.27.x'
+      - name: Docker build and offline behavior smoke
+        if: matrix.go == '1.27.3'
+        timeout-minutes: 10
         run: |
           docker build -t wafme0w:ci .
-          docker run --rm --network none wafme0w:ci --help
+          python3 tools/smoke.py docker wafme0w:ci
 
   browser:
     name: Local Chromium integration
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     env:
       WAFME0W_TEST_BROWSER: /opt/google/chrome/chrome
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          go-version: '1.26.x'
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.26.10'
+      - name: Set up Linux isolation
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes bubblewrap
+          cat > "$RUNNER_TEMP/wafme0w-bwrap" <<'PROFILE'
+          abi <abi/4.0>,
+          profile wafme0w-bwrap /usr/bin/bwrap flags=(default_allow) {
+            userns,
+          }
+          PROFILE
+          sudo apparmor_parser -r "$RUNNER_TEMP/wafme0w-bwrap"
       - name: Require installed native Chromium
         run: |
           test -x "$WAFME0W_TEST_BROWSER"
           "$WAFME0W_TEST_BROWSER" --version
       - name: Exercise owned browser fixtures
+        timeout-minutes: 5
         run: go test -race -tags browser_integration ./pkg/wafme0w -run '^TestBrowser' -count=1 -timeout=3m
+
+  native:
+    name: Native PR test and archive smoke (${{ matrix.os }}/${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {runner: ubuntu-24.04, os: linux, arch: amd64, suffix: '', extension: tar.gz}
+          - {runner: macos-15, os: darwin, arch: arm64, suffix: '', extension: tar.gz}
+          - {runner: windows-2022, os: windows, arch: amd64, suffix: .exe, extension: zip}
+    env:
+      CGO_ENABLED: '0'
+      BINARY_SUFFIX: ${{ matrix.suffix }}
+      RELEASE_OS: ${{ matrix.os }}
+      RELEASE_ARCH: ${{ matrix.arch }}
+      RELEASE_EXTENSION: ${{ matrix.extension }}
+      CHECK_TAG: v0.0.0-ci.${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.27.3'
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Set up Linux isolation before tests
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes bubblewrap python3-venv
+          cat > "$RUNNER_TEMP/wafme0w-bwrap" <<'PROFILE'
+          abi <abi/4.0>,
+          profile wafme0w-bwrap /usr/bin/bwrap flags=(default_allow) {
+            userns,
+          }
+          PROFILE
+          sudo apparmor_parser -r "$RUNNER_TEMP/wafme0w-bwrap"
+      - name: Native tests
+        timeout-minutes: 10
+        run: go test -timeout=5m ./...
+      - name: Build and package native binary
+        shell: bash
+        timeout-minutes: 5
+        run: |
+          go build -trimpath -buildvcs=true -o "$RUNNER_TEMP/wafme0w$BINARY_SUFFIX" ./cmd/wafme0w
+          python tools/release.py package --tag "$CHECK_TAG" --revision "$(git rev-parse HEAD)" \
+            --os "$RELEASE_OS" --arch "$RELEASE_ARCH" --binary "$RUNNER_TEMP/wafme0w$BINARY_SUFFIX"
+      - name: Smoke extracted archive outside checkout
+        shell: bash
+        timeout-minutes: 5
+        run: python tools/smoke.py archive "dist/wafme0w_${CHECK_TAG}_${RELEASE_OS}_${RELEASE_ARCH}.${RELEASE_EXTENSION}"
