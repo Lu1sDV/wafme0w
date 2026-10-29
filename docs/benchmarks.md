@@ -66,11 +66,18 @@ API and httpx importer; these timings do not measure those features.
 
 ### Wall-clock results
 
-| Workers / processes | wafme0w fast | wafme0w full | wafw00f 2.4.2 |
-| --- | ---: | ---: | ---: |
-| 1 | 6m 49.44s | 15m 51.93s | 14m 38.21s |
-| 10 | 52.89s | 1m 45.62s | 2m 53.39s |
-| 50 | 24.06s | 44.26s | 1m 50.93s |
+| Workers / processes | wafme0w mode | wafw00f 2.4.2 elapsed | wafme0w elapsed | Elapsed ratio, wafw00f / wafme0w |
+| ---: | --- | ---: | ---: | ---: |
+| 1 | Fast | 14m 38.21s | 6m 49.44s | 2.14× |
+| 1 | Full | 14m 38.21s | 15m 51.93s | 0.92× |
+| 10 | Fast | 2m 53.39s | 52.89s | 3.28× |
+| 10 | Full | 2m 53.39s | 1m 45.62s | 1.64× |
+| 50 | Fast | 1m 50.93s | 24.06s | 4.61× |
+| 50 | Full | 1m 50.93s | 44.26s | 2.51× |
+
+Each ratio is wafw00f's observed elapsed time divided by wafme0w's elapsed time
+for that mode and concurrency. Values above 1 mean less elapsed time for
+wafme0w; the one-worker full-mode ratio below 1 preserves the slower result.
 
 All nine configurations attempted the same targets and exited 0 without a
 watchdog timeout. Different probe sets, TLS policies, evidence completeness, and
@@ -170,6 +177,58 @@ Write outputs to files rather than rendering them in a terminal. Start the timer
 before launching processes and stop it after every process exits. A
 watchdog-aborted configuration is not a completed timing. Account for missing
 upstream records as unknown, never negative.
+
+### A new 2,000-target run
+
+A Tranco top-2,000 comparison can extend the live evidence above. Freeze the
+Tranco list ID/date and its first 2,000 ranked rows, then restrict the actual scan
+input to authorized hosts. Retain the original selection, exclusions and final
+target-file hash. Tranco ranks sites; it does not grant testing permission. If
+the admitted input has fewer than 2,000 targets, report that actual count.
+
+Keep the following fixed and retain the records with the results:
+
+1. **Build identity.** Select a clean committed v2 candidate, record its full
+   SHA, `go version`, `go version -m` output and binary SHA256. The run should
+   identify the binary actually executed, including its `vcs.modified` value.
+   Pin wafw00f 2.4.2 and retain the Python version and package inventory. If an
+   upstream release is newer when testing begins, explicitly select and record
+   it rather than silently comparing different versions across cells.
+2. **Input and environment.** Use the same exact URL file, scheme, order, CPU
+   affinity, host, proxy policy and DNS configuration throughout. Retain
+   unreachable/error targets; do not replace them with more responsive sites.
+   Record CPU model, allocated CPUs, RAM, OS/kernel and the network environment.
+3. **Configurations.** Measure workers/processes 1, 10 and 50; use wafme0w fast
+   and full modes and stock wafw00f `--findall`. For upstream concurrency, use
+   N long-lived CLI processes over fixed round-robin shards, as above. Record
+   request/target timeouts, redirects, rate/connection/request/body limits,
+   retries and TLS behavior. Keep browser capture and journaling off for this
+   comparison. Equal target counts do not make the tools' probe sets identical.
+4. **Repeated timing.** Run at least three complete blocks, rotating the order
+   of wafw00f, fast and full within each concurrency. Time process startup
+   through the final exit/output flush; exclude compilation and partitioning.
+   Keep stdout/stderr out of the terminal. Record all timings and exits, and
+   choose the watchdog policy before the run. A killed or timed-out cell remains
+   an incomplete observation; preserve it alongside any retry.
+5. **Accounting.** Retain wafme0w JSONL, each wafw00f shard's JSON, stderr, exact
+   commands and exit statuses. Join every attempted target back to the original
+   input. Report attempted, returned, missing, complete, incomplete, failed,
+   named and generic counts separately where the tool supplies them. Do not
+   infer an upstream completeness value that its output does not provide.
+
+Publish the median elapsed time and spread for each configuration, alongside
+per-block returned/complete counts (and their range) and the ratio of the two
+tools' median elapsed times. Keep fast and full separate, including cells where
+wafme0w is slower.
+Use a table with these columns:
+
+| Workers / processes | Mode | wafw00f median elapsed | wafme0w median elapsed | wafw00f returned / attempted | wafme0w returned / complete / attempted | Median elapsed ratio |
+| --- | --- | --- | --- | --- | --- | --- |
+| One row per measured configuration | Fast or Full | Measured value and spread | Measured value and spread | Observed counts | Observed counts | wafw00f median / wafme0w median |
+
+No 2,000-target results are claimed here yet. Use the completed run's measured
+values and immutable identities when updating the README. A rate or “hosts in
+under a minute” claim must also say how many targets returned usable evidence.
 
 ## Local performance benchmarks
 

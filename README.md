@@ -133,6 +133,32 @@ Configuration, input and output failures exit **1**; cancellation exits **130**.
 
 ## Benchmarks
 
+### Recorded live CLI comparison
+
+The **500-target live run on 29 October 2026** recorded a **4.61× elapsed-time
+ratio at 50 workers in fast mode**: 24.06 seconds for wafme0w versus 110.93 seconds
+for wafw00f 2.4.2. Each configuration has one observation.
+
+| Workers / processes | wafme0w mode | wafw00f 2.4.2 elapsed | wafme0w elapsed | Elapsed ratio, wafw00f / wafme0w |
+| ---: | --- | ---: | ---: | ---: |
+| 1 | Fast | 14m 38.21s | 6m 49.44s | 2.14× |
+| 1 | Full | 14m 38.21s | 15m 51.93s | 0.92× |
+| 10 | Fast | 2m 53.39s | 52.89s | 3.28× |
+| 10 | Full | 2m 53.39s | 1m 45.62s | 1.64× |
+| 50 | Fast | 1m 50.93s | 24.06s | 4.61× |
+| 50 | Full | 1m 50.93s | 44.26s | 2.51× |
+
+Ratios above 1 mean wafme0w took less wall time in that configuration. The saved
+native build was `347f547` with a modified working tree, before the v2 evidence
+API and httpx importer. Probes, TLS behavior and evidence completeness differed.
+At 50 workers, fast mode returned 500 records with 206 marked complete; wafw00f
+returned 341 records without an equivalent completeness field. These are
+observed end-to-end timings for the recorded configurations.
+[Full methodology and accounting](docs/benchmarks.md#live-cli-comparison) ·
+[Protocol for a fresh 2,000-target run](docs/benchmarks.md#a-new-2000-target-run).
+
+### Reproducible offline comparison
+
 Run the [reproducible offline comparison](docs/benchmarks.md#reproduce-the-current-checkout)
 against **wafw00f 2.4.2** from a clean committed checkout. The runner records source
 and binary hashes, compiler and Python package versions, CPU details, the exact
@@ -140,11 +166,9 @@ synthetic corpus, repeated blocks and a verified result manifest. Workers replay
 saved responses with network access isolated by bubblewrap.
 
 The shipped synthetic fixtures have reviewed links for **28 of 172 products**;
-this is a conformance check, not a field-accuracy score. Older live measurements
-remain in the [benchmark guide](docs/benchmarks.md#live-cli-comparison). They do
-not establish a current release speedup: the tools used different probes and
-returned different amounts of complete evidence. A headline such as “up to
-4.6× faster” needs a fresh, comparable run before publication.
+this checks conformance to fixture expectations. The live table measures
+end-to-end CLI elapsed time, while the offline comparison isolates saved-response
+classification. Keep each result attached to its workload and measured build.
 
 ## Major caveats
 
