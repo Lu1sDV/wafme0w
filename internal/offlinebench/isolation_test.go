@@ -3,6 +3,7 @@ package offlinebench
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"os/exec"
 	"testing"
 	"time"
@@ -41,6 +42,23 @@ func TestExecuteRejectsInvalidSamplingAndGatesBeforeStartingWorkers(t *testing.T
 		if _, _, _, err := Execute(context.Background(), Corpus{}, "", config); err == nil {
 			t.Fatalf("accepted invalid config: %+v", config)
 		}
+	}
+}
+
+func TestExecuteRejectsNaNGatesBeforeStartingWorkers(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		config Config
+	}{
+		{"coverage", Config{Iterations: 1, Blocks: 4, MinimumCoverage: math.NaN()}},
+		{"accuracy", Config{Iterations: 1, Blocks: 4, MinimumAccuracy: math.NaN()}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			_, _, _, err := Execute(context.Background(), Corpus{}, "", test.config)
+			if err == nil || err.Error() != "coverage and accuracy gates must be between zero and one" {
+				t.Fatalf("NaN gate was not rejected at validation: %v", err)
+			}
+		})
 	}
 }
 

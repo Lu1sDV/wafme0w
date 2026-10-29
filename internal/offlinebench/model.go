@@ -199,6 +199,7 @@ func validateCorpus(corpus *Corpus, bodiesDir string) error {
 		return errors.New("corpus profile, products, and cases are required")
 	}
 	productIDs := make(map[string]struct{}, len(corpus.Products))
+	names := map[string]map[string]bool{"wafme0w": {}, "wafw00f": {}}
 	for _, product := range corpus.Products {
 		if product.ID == "" {
 			return errors.New("empty product ID")
@@ -211,6 +212,10 @@ func validateCorpus(corpus *Corpus, bodiesDir string) error {
 			if product.Names[tool] == "" {
 				return fmt.Errorf("product %q has no %s name", product.ID, tool)
 			}
+			if names[tool][product.Names[tool]] {
+				return fmt.Errorf("duplicate %s product name %q", tool, product.Names[tool])
+			}
+			names[tool][product.Names[tool]] = true
 		}
 	}
 	caseIDs := make(map[string]struct{}, len(corpus.Cases))

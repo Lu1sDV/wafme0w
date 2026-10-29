@@ -77,6 +77,12 @@ func TestLoadCorpusRejectsUntrustedEvidence(t *testing.T) {
 		{name: "missing expectation", mutate: func(c *Corpus) { delete(c.Cases[0].Expected, "wafw00f") }, body: body, want: "expectations for both"},
 		{name: "incomplete without products", mutate: func(c *Corpus) { c.Cases[0].Expected["wafme0w"] = Expectation{State: "incomplete"} }, body: body, want: "inconsistent"},
 		{name: "unreviewed fixture", mutate: func(c *Corpus) { c.Cases[0].Review = "" }, body: body, want: "requires id, kind, and review"},
+		{name: "ambiguous native product mapping", mutate: func(c *Corpus) {
+			c.Products = append(c.Products, Product{ID: "other", Names: map[string]string{"wafme0w": "Example", "wafw00f": "Other"}})
+		}, body: body, want: "duplicate wafme0w product name"},
+		{name: "ambiguous upstream product mapping", mutate: func(c *Corpus) {
+			c.Products = append(c.Products, Product{ID: "other", Names: map[string]string{"wafme0w": "Other", "wafw00f": "Example"}})
+		}, body: body, want: "duplicate wafw00f product name"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			err := writeFixture(t, test.mutate, test.body, test.suffix)

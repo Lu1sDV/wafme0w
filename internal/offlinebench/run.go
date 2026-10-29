@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,6 +17,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/Lu1sDV/wafme0w/internal/atomicfile"
 )
 
 type Config struct {
@@ -68,7 +71,7 @@ func Execute(ctx context.Context, corpus Corpus, corpusPath string, config Confi
 	if config.Iterations < 1 || config.Blocks < 4 || config.Blocks%4 != 0 {
 		return nil, Summary{}, RunManifest{}, errors.New("iterations must be positive and blocks must be a positive multiple of four")
 	}
-	if config.MinimumCoverage < 0 || config.MinimumCoverage > 1 || config.MinimumAccuracy < 0 || config.MinimumAccuracy > 1 {
+	if math.IsNaN(config.MinimumCoverage) || math.IsNaN(config.MinimumAccuracy) || config.MinimumCoverage < 0 || config.MinimumCoverage > 1 || config.MinimumAccuracy < 0 || config.MinimumAccuracy > 1 {
 		return nil, Summary{}, RunManifest{}, errors.New("coverage and accuracy gates must be between zero and one")
 	}
 	for _, path := range []string{config.Executable, config.Bubblewrap, config.Catalogue, config.CoverageContract, config.Wafw00fPython, config.Wafw00fAdapter} {
@@ -124,7 +127,7 @@ func Execute(ctx context.Context, corpus Corpus, corpusPath string, config Confi
 	if err != nil {
 		return nil, Summary{}, RunManifest{}, err
 	}
-	manifest, err = WriteArtifacts(config.OutputDir, manifest, results, summary)
+	manifest, err = writeArtifacts(ctx, config.OutputDir, manifest, results, summary, publicationOps{atomicfile.Write, os.Rename, syncDirectory})
 	if err != nil {
 		return nil, Summary{}, RunManifest{}, err
 	}

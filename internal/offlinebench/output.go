@@ -2,6 +2,7 @@ package offlinebench
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -32,7 +33,7 @@ type publicationOps struct {
 // WriteArtifacts publishes one complete new generation. Existing nonempty
 // destinations are never modified, including on write, sync or rename failure.
 func WriteArtifacts(directory string, manifest RunManifest, results []Result, summary Summary) (RunManifest, error) {
-	return writeArtifacts(directory, manifest, results, summary, publicationOps{atomicfile.Write, os.Rename, syncDirectory})
+	return writeArtifacts(context.Background(), directory, manifest, results, summary, publicationOps{atomicfile.Write, os.Rename, syncDirectory})
 }
 
 func newRunDestination(directory string) error {
@@ -64,7 +65,10 @@ func newRunDestination(directory string) error {
 	return nil
 }
 
-func writeArtifacts(directory string, manifest RunManifest, results []Result, summary Summary, ops publicationOps) (RunManifest, error) {
+func writeArtifacts(ctx context.Context, directory string, manifest RunManifest, results []Result, summary Summary, ops publicationOps) (RunManifest, error) {
+	if err := ctx.Err(); err != nil {
+		return RunManifest{}, err
+	}
 	if err := newRunDestination(directory); err != nil {
 		return RunManifest{}, err
 	}
@@ -136,6 +140,9 @@ func writeArtifacts(directory string, manifest RunManifest, results []Result, su
 		return RunManifest{}, fmt.Errorf("sync staged generation: %w", err)
 	}
 	if err := newRunDestination(directory); err != nil {
+		return RunManifest{}, err
+	}
+	if err := ctx.Err(); err != nil {
 		return RunManifest{}, err
 	}
 	// Rename is the commit point and last fallible operation. Directory rename

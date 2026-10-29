@@ -1,6 +1,7 @@
 package offlinebench
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -98,7 +99,7 @@ func TestGenerationPublicationPreservesPriorArtifactsOnEveryFailure(t *testing.T
 			if failure == "rename" {
 				ops.rename = func(string, string) error { return injected }
 			}
-			if _, err := writeArtifacts(destination, manifest, []Result{{CaseID: "new"}}, Summary{}, ops); !errors.Is(err, injected) {
+			if _, err := writeArtifacts(context.Background(), destination, manifest, []Result{{CaseID: "new"}}, Summary{}, ops); !errors.Is(err, injected) {
 				t.Fatalf("missing injected failure: %v", err)
 			}
 			if _, err := VerifyArtifacts(destination); err == nil {
@@ -138,11 +139,28 @@ func TestGenerationCommitDoesNotReplaceConcurrentPublisher(t *testing.T) {
 		}
 		return os.Rename(staging, final)
 	}
-	if _, err := writeArtifacts(destination, testManifest(t), nil, Summary{}, ops); err == nil {
+	if _, err := writeArtifacts(context.Background(), destination, testManifest(t), nil, Summary{}, ops); err == nil {
 		t.Fatal("concurrent generation overwritten")
 	}
 	if got := generationSnapshot(t, destination); !reflect.DeepEqual(got, map[string]string{"existing": "concurrent publisher"}) {
 		t.Fatalf("concurrent artifacts changed: %v", got)
+	}
+}
+
+func TestGenerationCancellationBeforeCommitDoesNotPublish(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	parent := t.TempDir()
+	destination := filepath.Join(parent, "run")
+	ops := publicationOps{write: atomicfile.Write, rename: os.Rename, syncDir: func(path string) error {
+		cancel()
+		return nil
+	}}
+	if _, err := writeArtifacts(ctx, destination, testManifest(t), nil, Summary{}, ops); !errors.Is(err, context.Canceled) {
+		t.Fatalf("publication ignored cancellation: %v", err)
+	}
+	if entries, err := os.ReadDir(parent); err != nil || len(entries) != 0 {
+		t.Fatalf("cancellation published or leaked staged artifacts: %v, %v", entries, err)
 	}
 }
 

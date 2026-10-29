@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/Lu1sDV/wafme0w/pkg/wafme0w"
@@ -52,6 +53,29 @@ func TestWafme0wWorkerPreservesEvidenceState(t *testing.T) {
 	full := invokeNativeWorker(t, input, catalogue)
 	if full.CatalogueSize != 2 || !slices.Equal(full.Results[0].RawProducts, []string{"Content", "Header"}) {
 		t.Fatalf("full-native profile selected only shared products: %+v", full)
+	}
+}
+
+func TestWafme0wWorkerRejectsOversizedTrailingWhitespace(t *testing.T) {
+	catalogue := filepath.Join(t.TempDir(), "catalogue.json")
+	if err := os.WriteFile(catalogue, []byte("[]"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	request, err := json.Marshal(WorkerInput{SchemaVersion: SchemaVersion, Profile: "full-native", Iterations: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, size := range []int{maxCorpusSize, maxCorpusSize + 1, maxCorpusSize + 2} {
+		input := append(append([]byte(nil), request...), bytes.Repeat([]byte(" "), size-len(request))...)
+		var output bytes.Buffer
+		err := RunWafme0wWorker(bytes.NewReader(input), &output, catalogue)
+		if size == maxCorpusSize {
+			if err != nil || output.Len() == 0 {
+				t.Fatalf("exact-limit request rejected: %v", err)
+			}
+		} else if err == nil || !strings.Contains(err.Error(), "exceeds") || output.Len() != 0 {
+			t.Fatalf("%d-byte request was not rejected before output: %v", size, err)
+		}
 	}
 }
 
