@@ -79,16 +79,18 @@ Configuration, input and output failures exit **1**; cancellation exits **130**.
 
 ## Benchmarks
 
-Historical **wafme0w vs wafw00f**, 1,000 targets. Saved wall-clock timings—not measurements of this checkout:
+**wafme0w vs wafw00f 2.4.2**, the same 500 Tranco targets, measured 29 October 2026.
+Single sequential sweep using saved wafme0w build `347f547`, not this checkout's newer v2/httpx-import changes:
 
 | Workers / processes | <img src="assets/wafme0w.svg" width="20" height="20" alt=""> wafme0w fast | <img src="assets/wafme0w.svg" width="20" height="20" alt=""> wafme0w full | wafw00f |
 | --- | ---: | ---: | ---: |
-| 1 | 19m 10.43s | 30m 2.91s | 47m 3.94s |
-| 10 | 3m 39.69s | 2m 49.17s | 9m 31.50s |
-| 50 | 52.33s | 1m 19.59s | 4m 1.22s |
+| 1 | 6m 49.44s | 15m 51.93s | 14m 38.21s |
+| 10 | 52.89s | 1m 45.62s | 2m 53.39s |
+| 50 | 24.06s | 44.26s | 1m 50.93s |
 
-A fresh comparison on the same **Tranco top-500** targets is deferred; these
-figures are not that run or detection-accuracy evidence. [Details and local performance measurements](docs/benchmarks.md).
+Observed wall times, not equivalent-work speedups or accuracy. wafme0w emitted
+500 results per cell; wafw00f omitted 157–159 targets. Higher concurrency changed
+evidence completeness. [Settings, outcome counts, limitations and historical results](docs/benchmarks.md#live-cli-comparison--29-october-2026).
 
 ## Major caveats
 

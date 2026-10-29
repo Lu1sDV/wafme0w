@@ -2,6 +2,141 @@
 
 [Quick start](../README.md) · [Operational checks](operations.md)
 
+## Live CLI comparison · 29 October 2026
+
+### Wall-clock results
+
+All nine cells completed with exit code 0 and no cell watchdog timeout. Each
+cell attempted the same 500 targets. These are single observations of the
+saved build described below, **not** a recalculation of the historical
+1,000-target timings or a measurement of the newer v2/httpx-import code.
+
+| Workers / processes | wafme0w fast | wafme0w full | wafw00f 2.4.2 |
+| --- | ---: | ---: | ---: |
+| 1 | 6m 49.44s | 15m 51.93s | 14m 38.21s |
+| 10 | 52.89s | 1m 45.62s | 2m 53.39s |
+| 50 | 24.06s | 44.26s | 1m 50.93s |
+
+Full mode at one worker took longer than wafw00f in this sweep. The different
+probe sets, TLS policies, evidence completeness and environmental state prevent
+interpreting these elapsed-time ratios as equivalent-work speedups.
+
+### Result accounting
+
+All counts below are **targets**, not fingerprint matches, distinct products,
+or HTTP requests. Complete and incomplete are native classification states;
+wafw00f does not report equivalent states. Its missing records remain unknown
+even though every CLI process exited successfully.
+
+| Workers | Mode | Returned | Missing | Complete | Incomplete | Named | Generic |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | wafme0w fast | 500 | 0 | 306 | 194 | 156 | 84 |
+| 1 | wafme0w full | 500 | 0 | 316 | 184 | 157 | 108 |
+| 1 | wafw00f | 342 | 158 | — | — | 153 | 91 |
+| 10 | wafme0w fast | 500 | 0 | 318 | 182 | 156 | 83 |
+| 10 | wafme0w full | 500 | 0 | 317 | 183 | 158 | 105 |
+| 10 | wafw00f | 343 | 157 | — | — | 153 | 87 |
+| 50 | wafme0w fast | 500 | 0 | 206 | 294 | 131 | 62 |
+| 50 | wafme0w full | 500 | 0 | 280 | 220 | 139 | 90 |
+| 50 | wafw00f | 341 | 159 | — | — | 155 | 87 |
+
+The native `complete` state only describes the evidence supplied to its
+classifier; it is not proof of WAF absence or active enforcement. Named and
+generic counts may overlap and can include incomplete native classifications.
+
+### Scope and method
+
+The input is the unchanged first 500 domains of
+[Tranco ZJ8PG, dated 28 October 2026](https://tranco-list.eu/list/ZJ8PG/1000000),
+as HTTPS root URLs. Unreachable targets are retained, not replaced.
+The target-file SHA-256 is
+`e74e8e65fffc1d18f5ddd82b7165641e0ad6e68f3553bcdb26df1d4f0f2a14f2`.
+Active comparison at 1, 10, and 50 workers/processes was explicitly authorized
+for this run; the list is not permission for others to scan these sites.
+
+- **Native:** saved build identifying source commit `347f547`, built with Go
+  `1.26.10-X:nodwarf5`; fast mode or default serial-probe full mode. The build
+  reports `vcs.modified=true`, so the binary SHA-256 below identifies the actual
+  measured artifact rather than asserting a pristine commit build. Target
+  workers and the global connection cap both equal the table's concurrency.
+- **Comparator:** unmodified wafw00f 2.4.2 on Python 3.14.8, `--findall`.
+  Its installed package files were checked against its installation manifest.
+  At concurrency N, N stock CLI processes consume round-robin static shards;
+  they are not N fresh processes per target.
+- Both use a 3-second request timeout and disabled redirects, with inherited
+  proxy settings cleared. No replacement targets, browser capture, or native
+  diagnostics journal. CLI startup and output writes are inside the timing;
+  compilation and target partitioning are outside. One interrupted one-worker
+  full scan produced 128 records without an exit status; its incomplete output
+  is retained but excluded. Only that unfinished cell was restarted; completed
+  cells were not repeated.
+- Cells run separately, never concurrently: at 50, fast/full/wafw00f; at 10,
+  wafw00f/fast/full; at 1, full/wafw00f/fast. Each tool occupies each position
+  once. This is one observation per cell, not a repeated statistical benchmark.
+  All processes share four allowed logical CPUs; native `GOMAXPROCS=4`.
+- Native retains its 30-second target deadline, 54-request target budget,
+  1 MiB decoded-body limit, and TLS verification. Upstream has different
+  connect/read timeout semantics, a 100 KiB body-read threshold, and disables
+  certificate verification. Probe sets and headers also differ. These are
+  observed CLI wall times, not equivalent-request or isolated matcher timings.
+
+The measured binary SHA-256 is
+`442595cffd0801d38c5849c855ee8daa33e1120a88168022f137e8c34b83ec5f`.
+It was kept unchanged across the interruption and resume. The checkout later
+advanced to the v2/httpx-import changes; those changes are **not** measured by
+this saved binary.
+
+For an independently authorized target file, the native cell's command is:
+
+```sh
+# N is 1, 10, or 50; add --fast for the fast-mode cell.
+./wafme0w --input targets.txt --jsonl --silent --no-colors \
+  --concurrency="$N" --max-connections="$N" --probe-concurrency=1 \
+  --request-timeout=3s --target-timeout=30s --max-requests=54 \
+  --max-body-bytes=1048576 --redirect-policy=none --max-redirects=0
+```
+
+For wafw00f, divide the same input into N round-robin shards and run N copies
+of the following stock command concurrently, one per shard, waiting for every
+process before stopping the cell timer:
+
+```sh
+python -m wafw00f.main -i shard.txt -a -r -T 3 --no-colors \
+  -f json -o shard.json
+```
+
+Use the same CPU affinity for both tools, `GOMAXPROCS=4` for native, and direct
+file output rather than terminal rendering. Preserve all process exit statuses
+and logs; a watchdog-aborted cell is not a completed timing. Account for each
+original target: a missing upstream record is unknown, not a negative result.
+Network/DNS state, load, and responses can change between cells; differences
+in named matches are not detection-accuracy evidence.
+
+### Interpretation
+
+Higher concurrency did not preserve evidence completeness. Fast mode at 50
+workers produced 206 complete classifications, versus 318 at 10 workers;
+161 versus 29 targets had a `deadline_exceeded` diagnostic. These are observed
+associations, not a controlled attribution to worker count. Shorter wall time
+alone must not be read as equal completed work or unchanged detection behavior.
+Named and generic detections can overlap, and either may coexist with incomplete
+evidence. Upstream does not record the native three-valued completion state.
+
+### Retained evidence
+
+Local raw artifacts are under the ignored directory
+`benchmarks/live-refresh-20261029-347f547-dn8436yx/`: target selection, binary,
+build/dependency manifest, commands, process timestamps/statuses, raw records,
+upstream logs, per-cell SHA-256 identities, and interruption metadata.
+`verify.py` checked input/output identities, all 500 attempted targets per cell,
+native uniqueness and settings, upstream missing-output accounting, elapsed
+timestamps, zero exit statuses, and non-overlapping cell intervals. It published
+`verification.json`; six saved-output comparisons retain common-target product
+set disagreements without treating either tool's labels as ground truth.
+No network requests or replacement scans are performed by that verifier.
+These local artifacts are not committed; the tables and identities above are
+the published measurement record.
+
 ## Throughput follow-up · 29 October 2026
 
 This comparison uses commit `74a28977b9b59cc7608b69596f40632d41bf7856`
@@ -137,11 +272,11 @@ input is limited to 8 MiB, including whitespace. Cancellation before generation
 publication removes staging; it cannot roll back an already committed rename.
 Verify the published generation before consuming it.
 
-### Saved runs · 1,000 targets
+## Historical network runs · 1,000 targets
 
 These tables summarize previously saved runs with corrected detection counts; they are not a fresh benchmark of this checkout. “WAFs found” counts targets with named detections, not distinct WAF products. Named and generic detections can overlap.
 
-#### Parallelism: 1
+### Parallelism: 1
 
 | Tool | Mode / parallelism | Time elapsed | WAFs found | Generic WAFs found | Diff¹ |
 | --- | --- | ---: | ---: | ---: | ---: |
@@ -149,7 +284,7 @@ These tables summarize previously saved runs with corrected detection counts; th
 | **wafme0w** | Full, 1 worker | 30min 2.91s | 354 | 206 | +56.7% |
 | wafw00f | 1 process | 47min 3.94s | 354 | 166 | +145.5% |
 
-#### Parallelism: 10
+### Parallelism: 10
 
 | Tool | Mode / parallelism | Time elapsed | WAFs found | Generic WAFs found | Diff¹ |
 | --- | --- | ---: | ---: | ---: | ---: |
@@ -157,7 +292,7 @@ These tables summarize previously saved runs with corrected detection counts; th
 | **wafme0w** | Full, 10 workers | 2min 49.17s | 355 | 207 | −23.0% |
 | wafw00f | 10 processes | 9min 31.50s | 353 | 167 | +160.1% |
 
-#### Parallelism: 50
+### Parallelism: 50
 
 | Tool | Mode / parallelism | Time elapsed | WAFs found | Generic WAFs found | Diff¹ |
 | --- | --- | ---: | ---: | ---: | ---: |
