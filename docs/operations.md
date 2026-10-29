@@ -62,3 +62,25 @@ python3 tools/smoke.py docker wafme0w:candidate
 These commands fail on violated assertions. The soak output directory must be
 new; it records target accounting and RSS/file-descriptor samples. Its bounded
 run is not proof against indefinite leaks or representative Internet throughput.
+
+## Concurrency and durability regressions
+
+The deterministic regression tests cover pacing at dispatch, bounded probe and
+capture admission, input-order emission, serial result callbacks, cancellation
+joins, and journal sync-before-output. Boundary cases include exactly 32 MiB of
+admitted raw captures and a partial journal batch's 25 ms deadline measured from
+its first record, not its most recent arrival. Recovery tests retain both a
+report failure and a subsequent accepted-tail sync failure.
+
+```sh
+go test -count=1 -race -timeout=5m ./pkg/wafme0w ./cmd/wafme0w \
+  -run 'Test(PacedOrigin|PacingUses|FullProbe|RunCaptured|RunBrowserStage|JournalSink)'
+```
+
+For a new defect, add its behavioral regression and observe the intended
+assertion fail before implementing the fix; then rerun the same selector and
+the affected suites. For existing behavior, a temporary, restored mutation can
+demonstrate that a test detects a broken invariant. That is regression evidence,
+not proof that the original implementation was developed test-first. Compilation
+errors, unrelated panics, empty test selections, and watchdog timeouts do not
+establish the intended red state.

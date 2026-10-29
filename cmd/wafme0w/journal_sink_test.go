@@ -126,32 +126,39 @@ func TestJournalSinkDurabilityBatchCountAndEOF(t *testing.T) {
 func TestJournalSinkPartialBatchTimer(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		file := &durableJournalFile{}
-		emitted := make(chan struct{}, 1)
+		emitted := make(chan string, 2)
 		sink := newJournalSink(testJournal(file), 4, func(result wafme0w.Result) error {
 			if err := durableResult(file, result.Target); err != nil {
 				return err
 			}
-			emitted <- struct{}{}
+			emitted <- result.Target
 			return nil
 		}, func() {})
 		if err := sink.write(context.Background(), wafme0w.Result{Target: "live"}); err != nil {
 			t.Fatal(err)
 		}
 		synctest.Wait()
-		time.Sleep(journalFlushInterval - time.Nanosecond)
+		time.Sleep(24 * time.Millisecond)
+		if err := sink.write(context.Background(), wafme0w.Result{Target: "later"}); err != nil {
+			t.Fatal(err)
+		}
+		synctest.Wait()
+		time.Sleep(time.Millisecond - time.Nanosecond)
 		synctest.Wait()
 		if len(emitted) != 0 {
-			t.Fatal("partial batch flushed before its timer")
+			t.Error("partial batch flushed before its 25ms deadline")
 		}
 		time.Sleep(time.Nanosecond)
 		synctest.Wait()
-		select {
-		case <-emitted:
-		default:
-			t.Fatal("live partial batch was not flushed")
+		var got []string
+		for len(emitted) != 0 {
+			got = append(got, <-emitted)
+		}
+		if !reflect.DeepEqual(got, []string{"live", "later"}) {
+			t.Errorf("live partial batch was not flushed within 25ms of its first result: %v", got)
 		}
 		if file.syncs != 1 {
-			t.Fatalf("live partial batch syncs = %d, want 1", file.syncs)
+			t.Errorf("live partial batch syncs = %d, want 1", file.syncs)
 		}
 		if err := sink.close(); err != nil {
 			t.Fatal(err)
@@ -180,10 +187,10 @@ func TestJournalSinkBoundsPendingBytesAndFlushesOversizedRecord(t *testing.T) {
 				}
 				synctest.Wait()
 				if emitted != 1 || file.syncs != 1 {
-					t.Fatalf("byte limit did not flush promptly: emitted=%d syncs=%d", emitted, file.syncs)
+					t.Errorf("byte limit did not flush promptly: emitted=%d syncs=%d", emitted, file.syncs)
 				}
 				if !oversized && file.peakUnsyncedBytes > maxJournalBatchBytes {
-					t.Fatalf("encoded batch exceeded byte bound: %d", file.peakUnsyncedBytes)
+					t.Errorf("encoded batch exceeded byte bound: %d", file.peakUnsyncedBytes)
 				}
 				if err := sink.close(); err != nil {
 					t.Fatal(err)
@@ -238,6 +245,47 @@ func TestJournalSinkFailurePreservesDurableAcceptedTail(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestJournalSinkOverflowJoinsReportAndTailSyncFailures(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		file := &durableJournalFile{}
+		reportFailure := errors.New("dependent report failed")
+		tailFailure := errors.New("accepted tail sync failed")
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		emitted := 0
+		sink := newJournalSink(testJournal(file), 256, func(result wafme0w.Result) error {
+			emitted++
+			if err := durableResult(file, result.Target); err != nil {
+				return err
+			}
+			file.syncErr = tailFailure
+			return reportFailure
+		}, cancel)
+		first, tail := strings.Repeat("a", 600<<10), strings.Repeat("b", 600<<10)
+		for _, target := range []string{first, tail} {
+			if err := sink.write(ctx, wafme0w.Result{Target: target}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		err := sink.close()
+		if !errors.Is(err, reportFailure) || !errors.Is(err, tailFailure) {
+			t.Errorf("overflow recovery lost a failure: %v", err)
+		}
+		if emitted != 1 {
+			t.Errorf("dependent sink received %d results after failure, want 1", emitted)
+		}
+		records := journalRecords(t, file.Bytes())
+		if len(records) != 2 || records[0].Result == nil || records[0].Result.Target != first ||
+			records[1].Result == nil || records[1].Result.Target != tail {
+			t.Error("already accepted overflow tail was not appended after report failure")
+		}
+		durable := journalRecords(t, file.durable)
+		if len(durable) != 1 || durable[0].Result == nil || durable[0].Result.Target != first {
+			t.Error("failed tail sync changed the previously durable recovery record")
+		}
+	})
 }
 
 func TestJournalSinkSyncFailureCancelsBeforeAnyDependentSink(t *testing.T) {

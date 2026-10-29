@@ -555,6 +555,51 @@ func TestRunBrowserStageAssociatesOccurrencesAndOverlapsSanitizedExports(t *test
 	})
 }
 
+func TestRunBrowserStageSerializesResultCallbacks(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		config := browserStageConfig(t)
+		config.Concurrency = 2
+		config.Client = &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+			return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader("")), Request: request}, nil
+		})}
+		var exports, calls, active atomic.Int32
+		config.Browser.SaveText = func(_ context.Context, artifact BrowserArtifact) (string, error) {
+			exports.Add(1)
+			return "owned-" + artifact.CaptureID, nil
+		}
+		started, release := make(chan struct{}), make(chan struct{})
+		releaseCallbacks := sync.OnceFunc(func() { close(release) })
+		defer releaseCallbacks()
+		engine := emptyEngine(t)
+		done := make(chan error, 1)
+		go func() {
+			done <- run(context.Background(), engine, strings.NewReader("http://fixture.invalid/first\nhttp://fixture.invalid/second\n"), config, func(Result) error {
+				active.Add(1)
+				defer active.Add(-1)
+				if calls.Add(1) == 1 {
+					close(started)
+					<-release
+				}
+				return nil
+			}, func(_ context.Context, target, id string, occurrence uint64, config Config) browserCapture {
+				return savedBrowserCapture(target, id, occurrence, config)
+			})
+		}()
+		<-started
+		synctest.Wait()
+		if exports.Load() != 2 || calls.Load() != 1 {
+			t.Errorf("ready browser results overlapped a blocked callback: exports=%d callbacks=%d", exports.Load(), calls.Load())
+		}
+		releaseCallbacks()
+		if err := <-done; err != nil {
+			t.Fatal(err)
+		}
+		if calls.Load() != 2 || active.Load() != 0 {
+			t.Fatalf("result callbacks were lost or not joined: calls=%d active=%d", calls.Load(), active.Load())
+		}
+	})
+}
+
 func TestRunBrowserStageCancellationAndSinkFailureJoinAllOwners(t *testing.T) {
 	for _, sinkFailure := range []bool{false, true} {
 		t.Run(fmt.Sprintf("sink-failure=%t", sinkFailure), func(t *testing.T) {
@@ -569,12 +614,33 @@ func TestRunBrowserStageCancellationAndSinkFailureJoinAllOwners(t *testing.T) {
 				defer cancel()
 				sentinel := errors.New("browser result sink failed")
 				firstBrowser, browserActive, browserStopped := make(chan struct{}), make(chan struct{}), make(chan struct{})
+				exportActive, exportCancelled, exportStopped := make(chan struct{}), make(chan struct{}), make(chan struct{})
+				releaseExport := make(chan struct{})
+				finishExport := sync.OnceFunc(func() { close(releaseExport) })
+				defer finishExport()
+				config.Browser.SaveText = func(ctx context.Context, artifact BrowserArtifact) (string, error) {
+					if artifact.Occurrence == 2 {
+						close(exportActive)
+						<-ctx.Done()
+						close(exportCancelled)
+						<-releaseExport
+						close(exportStopped)
+						return "", ctx.Err()
+					}
+					return "owned-" + artifact.CaptureID, nil
+				}
 				httpActive, httpStopped := make(chan struct{}), make(chan struct{})
 				config.Client = &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
 					switch request.URL.Path {
-					case "/browser-active":
+					case "/export-active":
 						select {
 						case <-firstBrowser:
+						case <-request.Context().Done():
+							return nil, request.Context().Err()
+						}
+					case "/browser-active":
+						select {
+						case <-exportActive:
 						case <-request.Context().Done():
 							return nil, request.Context().Err()
 						}
@@ -598,6 +664,7 @@ func TestRunBrowserStageCancellationAndSinkFailureJoinAllOwners(t *testing.T) {
 					done <- run(ctx, engine, input, config, func(Result) error {
 						calls++
 						<-browserActive
+						<-exportActive
 						<-httpActive
 						<-input.blocked
 						if sinkFailure {
@@ -608,7 +675,7 @@ func TestRunBrowserStageCancellationAndSinkFailureJoinAllOwners(t *testing.T) {
 					}, func(ctx context.Context, target, id string, occurrence uint64, config Config) browserCapture {
 						if strings.HasSuffix(target, "/first") {
 							close(firstBrowser)
-						} else {
+						} else if strings.HasSuffix(target, "/browser-active") {
 							close(browserActive)
 							<-ctx.Done()
 							close(browserStopped)
@@ -616,10 +683,23 @@ func TestRunBrowserStageCancellationAndSinkFailureJoinAllOwners(t *testing.T) {
 						return savedBrowserCapture(target, id, occurrence, config)
 					})
 				}()
-				if _, err := io.WriteString(writer, "http://fixture.invalid/first\nhttp://fixture.invalid/browser-active\nhttp://fixture.invalid/http-active\n"); err != nil {
+				if _, err := io.WriteString(writer, "http://fixture.invalid/first\nhttp://fixture.invalid/export-active\nhttp://fixture.invalid/browser-active\nhttp://fixture.invalid/http-active\n"); err != nil {
 					t.Fatal(err)
 				}
-				err := <-done
+				<-exportCancelled
+				synctest.Wait()
+				var err error
+				returned := false
+				select {
+				case err = <-done:
+					returned = true
+					t.Errorf("Run returned before its cancelled artifact callback finished: %v", err)
+				default:
+				}
+				finishExport()
+				if !returned {
+					err = <-done
+				}
 				want := error(context.Canceled)
 				if sinkFailure {
 					want = sentinel
@@ -627,7 +707,7 @@ func TestRunBrowserStageCancellationAndSinkFailureJoinAllOwners(t *testing.T) {
 				if !errors.Is(err, want) || calls != 1 || wakeups != 1 {
 					t.Fatalf("shutdown changed first failure or emitted again: err=%v calls=%d wakeups=%d", err, calls, wakeups)
 				}
-				for name, stopped := range map[string]<-chan struct{}{"HTTP": httpStopped, "browser": browserStopped} {
+				for name, stopped := range map[string]<-chan struct{}{"HTTP": httpStopped, "browser": browserStopped, "export": exportStopped} {
 					select {
 					case <-stopped:
 					default:

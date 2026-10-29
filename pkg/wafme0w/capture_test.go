@@ -426,7 +426,8 @@ func TestRunCapturedRawByteAdmissionBoundsLargeRecords(t *testing.T) {
 	defer runtime.GOMAXPROCS(previous)
 	synctest.Test(t, func(t *testing.T) {
 		engine, config := emptyEngine(t), DefaultConfig()
-		const recordBytes = 9 << 20
+		// Two maximum-sized records exactly fill the documented 32 MiB budget.
+		const recordBytes = 16<<20 + 1 // Includes the newline excluded from admission.
 		prefix, suffix := "{\"target\":\"saved\",\"evidence\":[", "]}\n"
 		record := prefix + strings.Repeat(" ", recordBytes-len(prefix)-len(suffix)) + suffix
 		input := &captureRecordsReader{records: make([]string, 8)}
@@ -450,7 +451,7 @@ func TestRunCapturedRawByteAdmissionBoundsLargeRecords(t *testing.T) {
 			})
 		}()
 		synctest.Wait()
-		want := maxCaptureInFlightBytes / (recordBytes - 1)
+		const want = 2
 		if int(admitted.Load()) != want || input.readRecords != want+1 || calls != 0 {
 			t.Errorf("raw bytes were not bounded independently of record slots: admitted=%d read=%d emitted=%d", admitted.Load(), input.readRecords, calls)
 		}
