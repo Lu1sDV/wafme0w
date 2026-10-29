@@ -20,7 +20,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/Lu1sDV/wafme0w/internal/httpmeta"
+	"github.com/Lu1sDV/wafme0w/v2/internal/httpmeta"
 	"golang.org/x/net/html"
 )
 

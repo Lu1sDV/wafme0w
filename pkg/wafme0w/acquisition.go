@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	httputil "github.com/Lu1sDV/wafme0w/pkg/utils/http"
+	httputil "github.com/Lu1sDV/wafme0w/v2/pkg/utils/http"
 )
 
 func normalizedOrigin(u *url.URL) string {

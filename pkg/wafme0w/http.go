@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"strings"
 
-	httputil "github.com/Lu1sDV/wafme0w/pkg/utils/http"
+	httputil "github.com/Lu1sDV/wafme0w/v2/pkg/utils/http"
 )
 
 var defaultHeaders = map[string]string{

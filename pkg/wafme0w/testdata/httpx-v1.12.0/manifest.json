@@ -1,0 +1,56 @@
+{
+  "producer": "github.com/projectdiscovery/httpx/cmd/httpx",
+  "version": "v1.12.0",
+  "binary_sha256": "71b2f4f965f084b484723611d5227465ecef7212423c53792bf51b50c5365808",
+  "fixture": "owned loopback HTTP server; synthetic Cloudflare Server header, two X-Fixture values, two Set-Cookie values, body fixture-body-marker; no real-product ground truth",
+  "cases": {
+    "summary": {
+      "arguments": [
+        "-u",
+        "http://127.0.0.1:44813/marker",
+        "-silent",
+        "-json",
+        "-duc",
+        "-probe",
+        "-timeout",
+        "2",
+        "-retries",
+        "0"
+      ],
+      "sha256": "4044c1d3558c87fcb35a3748bea933c64accbc0a5bcd37f20c2308a96d446c83"
+    },
+    "text": {
+      "arguments": [
+        "-u",
+        "http://127.0.0.1:44813/marker",
+        "-silent",
+        "-json",
+        "-duc",
+        "-probe",
+        "-timeout",
+        "2",
+        "-retries",
+        "0",
+        "-irr"
+      ],
+      "sha256": "44238076b6b11ae2966843d29f50ba977f1e8d04cd16de4c91c853103fb6a459"
+    },
+    "base64": {
+      "arguments": [
+        "-u",
+        "http://127.0.0.1:44813/marker",
+        "-silent",
+        "-json",
+        "-duc",
+        "-probe",
+        "-timeout",
+        "2",
+        "-retries",
+        "0",
+        "-irrb",
+        "-no-decode"
+      ],
+      "sha256": "421b50f47af187efd6f62a10d2ba3e7b2b321511bfc833a33e7bea86a724352e"
+    }
+  }
+}

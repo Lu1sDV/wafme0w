@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -205,5 +206,59 @@ func TestRunCapturedInputFailurePreservesEarlierResults(t *testing.T) {
 		if input.closed {
 			t.Fatal("caller-owned capture reader was closed")
 		}
+	}
+}
+
+func TestRunCapturedExplicitAvailabilityValidation(t *testing.T) {
+	for name, availability := range map[string]string{
+		"complete":    `{"status":"complete","headers":"complete","reason":"complete","body":"complete"}`,
+		"unavailable": `{"status":"unavailable","headers":"unavailable","reason":"unavailable","body":"unavailable"}`,
+		"partial":     `{"status":"complete","headers":"incomplete","reason":"unavailable","body":"unknown"}`,
+		"legacy null": `null`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			status := 0
+			if name == "complete" || name == "partial" || name == "legacy null" {
+				status = 200
+			}
+			record := fmt.Sprintf(`{"target":"saved","evidence":[{"role":"Normal","status_code":%d,"availability":%s}]}`, status, availability)
+			emitted := 0
+			err := RunCaptured(context.Background(), emptyEngine(t), strings.NewReader(record), DefaultConfig(), func(Result) error {
+				emitted++
+				return nil
+			})
+			if err != nil || emitted != 1 {
+				t.Fatalf("valid availability rejected: emitted=%d err=%v", emitted, err)
+			}
+		})
+	}
+}
+
+func TestRunCapturedRejectsInvalidExplicitAvailability(t *testing.T) {
+	for name, observation := range map[string]string{
+		"empty":                        `{"availability":{}}`,
+		"missing channel":              `{"availability":{"status":"unavailable","headers":"unavailable","reason":"unavailable"}}`,
+		"null channel":                 `{"availability":{"status":null,"headers":"unavailable","reason":"unavailable","body":"unknown"}}`,
+		"unknown enum":                 `{"availability":{"status":"invented","headers":"unavailable","reason":"unavailable","body":"unknown"}}`,
+		"unknown status":               `{"availability":{"status":"unknown","headers":"unavailable","reason":"unavailable","body":"unknown"}}`,
+		"partial reason":               `{"availability":{"status":"unavailable","headers":"unavailable","reason":"incomplete","body":"unknown"}}`,
+		"unknown headers":              `{"availability":{"status":"unavailable","headers":"unknown","reason":"unavailable","body":"unknown"}}`,
+		"complete missing status":      `{"availability":{"status":"complete","headers":"complete","reason":"complete","body":"complete"}}`,
+		"unavailable retained status":  `{"status_code":200,"availability":{"status":"unavailable","headers":"complete","reason":"complete","body":"complete"}}`,
+		"unavailable retained headers": `{"headers":[{"name":"X-Test","value":"yes"}],"availability":{"status":"unavailable","headers":"unavailable","reason":"complete","body":"complete"}}`,
+		"unavailable retained reason":  `{"reason":"OK","availability":{"status":"unavailable","headers":"complete","reason":"unavailable","body":"complete"}}`,
+		"complete truncated body":      `{"body_truncated":true,"availability":{"status":"unavailable","headers":"complete","reason":"complete","body":"complete"}}`,
+		"complete errored body":        `{"error_code":"read_body","availability":{"status":"unavailable","headers":"complete","reason":"complete","body":"complete"}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			record := `{"target":"saved","evidence":[{"role":"Normal",` + observation[1:] + `]}`
+			err := RunCaptured(context.Background(), emptyEngine(t), strings.NewReader(record), DefaultConfig(), func(Result) error {
+				t.Error("invalid explicit availability emitted a result")
+				return nil
+			})
+			if err == nil {
+				t.Fatal("invalid explicit availability accepted")
+			}
+		})
 	}
 }

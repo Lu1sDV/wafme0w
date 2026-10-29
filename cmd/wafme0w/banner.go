@@ -10,7 +10,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/Lu1sDV/wafme0w/pkg/wafme0w"
+	"github.com/Lu1sDV/wafme0w/v2/pkg/wafme0w"
 	"github.com/logrusorgru/aurora/v4"
 )
 
@@ -56,84 +56,223 @@ func printProducts(writer io.Writer, products []string, au *aurora.Aurora) error
 	return nil
 }
 
-func printResult(stdout, stderr io.Writer, result wafme0w.Result, suppressWarnings bool, au *aurora.Aurora) error {
-	partial := result.Outcome.State != wafme0w.Complete || len(result.Outcome.Diagnostics) != 0
-	label := au.Bold(au.Yellow("INCONCLUSIVE"))
+// HTTP classification and browser capture are independent reporting axes.
+func humanOutcome(result wafme0w.Result) string {
 	switch {
-	case len(result.Outcome.Matches) != 0:
-		label = au.Bold(au.Green("FOUND"))
 	case result.Outcome.State == wafme0w.Failed:
-		label = au.Bold(au.Red("ERROR"))
-	case !partial:
-		label = au.Bold("NO MATCH")
+		return "ERROR"
+	case len(result.Outcome.Matches) != 0:
+		return "WAF MATCH"
+	case result.Outcome.State != wafme0w.Complete:
+		return "INCOMPLETE"
+	case result.Generic.Mode != "" || result.Generic.Reason != "" || len(result.Outcome.Diagnostics) != 0 || channelsNeedReview(result):
+		return "REVIEW"
+	}
+	return "NO WAF MATCH"
+}
+
+func hasExplicitAvailability(result wafme0w.Result) bool {
+	for _, observation := range result.Evidence {
+		if observation.Availability != nil {
+			return true
+		}
+	}
+	return false
+}
+
+func channelsNeedReview(result wafme0w.Result) bool {
+	for _, observation := range result.Evidence {
+		if availability := observation.Availability; availability != nil {
+			if availability.Status != wafme0w.ChannelComplete || availability.Headers != wafme0w.ChannelComplete ||
+				availability.Reason != wafme0w.ChannelComplete || availability.Body != wafme0w.ChannelComplete {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func channelSummary(result wafme0w.Result) string {
+	var summary strings.Builder
+	for i, observation := range result.Evidence {
+		availability := observation.Availability
+		if availability == nil {
+			continue
+		}
+		if summary.Len() != 0 {
+			summary.WriteString(" / ")
+		}
+		headers := string(availability.Headers)
+		if availability.Headers == wafme0w.ChannelIncomplete {
+			headers = "partial"
+		}
+		fmt.Fprintf(&summary, "#%d status %s; headers %s; reason %s; body %s", i+1,
+			terminalText(string(availability.Status)), terminalText(headers),
+			terminalText(string(availability.Reason)), terminalText(string(availability.Body)))
+	}
+	return summary.String()
+}
+
+// Match references use positions in Result.Evidence, not EvidenceSummary.Index.
+func supportingEvidence(match wafme0w.Match, evidenceCount int) []int {
+	indices := make([]int, 0, len(match.Fingerprints))
+	for _, fingerprint := range match.Fingerprints {
+		if fingerprint.Evidence >= 0 && fingerprint.Evidence < evidenceCount {
+			indices = append(indices, fingerprint.Evidence)
+		}
+	}
+	sort.Ints(indices)
+	unique := indices[:0]
+	for _, index := range indices {
+		if len(unique) == 0 || unique[len(unique)-1] != index {
+			unique = append(unique, index)
+		}
+	}
+	return unique
+}
+
+func printResult(stdout, stderr io.Writer, result wafme0w.Result, suppressWarnings bool, au *aurora.Aurora) error {
+	outcome := humanOutcome(result)
+	label := au.Yellow("[ " + outcome + " ]")
+	switch outcome {
+	case "ERROR", "WAF MATCH":
+		label = au.Red("[ " + outcome + " ]")
+	case "NO WAF MATCH":
+		label = au.Green("[ " + outcome + " ]")
 	}
 	var group strings.Builder
-	fmt.Fprintf(&group, "%s  %s | ", label, terminalText(result.Target))
-	for i, match := range result.Outcome.Matches {
-		if i != 0 {
-			group.WriteString(", ")
+	fmt.Fprintf(&group, "%s  %s\n", au.Bold(label), terminalText(result.Target))
+	for _, match := range result.Outcome.Matches {
+		fmt.Fprintf(&group, "   product  %s\n", au.Bold(au.Red(terminalText(match.Product))))
+		indices := supportingEvidence(match, len(result.Evidence))
+		group.WriteString("   matched on  ")
+		if len(indices) == 0 {
+			group.WriteString("supporting observation unavailable")
 		}
-		fmt.Fprint(&group, au.Bold(au.White(terminalText(match.Product))))
+		for i, index := range indices {
+			if i != 0 {
+				group.WriteString("; ")
+			}
+			observation := result.Evidence[index]
+			fmt.Fprintf(&group, "#%d [%s] HTTP ", index+1, terminalText(observation.Role))
+			if observation.StatusCode >= 100 && observation.StatusCode <= 999 {
+				fmt.Fprint(&group, observation.StatusCode)
+			} else {
+				group.WriteByte('?')
+			}
+			if observation.RequestURL != "" {
+				fmt.Fprintf(&group, " %s", terminalText(observation.RequestURL))
+			}
+			if observation.EffectiveURL != "" && observation.EffectiveURL != observation.RequestURL {
+				fmt.Fprintf(&group, " -> %s", terminalText(observation.EffectiveURL))
+			}
+		}
+		group.WriteByte('\n')
 	}
 	if len(result.Outcome.Matches) == 0 {
-		switch {
-		case !partial:
-			group.WriteString("No known WAF fingerprint matched")
-		case result.Outcome.State == wafme0w.Failed:
-			group.WriteString("Target evaluation failed")
-		default:
+		switch outcome {
+		case "ERROR":
+			group.WriteString("   result   Target evaluation failed\n")
+		case "INCOMPLETE":
+			if hasExplicitAvailability(result) {
+				group.WriteString("   result   No known WAF fingerprint matched; classification incomplete\n")
+				break
+			}
 			description := "No HTTP response received"
 			for _, observation := range result.Evidence {
-				if observation.StatusCode >= 100 {
-					description = "HTTP response received; fingerprint evidence incomplete"
+				if observation.StatusCode >= 100 && observation.StatusCode <= 999 {
+					description = "HTTP response received"
 					break
 				}
 			}
-			for _, diagnostic := range result.Outcome.Diagnostics {
-				if diagnostic.Code == "redirect_scope" {
-					description = "Redirect blocked by scope; fingerprint evidence incomplete"
-					break
-				}
-			}
-			group.WriteString(description)
+			fmt.Fprintf(&group, "   result   %s; fingerprint evidence incomplete\n", description)
+		default:
+			group.WriteString("   result   No known WAF fingerprint matched\n")
 		}
-	} else if partial {
-		group.WriteString(" | partial scan")
 	}
-	if result.Generic.Reason != "" || result.Generic.Mode != "" {
-		group.WriteString(" | generic anomaly")
+	if result.Generic.Mode != "" || result.Generic.Reason != "" {
+		description := result.Generic.Reason
+		if description == "" {
+			description = result.Generic.Mode.String()
+		}
+		fmt.Fprintf(&group, "   review   Unusual response: %s\n", terminalText(description))
+	} else if outcome == "REVIEW" {
+		if hasExplicitAvailability(result) {
+			group.WriteString("   review   HTTP channels or diagnostics need review\n")
+		} else {
+			group.WriteString("   review   HTTP diagnostics need review\n")
+		}
+	}
+	group.WriteString("   HTTP  ")
+	if len(result.Evidence) == 0 {
+		group.WriteString("unavailable")
+	}
+	for i, observation := range result.Evidence {
+		if i != 0 {
+			group.WriteString(" / ")
+		}
+		fmt.Fprintf(&group, "#%d ", i+1)
+		if observation.StatusCode >= 100 && observation.StatusCode <= 999 {
+			fmt.Fprint(&group, observation.StatusCode)
+		} else {
+			group.WriteByte('?')
+		}
+		if observation.BodyTruncated {
+			group.WriteString(" (body truncated)")
+		}
+	}
+	evidenceState := au.Colorize(terminalText(string(result.Outcome.State)), 0)
+	switch result.Outcome.State {
+	case wafme0w.Incomplete:
+		evidenceState = au.Yellow(evidenceState)
+	case wafme0w.Failed:
+		evidenceState = au.Red(evidenceState)
+	}
+	stateLabel := "evidence"
+	if hasExplicitAvailability(result) {
+		stateLabel = "classification"
+	}
+	fmt.Fprintf(&group, " | %s %s\n", stateLabel, evidenceState)
+	if channels := channelSummary(result); channels != "" {
+		fmt.Fprintf(&group, "   channels  %s\n", channels)
 	}
 	if browser := result.Browser; browser != nil {
-		fmt.Fprintf(&group, " | browser %s (%s), text %s, image %s",
+		fmt.Fprintf(&group, "   browser  %s (%s), text %s, image %s (separate from HTTP)\n",
 			terminalText(browser.State), terminalText(browser.Mode), terminalText(browser.DOM.State), terminalText(browser.Screenshot.State))
 		if browser.DOM.SaveState != "" {
-			fmt.Fprintf(&group, " | text save %s", terminalText(browser.DOM.SaveState))
+			fmt.Fprintf(&group, "            text save %s\n", terminalText(browser.DOM.SaveState))
 		}
 		if browser.Screenshot.SaveState != "" {
-			fmt.Fprintf(&group, " | image save %s", terminalText(browser.Screenshot.SaveState))
+			fmt.Fprintf(&group, "            image save %s\n", terminalText(browser.Screenshot.SaveState))
 		}
 		if browser.DOM.Saved != "" {
-			fmt.Fprintf(&group, " | text saved %s", terminalText(browser.DOM.Saved))
+			fmt.Fprintf(&group, "            text saved %s\n", terminalText(browser.DOM.Saved))
 		}
 		if browser.Screenshot.Saved != "" {
-			fmt.Fprintf(&group, " | image saved %s", terminalText(browser.Screenshot.Saved))
+			fmt.Fprintf(&group, "            image saved %s\n", terminalText(browser.Screenshot.Saved))
 		}
 	}
 	group.WriteByte('\n')
 	if _, err := io.WriteString(stdout, group.String()); err != nil {
 		return err
 	}
-	if !suppressWarnings && len(result.Outcome.Diagnostics) != 0 {
-		seen := make(map[string]bool)
-		group.Reset()
+	if suppressWarnings {
+		return nil
+	}
+	return printResultDiagnostics(stderr, result)
+}
+
+func printResultDiagnostics(writer io.Writer, result wafme0w.Result) error {
+	var group strings.Builder
+	if len(result.Outcome.Diagnostics) != 0 {
+		seen := make(map[wafme0w.Diagnostic]bool, len(result.Outcome.Diagnostics))
 		fmt.Fprintf(&group, "WARN  %s | ", terminalText(result.Target))
 		first := true
 		for _, diagnostic := range result.Outcome.Diagnostics {
-			key := diagnostic.Code + "\x00" + diagnostic.Message
-			if seen[key] {
+			if seen[diagnostic] {
 				continue
 			}
-			seen[key] = true
+			seen[diagnostic] = true
 			if !first {
 				group.WriteString("; ")
 			}
@@ -158,29 +297,49 @@ func printResult(stdout, stderr io.Writer, result wafme0w.Result, suppressWarnin
 			group.WriteString(terminalText(description))
 			if diagnostic.Code == "redirect_scope" && diagnostic.Evidence >= 0 && diagnostic.Evidence < len(result.Evidence) {
 				if destination := result.Evidence[diagnostic.Evidence].BlockedRedirectURL; destination != "" {
-					fmt.Fprintf(&group, ": %s", au.Italic(au.White(terminalText(destination))))
+					fmt.Fprintf(&group, ": %s", terminalText(destination))
 				}
+			}
+			if guidance := certificateGuidance(diagnostic.Message); guidance != "" {
+				fmt.Fprintf(&group, " (%s)", guidance)
 			}
 		}
 		group.WriteByte('\n')
-		if _, err := io.WriteString(stderr, group.String()); err != nil {
-			return err
-		}
 	}
-	if browser := result.Browser; browser != nil && !suppressWarnings {
-		group.Reset()
+	if browser := result.Browser; browser != nil {
 		if browser.Reason != "" || browser.Error != "" {
 			fmt.Fprintf(&group, "WARN  %s | browser %s: %s\n", terminalText(result.Target), terminalText(browser.Reason), terminalText(browser.Error))
 		}
 		for _, limitation := range browser.Limitations {
 			fmt.Fprintf(&group, "WARN  %s | browser limitation: %s\n", terminalText(result.Target), terminalText(limitation))
 		}
-		if _, err := io.WriteString(stderr, group.String()); err != nil {
-			return err
-		}
 	}
-	_, err := io.WriteString(stdout, "\n")
+	if group.Len() == 0 {
+		return nil
+	}
+	// Diagnostics are deliberately unstyled: stdout's TTY status says nothing
+	// about stderr, which may be a redirected log.
+	_, err := io.WriteString(writer, group.String())
 	return err
+}
+
+// Results retain cause text, not error values; only recognized x509 causes get
+// specific guidance. A TLS failure does not imply other observations are absent.
+func certificateGuidance(message string) string {
+	cause := strings.ToLower(message)
+	if !strings.Contains(cause, "x509:") {
+		return ""
+	}
+	switch {
+	case strings.Contains(cause, "certificate signed by unknown authority"):
+		return "Check the certificate chain and trust store; if a private CA is expected, on Linux set SSL_CERT_FILE to an approved CA bundle"
+	case strings.Contains(cause, "certificate has expired"), strings.Contains(cause, "not yet valid"):
+		return "Correct the certificate validity dates and check the system clock"
+	case strings.Contains(cause, "certificate is valid for"), strings.Contains(cause, "not valid for any names"), strings.Contains(cause, "doesn't contain any ip sans"):
+		return "Correct the target hostname or the certificate subject alternative names"
+	default:
+		return ""
+	}
 }
 
 // Debug output uses the same recorded evidence as JSON reports, not new requests.
@@ -210,12 +369,27 @@ func printDebug(writer io.Writer, result wafme0w.Result) error {
 
 type resultCounts struct {
 	Total, Complete, Matched, Unnamed, Incomplete, Failed, Generic, Diagnostics int
+	WAFMatch, NoWAFMatch, Review, OutcomeIncomplete, OutcomeError               int
 	Browser, BrowserFailed                                                      int
 	StrictFailure                                                               bool
+	ExplicitAvailability                                                        bool
 }
 
 func (counts *resultCounts) add(result wafme0w.Result) {
 	counts.Total++
+	counts.ExplicitAvailability = counts.ExplicitAvailability || hasExplicitAvailability(result)
+	switch humanOutcome(result) {
+	case "WAF MATCH":
+		counts.WAFMatch++
+	case "NO WAF MATCH":
+		counts.NoWAFMatch++
+	case "REVIEW":
+		counts.Review++
+	case "INCOMPLETE":
+		counts.OutcomeIncomplete++
+	case "ERROR":
+		counts.OutcomeError++
+	}
 	switch result.Outcome.State {
 	case wafme0w.Complete:
 		counts.Complete++
@@ -249,10 +423,18 @@ func printSummary(writer io.Writer, counts resultCounts, finished bool, au *auro
 	if !finished {
 		label = au.Bold(au.Yellow("PARTIAL SUMMARY"))
 	}
-	_, err := fmt.Fprintf(writer, "%s  %d targets\n  complete %d | matched %d | unnamed %d | incomplete %d | failed %d\n  generic %d | diagnostics %d\n",
-		label, counts.Total, counts.Complete, counts.Matched, counts.Unnamed, counts.Incomplete, counts.Failed, counts.Generic, counts.Diagnostics)
+	stateLabel := "HTTP evidence"
+	if counts.ExplicitAvailability {
+		stateLabel = "HTTP classification"
+	}
+	_, err := fmt.Fprintf(writer, "%s  %d targets\n  HTTP OUTCOME | TARGETS\n  WAF MATCH    | %d\n  NO WAF MATCH | %d\n  REVIEW       | %d\n  INCOMPLETE   | %d\n  ERROR        | %d\n  %s: complete %d | incomplete %d | failed %d\n  unusual responses %d | HTTP diagnostics %d\n",
+		label, counts.Total, counts.WAFMatch, counts.NoWAFMatch, counts.Review, counts.OutcomeIncomplete, counts.OutcomeError,
+		stateLabel, counts.Complete, counts.Incomplete, counts.Failed, counts.Generic, counts.Diagnostics)
 	if err == nil && counts.Browser != 0 {
 		_, err = fmt.Fprintf(writer, "  browser %d | browser/artifact failures %d (separate from HTTP state)\n", counts.Browser, counts.BrowserFailed)
+	}
+	if err == nil {
+		_, err = io.WriteString(writer, "  No WAF match is not proof of WAF absence; matched-on observations show supporting evidence, not causation.\n")
 	}
 	return err
 }

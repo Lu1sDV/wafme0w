@@ -9,8 +9,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Lu1sDV/wafme0w/internal/browserruntime"
-	"github.com/Lu1sDV/wafme0w/internal/httpmeta"
+	"github.com/Lu1sDV/wafme0w/v2/internal/browserruntime"
+	"github.com/Lu1sDV/wafme0w/v2/internal/httpmeta"
 )
 
 const (

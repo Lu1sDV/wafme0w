@@ -41,7 +41,7 @@ jobs:
       - name: Set up isolation before any tests
         run: |
           sudo apt-get update
-          sudo apt-get install --yes bubblewrap python3-venv
+          sudo apt-get install --yes bubblewrap python3-venv strace time
           cat > "$RUNNER_TEMP/wafme0w-bwrap" <<'PROFILE'
           abi <abi/4.0>,
           profile wafme0w-bwrap /usr/bin/bwrap flags=(default_allow) {
@@ -82,6 +82,28 @@ jobs:
           path: pkg/wafme0w/testdata/fuzz/FuzzMatcherRegexpEquivalence
           if-no-files-found: warn
           retention-days: 30
+      - name: Exercise pinned httpx on owned loopback fixtures
+        if: matrix.go == '1.27.3'
+        timeout-minutes: 10
+        run: |
+          GOBIN="$RUNNER_TEMP" go install github.com/projectdiscovery/httpx/cmd/httpx@v1.12.0
+          go build -o "$RUNNER_TEMP/wafme0w-httpx" ./cmd/wafme0w
+          python3 tools/httpx_smoke.py --binary "$RUNNER_TEMP/wafme0w-httpx" --httpx "$RUNNER_TEMP/httpx"
+          python3 tools/httpx_usage_matrix.py --binary "$RUNNER_TEMP/wafme0w-httpx" --httpx "$RUNNER_TEMP/httpx" --output "$RUNNER_TEMP/httpx-usage-matrix"
+      - name: Retain httpx usage evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always() && matrix.go == '1.27.3'
+        with:
+          name: httpx-usage-matrix
+          path: ${{ runner.temp }}/httpx-usage-matrix
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Fuzz imported availability boundaries
+        if: matrix.go == '1.27.3'
+        timeout-minutes: 5
+        run: |
+          go test ./pkg/wafme0w -run '^$' -fuzz '^FuzzAvailabilityUnusableBody$' -fuzztime=10s -parallel=2 -timeout=2m
+          go test ./pkg/wafme0w -run '^$' -fuzz '^FuzzHTTPXImportCannotInventCompleteChannels$' -fuzztime=10s -parallel=2 -timeout=2m
       - name: Export statement coverage
         run: go tool cover -func=coverage.out > coverage-statements.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

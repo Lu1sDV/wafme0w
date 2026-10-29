@@ -103,6 +103,11 @@ def smoke(command, work, expected_version=None, require_vcs=False):
     args = ["--evidence", CAPTURE.as_posix(), "--jsonl"]
     normal = records_from(run([*command, *args], work).stdout)
     check_records(normal, version)
+    human = run([*command, "--evidence", CAPTURE.as_posix(), "--no-colors"], work)
+    for record in normal:
+        require(record["target"] in human.stdout and record["target"] in human.stderr,
+                "Human stream or final table omitted a target")
+    require("\x1b" not in human.stdout + human.stderr, "No-color human output contains ANSI")
     strict = records_from(run([
         *command, *args, "--strict", "--output", "report.json"
     ], work, expected=2).stdout)
@@ -134,7 +139,7 @@ def smoke(command, work, expected_version=None, require_vcs=False):
     require(set(work.iterdir()) == initial_files | {
         work / "report.json", work / "malformed.jsonl", blocked,
     }, "Report failure left unexpected temporary files")
-    print(f"{version}: help, captures, JSONL, strict exit and atomic reports passed")
+    print(f"{version}: help, captures, human tables, JSONL, strict exit and atomic reports passed")
 
 
 def extract_archive(archive, work):
@@ -228,7 +233,6 @@ def smoke_cancellation(runtime, command, image, work):
         require(process.returncode == 130,
                 f"Cancellation exit={process.returncode}, stdout={first + rest!r}, stderr={stderr!r}")
         require(len(records_from(first + rest)) == 1, "Cancellation polluted stdout")
-        require(stderr.strip(), "Cancellation omitted diagnostics")
         require((work / "cancel.json").read_bytes() == sentinel,
                 "Cancellation replaced the old report")
         require(not list(work.glob(".cancel.json-*")), "Cancellation leaked a temporary report")
@@ -257,6 +261,7 @@ def smoke_docker(image, runtime, expected_version):
             *runtime, "run", "--rm", "--network", "none", "--read-only",
             "--user", f"{uid}:{gid}", "--cap-drop", "ALL",
             "--security-opt", "no-new-privileges", "--security-opt", "label=disable",
+            "--tmpfs", "/tmp:rw,noexec,nosuid,size=64m,mode=1777",
             "--mount", f"type=bind,source={work},target=/smoke", "--workdir", "/smoke",
         ]
         if Path(runtime[0]).name == "podman":

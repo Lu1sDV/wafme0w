@@ -149,8 +149,7 @@ func (e *Engine) Products() []string {
 }
 
 type responseData struct {
-	metadata      bool
-	bodyComplete  bool
+	channels      evidenceChannels
 	bodyFilter    bool
 	allowIndex    bool
 	bodyMisses    uint8
@@ -183,9 +182,11 @@ func (e *Engine) Classify(evidence []Evidence) Outcome {
 	}
 	responses := make([]responseData, len(evidence))
 	for i, observation := range evidence {
+		if err := validateEvidenceAvailability(observation); err != nil {
+			return Outcome{State: Failed, Diagnostics: []Diagnostic{{Code: "invalid_evidence", Evidence: i, Message: err.Error()}}}
+		}
 		response := &responses[i]
-		response.metadata = observation.StatusCode >= 100 && observation.StatusCode <= 999
-		response.bodyComplete = response.metadata && !observation.BodyTruncated && observation.TransportError == "" && observation.ErrorCode == ""
+		response.channels = availableEvidenceChannels(observation)
 		response.status, response.reason = observation.StatusCode, observation.Reason
 		if observation.ErrorCode != "" || observation.TransportError != "" {
 			code, message := observation.ErrorCode, observation.TransportError
@@ -200,19 +201,18 @@ func (e *Engine) Classify(evidence []Evidence) Outcome {
 		if observation.BodyTruncated {
 			outcome.Diagnostics = append(outcome.Diagnostics, Diagnostic{Code: "body_truncated", Evidence: i, Message: "response body is incomplete"})
 		}
-		if !response.metadata {
+		if observation.Availability == nil && !response.channels.status {
 			if observation.TransportError == "" && observation.ErrorCode == "" {
 				outcome.Diagnostics = append(outcome.Diagnostics, Diagnostic{Code: "missing_response", Evidence: i, Message: "response metadata is unavailable or invalid"})
 			}
-			continue
 		}
-		if len(observation.Headers) != 0 {
+		if response.channels.headers && len(observation.Headers) != 0 {
 			response.headers = make(http.Header, len(observation.Headers))
 			for _, header := range observation.Headers {
 				response.headers.Add(header.Name, header.Value)
 			}
 		}
-		if e.needsBody && response.bodyComplete {
+		if e.needsBody && response.channels.body {
 			response.body = observation.Body
 			if e.needsFoldedBody {
 				response.foldedBody = foldBytes(response.body)
@@ -225,7 +225,7 @@ func (e *Engine) Classify(evidence []Evidence) Outcome {
 				}
 			}
 		}
-		if e.needsCookies {
+		if e.needsCookies && response.channels.headers {
 			for _, cookie := range (&http.Response{Header: response.headers}).Cookies() {
 				response.cookies = append(response.cookies, cookie.String())
 			}
@@ -297,9 +297,30 @@ func (m *fingerprintMatcher) evaluate(responses []responseData) (verdict, int) {
 	}
 	for ei := range responses {
 		response := &responses[ei]
-		if !response.metadata || m.typ == "Content" && !response.bodyComplete {
-			result = unknown
-			continue
+		channels := response.channels
+		switch m.typ {
+		case "Status":
+			if !channels.status {
+				result = unknown
+				continue
+			}
+		case "Reason":
+			if !channels.reason {
+				result = unknown
+				continue
+			}
+		case "Content":
+			if !channels.body {
+				result = unknown
+				continue
+			}
+		case "Header", "Cookie":
+			if !channels.headersComplete {
+				result = unknown
+			}
+			if !channels.headers {
+				continue
+			}
 		}
 		switch m.typ {
 		case "Cookie":
@@ -334,15 +355,23 @@ func (m *fingerprintMatcher) evaluate(responses []responseData) (verdict, int) {
 // GenericDetect reports response anomalies separately from product matches.
 // It does not establish that a firewall exists or that a request was blocked.
 func GenericDetect(evidence []Evidence) GenericDetection {
+	// Validate the entire set before returning even an earlier usable marker.
+	for _, response := range evidence {
+		if validateEvidenceAvailability(response) != nil {
+			return GenericDetection{}
+		}
+	}
 	var normal *Evidence
+	var normalChannels evidenceChannels
 	// Marker presence is independent of a baseline or response differences.
 	for i := range evidence {
 		response := &evidence[i]
-		if response.StatusCode < 100 || response.StatusCode > 999 {
-			continue
+		channels := availableEvidenceChannels(*response)
+		if normal == nil && response.Role == "Normal" && (channels.status || channels.headersComplete) {
+			normal, normalChannels = response, channels
 		}
-		if normal == nil && response.Role == "Normal" {
-			normal = response
+		if !channels.headers {
+			continue
 		}
 		for _, name := range genericWAFHeaders {
 			if value := evidenceHeader(response.Headers, name); value != "" {
@@ -357,17 +386,20 @@ func GenericDetect(evidence []Evidence) GenericDetection {
 	}
 	normalServer := evidenceHeader(normal.Headers, "Server")
 	for _, response := range evidence {
-		if response.Role == "Normal" || response.StatusCode < 100 || response.StatusCode > 999 {
+		if response.Role == "Normal" {
 			continue
 		}
+		channels := availableEvidenceChannels(response)
 		var detection GenericDetection
-		if normal.StatusCode != response.StatusCode {
+		if normalChannels.status && channels.status && normal.StatusCode != response.StatusCode {
 			if response.StatusCode == 404 {
 				continue
 			}
 			detection = GenericDetection{Mode: ChangeInStatus, BeforeStatus: normal.StatusCode, AfterStatus: response.StatusCode, RequestType: response.Role}
-		} else if server := evidenceHeader(response.Headers, "Server"); normalServer != server {
-			detection = GenericDetection{Mode: ChangeInHeader, BeforeHeader: normalServer, AfterHeader: server, RequestType: response.Role}
+		} else if normalChannels.headersComplete && channels.headersComplete {
+			if server := evidenceHeader(response.Headers, "Server"); normalServer != server {
+				detection = GenericDetection{Mode: ChangeInHeader, BeforeHeader: normalServer, AfterHeader: server, RequestType: response.Role}
+			}
 		}
 		if detection.Mode != "" {
 			detection.generateReason()

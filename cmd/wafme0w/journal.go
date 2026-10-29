@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Lu1sDV/wafme0w/pkg/wafme0w"
+	"github.com/Lu1sDV/wafme0w/v2/pkg/wafme0w"
 )
 
 type journalRecord struct {
@@ -165,7 +165,7 @@ func checkFileCollisions(opts options, stdin io.Reader, piped bool, stdout, stde
 		{"browser executable", opts.BrowserPath, false},
 		{"browser artifacts images", opts.SaveScreenshots, true},
 	} {
-		if item.path == "" || item.label == "evidence input" && item.path == "-" || item.label == "browser executable" && opts.Browser == "off" {
+		if item.path == "" || (item.label == "target input" || item.label == "evidence input") && item.path == "-" || item.label == "browser executable" && opts.Browser == "off" {
 			continue
 		}
 		identity, err := identifyPath(item.label, item.path, item.writes)
@@ -174,7 +174,7 @@ func checkFileCollisions(opts options, stdin io.Reader, piped bool, stdout, stde
 		}
 		identities = append(identities, identity)
 	}
-	usesStdin := opts.EvidenceFile == "-" || opts.EvidenceFile == "" && opts.InputFile == "" && opts.Target == "" && piped
+	usesStdin := opts.EvidenceFile == "-" || opts.InputFile == "-" || opts.EvidenceFile == "" && opts.InputFile == "" && opts.Target == "" && piped
 	for _, stream := range []struct {
 		label        string
 		value        any

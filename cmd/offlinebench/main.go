@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/Lu1sDV/wafme0w/internal/offlinebench"
+	"github.com/Lu1sDV/wafme0w/v2/internal/offlinebench"
 )
 
 func main() {

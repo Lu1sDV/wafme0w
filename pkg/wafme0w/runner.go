@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	httputil "github.com/Lu1sDV/wafme0w/pkg/utils/http"
+	httputil "github.com/Lu1sDV/wafme0w/v2/pkg/utils/http"
 )
 
 const ResultSchemaVersion = 1
@@ -71,10 +71,11 @@ type ScanSettings struct {
 }
 
 type ResultProvenance struct {
-	ProgramVersion  string       `json:"program_version"`
-	CatalogueSHA256 string       `json:"catalogue_sha256"`
-	ScanMode        string       `json:"scan_mode"`
-	Settings        ScanSettings `json:"settings"`
+	ProgramVersion  string            `json:"program_version"`
+	CatalogueSHA256 string            `json:"catalogue_sha256"`
+	ScanMode        string            `json:"scan_mode"`
+	Settings        ScanSettings      `json:"settings"`
+	Import          *ImportProvenance `json:"import,omitempty"`
 }
 
 type Result struct {
@@ -119,6 +120,10 @@ func makeResult(engine *Engine, target, origin string, evidence []Evidence, conf
 			Index: i, Role: observation.Role, RequestURL: observation.RequestURL,
 			EffectiveURL: observation.EffectiveURL, RedirectChain: slices.Clone(observation.RedirectChain),
 			StatusCode: observation.StatusCode, BodyTruncated: observation.BodyTruncated, ErrorCode: observation.ErrorCode,
+		}
+		if observation.Availability != nil {
+			availability := *observation.Availability
+			result.Evidence[i].Availability = &availability
 		}
 		if observation.ErrorCode == "redirect_scope" {
 			base, err := url.Parse(observation.EffectiveURL)

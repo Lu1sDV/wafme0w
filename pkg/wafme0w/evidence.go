@@ -1,39 +1,64 @@
 package wafme0w
 
 import (
+	"bytes"
+	"encoding/json"
 	"net/http"
 	"sync"
 )
 
-// Evidence is one captured response, not a request to perform. A zero status
-// means response metadata is unavailable, including a rejected whole header set.
-// Header sets are never partially retained by HTTP acquisition. A transport error
-// may coexist with usable headers; BodyTruncated, ErrorCode or TransportError
-// makes body evidence incomplete.
+// Evidence is one captured response, not a request to perform. With nil
+// Availability, a valid status makes metadata usable and an error or
+// BodyTruncated makes the body incomplete, preserving legacy interpretation.
+// Explicit Availability describes each channel independently. Incomplete
+// headers contain faithful whole values, never truncated or lossy values.
 type Evidence struct {
-	Role           string   `json:"role"`
-	RequestURL     string   `json:"request_url,omitempty"`
-	EffectiveURL   string   `json:"effective_url,omitempty"`
-	RedirectChain  []string `json:"redirect_chain,omitempty"`
-	StatusCode     int      `json:"status_code"`
-	Reason         string   `json:"reason"`
-	Headers        []Header `json:"headers,omitempty"`
-	Body           []byte   `json:"body,omitempty"`
-	BodyTruncated  bool     `json:"body_truncated,omitempty"`
-	ErrorCode      string   `json:"error_code,omitempty"`
-	TransportError string   `json:"transport_error,omitempty"`
+	Role           string                `json:"role"`
+	RequestURL     string                `json:"request_url,omitempty"`
+	EffectiveURL   string                `json:"effective_url,omitempty"`
+	RedirectChain  []string              `json:"redirect_chain,omitempty"`
+	StatusCode     int                   `json:"status_code"`
+	Reason         string                `json:"reason"`
+	Headers        []Header              `json:"headers,omitempty"`
+	Body           []byte                `json:"body,omitempty"`
+	BodyTruncated  bool                  `json:"body_truncated,omitempty"`
+	ErrorCode      string                `json:"error_code,omitempty"`
+	TransportError string                `json:"transport_error,omitempty"`
+	Availability   *EvidenceAvailability `json:"availability,omitempty"`
+}
+
+// UnmarshalJSON rejects unknown fields and ambiguous availability members.
+// Semantic channel validation remains shared by capture decoding and Classify.
+func (e *Evidence) UnmarshalJSON(data []byte) error {
+	type evidenceJSON Evidence
+	decoded := evidenceJSON(*e)
+	fields := struct {
+		*evidenceJSON
+		Availability availabilityJSON `json:"availability"`
+	}{evidenceJSON: &decoded}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&fields); err != nil {
+		return err
+	}
+	if fields.Availability.seen {
+		decoded.Availability = fields.Availability.value
+	}
+	*e = Evidence(decoded)
+	return nil
 }
 
 // EvidenceSummary references an observation without retaining headers or bodies.
 type EvidenceSummary struct {
-	Index         int      `json:"index"`
-	Role          string   `json:"role"`
-	RequestURL    string   `json:"request_url,omitempty"`
-	EffectiveURL  string   `json:"effective_url,omitempty"`
-	RedirectChain []string `json:"redirect_chain,omitempty"`
-	StatusCode    int      `json:"status_code"`
-	BodyTruncated bool     `json:"body_truncated,omitempty"`
-	ErrorCode     string   `json:"error_code,omitempty"`
+	Index         int                   `json:"index"`
+	Role          string                `json:"role"`
+	RequestURL    string                `json:"request_url,omitempty"`
+	EffectiveURL  string                `json:"effective_url,omitempty"`
+	RedirectChain []string              `json:"redirect_chain,omitempty"`
+	StatusCode    int                   `json:"status_code"`
+	BodyTruncated bool                  `json:"body_truncated,omitempty"`
+	ErrorCode     string                `json:"error_code,omitempty"`
+	Availability  *EvidenceAvailability `json:"availability,omitempty"`
 	// BlockedRedirectURL is the resolved Location of a scope-rejected redirect.
 	BlockedRedirectURL string `json:"blocked_redirect_url,omitempty"`
 }

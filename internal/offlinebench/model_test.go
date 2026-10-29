@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Lu1sDV/wafme0w/pkg/wafme0w"
+	"github.com/Lu1sDV/wafme0w/v2/pkg/wafme0w"
 )
 
 func TestLoadCorpusRejectsUntrustedEvidence(t *testing.T) {

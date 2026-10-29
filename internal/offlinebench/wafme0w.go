@@ -11,7 +11,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/Lu1sDV/wafme0w/pkg/wafme0w"
+	"github.com/Lu1sDV/wafme0w/v2/pkg/wafme0w"
 )
 
 func RunWafme0wWorker(input io.Reader, output io.Writer, cataloguePath string) error {

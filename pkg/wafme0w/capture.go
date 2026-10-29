@@ -11,8 +11,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Lu1sDV/wafme0w/internal/httpmeta"
-	httputil "github.com/Lu1sDV/wafme0w/pkg/utils/http"
+	"github.com/Lu1sDV/wafme0w/v2/internal/httpmeta"
+	httputil "github.com/Lu1sDV/wafme0w/v2/pkg/utils/http"
 )
 
 const maxCaptureRecordBytes = 16 << 20
@@ -29,7 +29,37 @@ type Capture struct {
 // Invalid records stop the stream; earlier results may already have been emitted.
 // The reader remains caller-owned. CancelInput may unblock its Read on failure
 // or context cancellation, just as for Run.
-func RunCaptured(ctx context.Context, engine *Engine, inputs io.Reader, config Config, emit func(Result) error) (err error) {
+func RunCaptured(ctx context.Context, engine *Engine, inputs io.Reader, config Config, emit func(Result) error) error {
+	return runCaptured(ctx, engine, inputs, config, decodeNativeCapture, emit)
+}
+
+type decodedCapture struct {
+	capture        Capture
+	importMetadata *ImportProvenance
+	diagnostics    []Diagnostic
+}
+
+type captureDecoder func([]byte, Config, int, int) (decodedCapture, error)
+
+func decodeNativeCapture(record []byte, config Config, _, _ int) (decodedCapture, error) {
+	decoder := json.NewDecoder(bytes.NewReader(record))
+	decoder.DisallowUnknownFields()
+	var capture Capture
+	if err := decoder.Decode(&capture); err != nil {
+		return decodedCapture{}, err
+	}
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		return decodedCapture{}, errors.New("must contain exactly one JSON object")
+	}
+	capture.Target = strings.TrimSpace(capture.Target)
+	if err := validateCapture(capture, config.MaxBodyBytes); err != nil {
+		return decodedCapture{}, err
+	}
+	return decodedCapture{capture: capture}, nil
+}
+
+func runCaptured(ctx context.Context, engine *Engine, inputs io.Reader, config Config, decode captureDecoder, emit func(Result) error) (err error) {
 	if ctx == nil || engine == nil || inputs == nil || emit == nil {
 		return errors.New("context, engine, inputs, and result callback are required")
 	}
@@ -60,6 +90,7 @@ func RunCaptured(ctx context.Context, engine *Engine, inputs io.Reader, config C
 	scanner := bufio.NewScanner(inputs)
 	scanner.Buffer(make([]byte, bufio.MaxScanTokenSize), maxCaptureRecordBytes+1)
 	line := 0
+	occurrence := 0
 	for ctx.Err() == nil && scanner.Scan() {
 		line++
 		if err := ctx.Err(); err != nil {
@@ -72,20 +103,12 @@ func RunCaptured(ctx context.Context, engine *Engine, inputs io.Reader, config C
 		if len(record) > maxCaptureRecordBytes {
 			return fmt.Errorf("capture line %d exceeds %d bytes", line, maxCaptureRecordBytes)
 		}
-		decoder := json.NewDecoder(bytes.NewReader(record))
-		decoder.DisallowUnknownFields()
-		var capture Capture
-		if err := decoder.Decode(&capture); err != nil {
+		occurrence++
+		decoded, err := decode(record, config, line, occurrence)
+		if err != nil {
 			return fmt.Errorf("decode capture line %d: %w", line, err)
 		}
-		var extra any
-		if err := decoder.Decode(&extra); err != io.EOF {
-			return fmt.Errorf("capture line %d must contain exactly one JSON object", line)
-		}
-		capture.Target = strings.TrimSpace(capture.Target)
-		if err := validateCapture(capture, config.MaxBodyBytes); err != nil {
-			return fmt.Errorf("capture line %d: %w", line, err)
-		}
+		capture := decoded.capture
 		var origin string
 		// A label may be a URL, but a bare label must never acquire a host.
 		if strings.Contains(capture.Target, "://") {
@@ -94,6 +117,8 @@ func RunCaptured(ctx context.Context, engine *Engine, inputs io.Reader, config C
 			}
 		}
 		result := makeResult(engine, capture.Target, origin, capture.Evidence, config)
+		result.Provenance.Import = decoded.importMetadata
+		result.Outcome.Diagnostics = append(result.Outcome.Diagnostics, decoded.diagnostics...)
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -115,6 +140,9 @@ func validateCapture(capture Capture, maxBodyBytes int64) error {
 		return errors.New("evidence must be an array of at most 64 observations")
 	}
 	for i, observation := range capture.Evidence {
+		if err := validateEvidenceAvailability(observation); err != nil {
+			return fmt.Errorf("evidence %d: %w", i, err)
+		}
 		if observation.Role == "" || len(observation.Role) > 128 {
 			return fmt.Errorf("evidence %d: role must contain 1 to 128 bytes", i)
 		}

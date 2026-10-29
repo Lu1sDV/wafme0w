@@ -16,13 +16,13 @@ Check the archive's SHA-256 against [SHA256SUMS](https://github.com/Lu1sDV/wafme
 
 ### Install with Go
 
-Building from source requires **Go >= 1.26** and a supported security-patched toolchain. Release builds pin **Go 1.27.3**. The following command installs the latest **published** version, not unreleased hardening in this checkout:
+Building from source requires **Go >= 1.26** and a supported security-patched toolchain. Release builds pin **Go 1.27.3**. This checkout targets the v2 Go module; after a v2 release is published, install it with:
 
 ```sh
-go install -v github.com/Lu1sDV/wafme0w/cmd/wafme0w@latest
+go install -v github.com/Lu1sDV/wafme0w/v2/cmd/wafme0w@latest
 ```
 
-To build this checkout instead:
+Until v2 is published, build this checkout instead (the command above does not publish or install unreleased work):
 
 ```sh
 go build -o wafme0w ./cmd/wafme0w
@@ -46,6 +46,20 @@ docker run --rm --network none wafme0w:latest --help
 docker run --rm --network none wafme0w:latest --silent --list --no-colors
 ```
 
+Human scans spool their final URL table under `/tmp`; the image provides this
+directory with mode 1777. For a read-only runtime, mount writable temporary
+storage (size it for the number and length of result rows). For example, an
+offline, non-root scan with captures mounted read-only:
+
+```sh
+docker run --rm --network none --read-only --user 65532:65532 \
+  --tmpfs /tmp:rw,noexec,nosuid,size=64m,mode=1777 \
+  -v "$PWD/assets/demo:/captures:ro" wafme0w:latest \
+  --evidence /captures/captures.jsonl --no-colors
+```
+
+`--jsonl` and `--silent` do not need the human-table spool. Saved report files
+still require their own writable output location.
 
 ## Publication gates
 

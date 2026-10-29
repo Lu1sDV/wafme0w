@@ -12,9 +12,9 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/Lu1sDV/wafme0w/internal/atomicfile"
-	"github.com/Lu1sDV/wafme0w/internal/browserruntime"
-	"github.com/Lu1sDV/wafme0w/pkg/wafme0w"
+	"github.com/Lu1sDV/wafme0w/v2/internal/atomicfile"
+	"github.com/Lu1sDV/wafme0w/v2/internal/browserruntime"
+	"github.com/Lu1sDV/wafme0w/v2/pkg/wafme0w"
 )
 
 func validateBrowserOptions(opts options) error {

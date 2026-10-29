@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/Lu1sDV/wafme0w/pkg/wafme0w"
+	"github.com/Lu1sDV/wafme0w/v2/pkg/wafme0w"
 )
 
 // CoverageContract is a reviewed identity inventory, not generated detector truth.

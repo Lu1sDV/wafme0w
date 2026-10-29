@@ -45,6 +45,27 @@ not update existing downloads. [Installation, Docker and release details](docs/r
 `--baseline` sends a normal request; default mode sends up to nine active probes,
 and `--fast` selects three. Redirects remain subject to scope and request budgets.
 
+### ProjectDiscovery httpx pipelines
+
+```sh
+# URL discovery followed by NEW wafme0w requests:
+httpx -l authorized-hosts.txt -silent |
+  ./wafme0w --input - --baseline --jsonl --silent
+
+# Reuse exported observations with ZERO additional wafme0w requests:
+httpx -l authorized-hosts.txt -silent -json -irr -probe -rstr 1048576 -rsts 1048576 |
+  ./wafme0w --evidence - --evidence-format httpx --jsonl --silent
+```
+
+The importer targets **httpx v1.12.0**. Exported bodies lack completeness proof:
+content matching stays unknown, while faithful status/header/cookie evidence can
+match. This is not equivalent to active acquisition or proof of WAF absence.
+Use `set -o pipefail` when upstream process failures must fail the shell pipeline.
+[Encoding, limitations, limits and downstream recipes](docs/usage.md#httpx-response-import).
+
+This checkout uses the Go module **`github.com/Lu1sDV/wafme0w/v2`** for the expanded
+evidence API; result JSON remains schema 1 with optional nested metadata.
+
 ## 3. Automate and save results
 
 ```sh

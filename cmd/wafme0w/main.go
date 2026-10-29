@@ -17,9 +17,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Lu1sDV/wafme0w/internal/atomicfile"
-	"github.com/Lu1sDV/wafme0w/internal/httpmeta"
-	"github.com/Lu1sDV/wafme0w/pkg/wafme0w"
+	"github.com/Lu1sDV/wafme0w/v2/internal/atomicfile"
+	"github.com/Lu1sDV/wafme0w/v2/internal/httpmeta"
+	"github.com/Lu1sDV/wafme0w/v2/pkg/wafme0w"
 	"github.com/jessevdk/go-flags"
 )
 
@@ -28,8 +28,10 @@ var embeddedFingerPrints []byte
 
 type options struct {
 	Target                 string        `short:"t" long:"target" description:"HTTP(S) target URL (active unless --baseline)"`
-	InputFile              string        `short:"I" long:"input" description:"File with one target URL per line"`
-	EvidenceFile           string        `long:"evidence" description:"Classify saved capture JSONL with zero network access; - reads stdin"`
+	InputFile              string        `short:"I" long:"input" description:"One HTTP(S) URL per line without annotations; - reads stdin (./- is a filename)"`
+	EvidenceFile           string        `long:"evidence" description:"Classify saved evidence JSONL with zero network access; - reads stdin"`
+	EvidenceFormat         string        `long:"evidence-format" description:"Evidence format: native or httpx (default native); requires --evidence"`
+	HTTPXResponseEncoding  string        `long:"httpx-response-encoding" description:"httpx raw_header/body encoding: text or base64 (default text); requires --evidence-format=httpx"`
 	OutputFile             string        `short:"O" long:"output" description:"Atomic report file: JSON, JSONL, CSV or TXT by extension"`
 	JournalFile            string        `long:"diagnostics-journal" description:"Append and sync body-free result/diagnostic JSONL independently of the report"`
 	Browser                string        `long:"browser" description:"off, navigate or screenshot; local Chromium, no hard network/resource isolation"`
@@ -73,7 +75,36 @@ func main() {
 func run(args []string) int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	return runContext(ctx, args, os.Stdin, hasStdin(), os.Stdout, os.Stderr)
+	// Return EPIPE through runContext so journals and the private spool close.
+	signal.Ignore(syscall.SIGPIPE)
+	defer signal.Reset(syscall.SIGPIPE)
+	stderr, releaseStderr, err := cancellableOutput(ctx, os.Stderr)
+	if err != nil {
+		// No safe diagnostic sink exists; the inherited pipe may be blocked.
+		if ctx.Err() != nil {
+			return 130
+		}
+		return 1
+	}
+	stdout, releaseStdout, err := cancellableOutput(ctx, os.Stdout)
+	if err != nil {
+		fmt.Fprintf(stderr, "open cancellable stdout: %s\n", terminalText(err.Error()))
+		_ = releaseStderr()
+		if ctx.Err() != nil {
+			return 130
+		}
+		return 1
+	}
+	code := runContext(ctx, args, os.Stdin, hasStdin(), stdout, stderr)
+	// Reverse acquisition order also restores shared fallback flags correctly.
+	closeErr := errors.Join(releaseStdout(), releaseStderr())
+	if ctx.Err() != nil {
+		return 130
+	}
+	if closeErr != nil {
+		return 1
+	}
+	return code
 }
 
 func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool, stdout, stderr io.Writer) int {
@@ -86,6 +117,7 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 		Rate: config.RequestsPerSecond, PerOriginRate: config.PerOriginRequestsPerSecond,
 		MaxRedirects: config.MaxRedirects, RedirectPolicy: config.RedirectPolicy,
 		Browser: "off", BrowserTimeout: 30 * time.Second, BrowserSettle: 2 * time.Second,
+		EvidenceFormat: "native", HTTPXResponseEncoding: "text",
 	}
 	parser := flags.NewParser(&opts, flags.HelpFlag)
 	positional, err := parser.ParseArgs(args)
@@ -112,7 +144,7 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 	if len(positional) != 0 {
 		return fail(fmt.Errorf("unexpected positional arguments: %q", positional))
 	}
-	for _, name := range []string{"target", "input", "evidence", "output", "diagnostics-journal", "fingerprints", "browser", "browser-path", "save-screenshots"} {
+	for _, name := range []string{"target", "input", "evidence", "evidence-format", "httpx-response-encoding", "output", "diagnostics-journal", "fingerprints", "browser", "browser-path", "save-screenshots"} {
 		option := parser.FindOptionByLongName(name)
 		if option.IsSet() && option.Value().(string) == "" {
 			return fail(fmt.Errorf("--%s requires a nonempty value", name))
@@ -123,6 +155,12 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 			return fail(err)
 		}
 		return 0
+	}
+	if parser.FindOptionByLongName("evidence-format").IsSet() && opts.EvidenceFile == "" {
+		return fail(errors.New("--evidence-format requires --evidence"))
+	}
+	if parser.FindOptionByLongName("httpx-response-encoding").IsSet() && (opts.EvidenceFile == "" || opts.EvidenceFormat != "httpx") {
+		return fail(errors.New("--httpx-response-encoding requires --evidence-format=httpx and --evidence"))
 	}
 	if err := validateOptions(opts); err != nil {
 		return fail(err)
@@ -190,17 +228,24 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 		err = errors.Join(err, artifacts.close())
 		return fail(err)
 	}
+	var report *humanReportSpool
 	finish := func(runErr error) int {
+		runErr = errors.Join(runErr, ctx.Err(), report.close())
 		if runErr != nil {
 			closeInput()
 			runErr = errors.Join(runErr, journal.diagnostic("run_error", runErr.Error()))
 		}
 		runErr = errors.Join(runErr, journal.close())
 		runErr = errors.Join(runErr, artifacts.close())
+		runErr = errors.Join(runErr, ctx.Err())
 		if runErr != nil {
 			return fail(runErr)
 		}
 		return 0
+	}
+	report, err = openHumanReport(opts)
+	if err != nil {
+		return finish(err)
 	}
 	if !opts.Silent && !opts.JSONL {
 		if err := printBanner(stdout, console); err != nil {
@@ -232,9 +277,16 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 		if opts.EvidenceFile != "" {
 			runner = wafme0w.RunCaptured
 		}
-		err := runner(ctx, engine, input, config, func(result wafme0w.Result) error {
+		emit := func(result wafme0w.Result) error {
+			if opts.EvidenceFile == "" {
+				addInputFormatHint(&result)
+			}
 			// Persist recovery evidence before touching fallible final-report sinks.
 			if err := journal.result(result); err != nil {
+				return err
+			}
+			counts.add(result)
+			if err := report.add(result); err != nil {
 				return err
 			}
 			if opts.Debug {
@@ -242,7 +294,6 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 					return err
 				}
 			}
-			counts.add(result)
 			if output != nil {
 				if err := output.Write(result); err != nil {
 					return err
@@ -256,7 +307,15 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 				return printResult(stdout, stderr, result, opts.SuppressWarnings, console)
 			}
 			return nil
-		})
+		}
+		var err error
+		if opts.EvidenceFile != "" && opts.EvidenceFormat == "httpx" {
+			err = wafme0w.RunHTTPXCaptured(ctx, engine, input, config, wafme0w.HTTPXImportOptions{
+				ResponseEncoding: wafme0w.HTTPXResponseEncoding(opts.HTTPXResponseEncoding),
+			}, emit)
+		} else {
+			err = runner(ctx, engine, input, config, emit)
+		}
 		if err == nil && output != nil {
 			err = output.Close()
 		}
@@ -270,16 +329,20 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 	} else {
 		err = execute(nil)
 	}
-	if err != nil {
-		if !opts.Silent {
-			err = errors.Join(err, printSummary(stderr, counts, false, diagnostics))
+	printFinal := func(finished bool) error {
+		if opts.Silent {
+			return nil
 		}
-		return finish(err)
+		if err := printSummary(stderr, counts, finished, diagnostics); err != nil {
+			return err
+		}
+		return report.replay(ctx, stderr, finished)
 	}
-	if !opts.Silent {
-		if err := printSummary(stderr, counts, true, diagnostics); err != nil {
-			return finish(err)
-		}
+	if err != nil {
+		return finish(errors.Join(err, printFinal(false)))
+	}
+	if err := printFinal(true); err != nil {
+		return finish(err)
 	}
 	if code := finish(nil); code != 0 {
 		return code
@@ -298,6 +361,16 @@ func writeHelp(parser *flags.Parser, writer io.Writer) error {
 }
 
 func validateOptions(opts options) error {
+	switch opts.EvidenceFormat {
+	case "", "native", "httpx":
+	default:
+		return fmt.Errorf("unknown evidence format %q; choose native or httpx", opts.EvidenceFormat)
+	}
+	switch opts.HTTPXResponseEncoding {
+	case "", "text", "base64":
+	default:
+		return fmt.Errorf("unknown httpx response encoding %q; choose text or base64", opts.HTTPXResponseEncoding)
+	}
 	if opts.Concurrency <= 0 || opts.MaxBodyBytes <= 0 || opts.MaxRequests <= 0 || opts.MaxConnections <= 0 {
 		return errors.New("concurrency, decoded body limit, request budget and connection limit must be positive")
 	}
@@ -403,15 +476,15 @@ func resolveInput(opts options, stdin io.Reader, piped bool) (io.Reader, func(),
 		path = opts.EvidenceFile
 	}
 	var input io.Reader
-	if path != "" {
+	if path != "" && path != "-" {
 		file, err := os.Open(path)
 		if err != nil {
 			return nil, nil, fmt.Errorf("open input: %w", err)
 		}
 		input = file
-	} else if opts.EvidenceFile == "-" {
+	} else if opts.EvidenceFile == "-" || opts.InputFile == "-" {
 		if stdin == nil {
-			return nil, nil, errors.New("--evidence - requires stdin")
+			return nil, nil, errors.New("explicit - input requires stdin")
 		}
 		input = stdin
 	} else if strings.TrimSpace(opts.Target) != "" {
@@ -437,6 +510,21 @@ func resolveInput(opts options, stdin io.Reader, piped bool) (io.Reader, func(),
 		})
 	}
 	return input, closeInput, nil
+}
+
+// Recognizable producer output gets guidance only after normal URL validation
+// rejects it. Do not repair input or alter the library's URL semantics.
+func addInputFormatHint(result *wafme0w.Result) {
+	target := strings.TrimSpace(result.Target)
+	if !strings.Contains(target, " [") && !(strings.HasPrefix(target, "{") && strings.Contains(target, `"url"`)) {
+		return
+	}
+	for i := range result.Outcome.Diagnostics {
+		if result.Outcome.Diagnostics[i].Code == "invalid_target" {
+			result.Outcome.Diagnostics[i].Message += "; URL input requires one HTTP(S) URL per line without annotations; for httpx JSONL use --evidence=- --evidence-format=httpx"
+			return
+		}
+	}
 }
 
 func hasStdin() bool {

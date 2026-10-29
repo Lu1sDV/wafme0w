@@ -1,6 +1,6 @@
 # Go library
 
-[Quick start](../README.md) · [API reference](https://pkg.go.dev/github.com/Lu1sDV/wafme0w/pkg/wafme0w)
+[Quick start](../README.md) · [API reference](https://pkg.go.dev/github.com/Lu1sDV/wafme0w/v2/pkg/wafme0w)
 
 Match an already captured response without sending any requests:
 ```go
@@ -11,7 +11,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/Lu1sDV/wafme0w/pkg/wafme0w"
+	"github.com/Lu1sDV/wafme0w/v2/pkg/wafme0w"
 )
 
 func main() {
@@ -51,7 +51,57 @@ Readers, injected clients/transports, and writers remain caller-owned. Blocking
 input needs `Config.CancelInput` or another caller-provided wakeup; callbacks and
 transports must honor cancellation and return.
 
-See [CLI limits](usage.md#inputs-and-limits) for the corresponding `Config` byte
-budgets and [browser capture](browser.md) for optional artifact callbacks. The
-result schema, CSV layout, flags, exit codes, and documented Go API form the stable
-1.x baseline; incompatible changes require a new major version.
+## v2 evidence API
+
+The module path is now `github.com/Lu1sDV/wafme0w/v2`. Import-path migration is
+intentional: adding availability/provenance fields to exported structs can break
+external positional literals. Use keyed literals. Existing `Run`, `RunCaptured`,
+`Classify` and writer signatures remain; there are no legacy aliases.
+
+`Evidence.Availability` and `EvidenceSummary.Availability` are optional
+`*EvidenceAvailability` values containing `Status`, `Headers`, `Reason`, and
+`Body` channel states. Missing or JSON-null availability retains legacy behavior,
+including its caller assertion that valid-status observations have complete
+metadata and, absent errors/truncation, complete body evidence. It is not proof
+that omitted evidence was collected.
+
+Explicit availability must populate every channel. Status/reason accept
+`ChannelComplete` or `ChannelUnavailable`; headers additionally accept
+`ChannelIncomplete`; body additionally accepts `ChannelIncomplete` and
+`ChannelUnknown`. A complete empty channel is observed, unlike an unavailable
+one. Empty, missing, or null channel members are invalid. Contradictory or
+invalid states are rejected by capture decoding; `Classify` returns
+`Failed/invalid_evidence`, and `GenericDetect` makes no conclusion for invalid
+explicit input. JSON decoding of `Evidence` rejects unknown fields, repeated
+availability objects, and repeated channel members (including casing variants),
+rather than merging them into earlier complete values. A single absent or null
+availability object still preserves legacy behavior. Summary availability is
+copied, not aliased.
+
+Partial intact headers/cookies can establish positives; absence remains unknown.
+Content predicates require complete bodies, even when an unknown/truncated
+prefix contains a matching literal. Classification completeness is relative to
+the catalogue, not an assertion that all channels were acquired.
+
+For ProjectDiscovery httpx exports:
+
+```go
+err := wafme0w.RunHTTPXCaptured(ctx, engine, reader, config,
+    wafme0w.HTTPXImportOptions{ResponseEncoding: wafme0w.HTTPXBase64}, emit)
+```
+
+The zero-value options select text; `HTTPXText` and `HTTPXBase64` are explicit
+choices, never detection heuristics. Invalid encoding and incompatible browser
+configuration fail before reading. The runner establishes passive mode and uses
+the same bounded, serial, input-order and caller-ownership contract as
+`RunCaptured`. Callback errors stop logical emission; buffered input may read
+ahead. Imported records never invoke `Config.Client` or open upstream file paths.
+`Result.Provenance.Import` records compatibility profile and source information,
+not inferred producer identity. See [import policy and limits](usage.md#httpx-response-import).
+
+Result JSON remains schema 1 with optional nested import/availability metadata.
+CSV columns and TXT keys remain unchanged; native/live output omits the new
+metadata when unused. Go module major versions and JSON schema versions are
+separate contracts. Subsequent incompatible documented API/schema changes require
+appropriate versioning. See [CLI limits](usage.md#inputs-and-limits) and
+[browser capture](browser.md) for the remaining ownership and acquisition rules.
