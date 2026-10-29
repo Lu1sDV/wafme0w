@@ -9,6 +9,58 @@ wafme0w --help
 wafme0w --silent --list --no-colors
 ```
 
+## Choose input
+
+| Source | Flags | Behavior |
+| --- | --- | --- |
+| Direct URLs | `--target URL` or `-t URL` | One URL per occurrence; repeat the flag for several URLs |
+| URL list file | `--target-file PATH` | One URL per line; blank lines are ignored |
+| URL lines on stdin | `--target-file -` | Explicitly reads stdin, including a terminal or continuing pipe |
+| Saved response records | `--evidence PATH` or `--evidence -` | Offline JSONL classification; sends no requests |
+
+The spellings `--target-file PATH`, `--input PATH`, and `-I PATH` select the same
+URL-list source. Existing `--input` and `-I` commands remain supported without
+deprecation warnings. Supply one spelling once: combining aliases or repeating
+the file flag is an error. `--evidence` is also a single source, supplied once.
+Direct targets, a target file, and evidence are mutually exclusive.
+
+With no explicit source, piped or redirected stdin supplies URL lines. An explicit
+source takes precedence over inherited stdin; the CLI does not merge sources.
+A literal input file named `-` is selected with `./-`. Direct URLs require
+`--target` / `-t`; the standard `--` terminates option parsing.
+
+Each direct target must be nonblank and contain no carriage return or newline.
+Repeat `--target` for separate URLs; repeated URLs remain separate occurrences.
+Quote URLs containing shell metacharacters such as `&`. Scheme-less URLs use
+HTTPS; specify `http://` for plain HTTP. These examples use your own local servers
+or an authorized URL file:
+
+```sh
+wafme0w --target http://127.0.0.1:8080 --target http://127.0.0.1:8081 \
+  --baseline --jsonl
+wafme0w --target-file authorized-urls.txt --baseline --jsonl
+printf '%s\n' http://127.0.0.1:8080 |
+  wafme0w --target-file - --baseline --jsonl
+```
+
+Empty or multiline direct-target arguments and conflicting/repeated singular
+source flags are configuration errors and exit 1. Errors within a streamed input
+can occur after earlier valid results have been emitted; see [operations](operations.md).
+
+### Updating existing scripts
+
+This release keeps `--input` and `-I` while making `--target-file` the primary
+documented spelling. Repeated `--target` values now all run instead of retaining
+only the last value. A multiline direct-target argument is rejected; supply a
+file, stdin, or repeated flags instead. Repeated singular sources are rejected
+instead of silently overriding earlier values.
+
+Explicit browser modifiers need an enabled browser, explicit journal batching
+needs a journal, and probe parallelism above 1 needs full mode. Target concurrency
+is limited to 1..65,536 before workers are created. The sections below describe
+those dependencies and defaults. Arguments already quoted by the shell retain
+their literal contents; headers use the documented CSV quoting rules.
+
 ## Collection modes
 
 | Mode | Network behavior |
@@ -16,6 +68,22 @@ wafme0w --silent --list --no-colors
 | Default | Up to nine selected active requests, before redirects; serial after the normal request unless `--probe-concurrency` is raised |
 | `--fast` | Three selected active requests launched without a fixed stagger; fewer requests, **not passive** or a latency guarantee |
 | `--baseline` | One normal request, subject to redirect and request budgets |
+
+`--fast` and `--baseline` are mutually exclusive. Values 2..8 for
+`--probe-concurrency` apply to default full mode; fast and baseline modes require
+the default value of 1. Explicit `--probe-concurrency 1` is also valid.
+
+HTTP acquisition settings such as request/target timeouts, request and connection
+budgets, redirect limits and request rates apply to live requests. Supplying them
+with `--evidence` does not turn offline classification into a network scan. The
+HTTP acquisition settings do not establish completeness for saved responses.
+
+Optional browser capture is enabled with `--browser navigate` or
+`--browser screenshot` during a live scan. Explicit `--browser-path`,
+`--browser-timeout` and `--browser-settle` require an enabled browser mode;
+`--save-screenshots` requires screenshot mode. Help, catalogue listing and version
+output do not require an installed browser. See [browser capture](browser.md) for
+its separate dependencies, scope and resource limits.
 
 ## Offline captures
 
@@ -71,7 +139,7 @@ for an interactive walkthrough without recording.
 
 ## URL pipelines
 
-`--input -` explicitly selects target stdin, even when terminal auto-detection
+`--target-file -` explicitly selects target stdin, even when terminal auto-detection
 does not identify a pipe. A literal file named `-` is available as `./-`.
 Supply one undecorated URL per line; do not append httpx status/title/probe
 annotations. Invalid annotated input receives a format hint, never silent repair.
@@ -81,7 +149,7 @@ For a continuing upstream URL feed:
 
 ```sh
 httpx -stream -silent < authorized-hosts.txt |
-  wafme0w --input - --jsonl --silent
+  wafme0w --target-file - --jsonl --silent
 ```
 
 This performs new wafme0w requests. Each network-producing stage has its own
@@ -193,7 +261,7 @@ httpx -l authorized-hosts.txt -silent -json |
 For a reverse pipeline selecting named matches:
 
 ```sh
-wafme0w --input urls.txt --jsonl --silent |
+wafme0w --target-file urls.txt --jsonl --silent |
   jq --unbuffered -r 'select(((.outcome.matches // []) | length) > 0) | .target' |
   httpx -stream -silent -status-code
 ```
@@ -235,6 +303,37 @@ blocked-output signals, early downstream closure and backpressure. It retains
 per-case commands, input/output and assertions in `report.json`; a failed case
 returns nonzero. Targets are owned loopback fixtures, not public sites, and
 upstream omissions are never treated as negative detections.
+
+## Save and stream results
+
+| Goal | Flags |
+| --- | --- |
+| Stream machine-readable results on stdout | `--jsonl` |
+| Save a final report atomically | `--output results.json` or `-O results.json` |
+| Stream and save the same run | `--jsonl --output results.csv` |
+| Suppress human scan output | `--silent` together with `--jsonl` or `--output` |
+| Treat incomplete or diagnosed results as a failing check | `--strict`; exit 2 after report publication |
+
+`--output` selects a **file**, with its case-insensitive extension choosing JSON,
+JSONL, CSV or TXT; other extensions select TXT. The old destination is replaced
+atomically when the report is published. `--output -` creates a literal TXT file
+named `-`. Use `--jsonl` for stdout. A named JSONL report is also published
+atomically; `--diagnostics-journal` provides append-and-sync recording during the
+run. See [report and journal behavior](operations.md#reports-and-durable-journals).
+
+JSONL stdout contains only result objects. Human summaries and explicit `--debug`
+output use stderr. `--silent` suppresses human scan output but does not hide fatal
+errors or explicitly requested debug output. `--no-warning` hides diagnostic
+prose without changing result states, diagnostics in reports, or strict-mode
+outcomes.
+
+This offline example streams results and publishes a report before returning
+exit 2 for the synthetic incomplete-evidence case:
+
+```sh
+wafme0w --evidence assets/demo/captures.jsonl --jsonl --silent \
+  --output results.json --strict
+```
 
 ## Human results and final overview
 
@@ -301,15 +400,31 @@ or retry a deterministically invalid certificate.
 
 ## Request headers
 
-Use `-H` / `--header` to add comma-separated `Name: value` entries. Names are case-insensitive: later entries and repeated flags replace earlier values and built-in defaults, including `Origin` and `User-Agent`.
+Use `-H` / `--header` once per `Name: value` entry. The flag takes inline values,
+not a header-file path. Names are case-insensitive: later entries replace earlier
+values and built-in defaults, including `Origin` and `User-Agent`.
 
 ```sh
 wafme0w --target http://127.0.0.1:8080 --baseline \
-  -H 'Origin: https://example.test, User-Agent: my-client' \
-  --header 'X-Tag: demo, "Accept: text/html, application/json"'
+  -H 'Origin: https://example.test' \
+  -H 'User-Agent: my-client' \
+  --header 'X-Tag: demo'
 ```
 
-CSV-quote the **whole entry** when its value contains a comma; double embedded quotes inside a quoted entry. A quoted entry cannot be the **first** field: a value beginning with `"` is treated as one fully quoted argument and rejected. `-H 'User-Agent:'` suppresses the wire User-Agent. An explicit User-Agent also overrides the no-UA request's default.
+The existing comma-separated header-list syntax is also supported. When a value
+contains a comma, CSV-quote the **whole `Name: value` entry**, even if it is the
+first or only entry. Double embedded quotes inside a CSV-quoted entry. The outer
+single quotes in these POSIX-shell examples preserve the inner CSV quotes:
+
+```sh
+wafme0w --target http://127.0.0.1:8080 --baseline \
+  -H '"Accept: text/html, application/json"' \
+  -H '"X-Label: say ""hello""", X-Tag: demo'
+```
+
+`-H 'User-Agent:'` suppresses the wire User-Agent. An explicit User-Agent also
+overrides the no-UA request's default. Empty lists, malformed names/values, and
+carriage returns or newlines are rejected.
 
 Overrides apply to every selected request.
 
@@ -317,11 +432,11 @@ Overrides apply to every selected request.
 
 | Setting | Behavior |
 | --- | --- |
-| URL input precedence | Explicit `--input` or `--target` overrides stdin; those flags are mutually exclusive; blank lines ignored |
+| URL input precedence | Explicit `--target-file` (`--input` / `-I`) or repeated `--target` (`-t`) overrides stdin; source modes are mutually exclusive; blank file/stdin lines are ignored |
 | Target line size | Go's 64 KiB scanner token limit |
 | Catalogue size | At most 8 MiB; one JSON array with known fields and valid HTTP header names |
-| Target concurrency | `--concurrency` defaults to 20 and must be positive |
-| Full-mode probe concurrency | `--probe-concurrency` defaults to 1; values 2..8 run active probes concurrently after the normal response succeeds |
+| Target concurrency | `--concurrency` / `-c` accepts 1..65536; default 20 |
+| Full-mode probe concurrency | `--probe-concurrency` defaults to 1; values 2..8 run active probes concurrently after the normal response succeeds and cannot be combined with `--fast` or `--baseline` |
 | Response body size | `--max-body-bytes` defaults to 1,048,576 decoded bytes and must be positive |
 | Response header size | `--max-response-header-bytes` defaults to 65,536 bytes; 0 selects that default |
 | Retained HTTP evidence | `--max-target-evidence-bytes` defaults to 16,777,216 bytes per target across all probes; 0 selects that default |
@@ -347,14 +462,17 @@ The target budget counts retained bodies, header strings and descriptors, status
 reasons, and request/effective/redirect URLs. Fixed observation fields and bounded
 diagnostics are additional overhead. Transport buffers, temporary allocations,
 classifier indexes, and Chromium are separate: this is **not a process RSS cap**.
-Size worker concurrency and container memory together. Offline JSONL retains its
-separate record/body limits; live acquisition budgets do not reinterpret captures.
+The concurrency ceiling of 65,536 is a validation bound. Size worker concurrency
+and container memory for the actual workload and available resources. Offline
+JSONL retains its separate record/body limits; live acquisition budgets do not
+reinterpret captures.
 
 Offline capture classification uses at most `min(--concurrency, GOMAXPROCS)`
 workers. Records remain bounded by a 32 MiB raw in-flight byte budget and emit in
 input order; valid records before an invalid line are emitted before its error.
 
-`--journal-batch-size` defaults to 1, preserving a sync per result. Larger values
+Set `--journal-batch-size` only with `--diagnostics-journal PATH`. Its default is
+1, preserving a sync per result. Larger values
 batch up to 256 results and 1 MiB of encoded records; a partial batch syncs within
 25 ms. Results reach reports and console output only after their journal batch is
 synced. Batching can improve journal throughput at the cost of delaying each
@@ -364,7 +482,8 @@ DEL. TXT renders invisible formatting characters visibly; JSON/JSONL/CSV preserv
 their original values.
 
 Output failures, including an unwritable stdout for help or version output, exit with status 1 and report the error on stderr.
-On Linux, piped stdin and named FIFO paths selected by `--input`, `--evidence`,
+On Linux, piped stdin and named FIFO paths selected by `--target-file` (also
+`--input` / `-I`), `--evidence`,
 or `--fingerprints` remain cancellable with SIGINT or SIGTERM while waiting for a
 producer or more data. Cancellation exits 130 without replacing the previous
 atomic report. Named FIFOs wait for their producer and finish at its EOF.
@@ -383,3 +502,19 @@ Library callers supplying a transport (including a replacement
 `http.DefaultTransport`) own any retries or network effects inside its
 `RoundTrip` calls; the runner cannot enforce a wire-request ceiling inside that
 opaque implementation.
+
+## Reproduce the CLI option checks
+
+On Linux, build the CLI and choose a fresh output directory:
+
+```sh
+go build -o wafme0w ./cmd/wafme0w
+python3 tools/cli_options_smoke.py --binary ./wafme0w \
+  --output benchmarks/cli-options-01
+```
+
+This exercises argument parsing, source selection, literal filenames, numeric
+limits, output publication and help text using synthetic saved records and
+deliberately invalid target schemes. It sends no network requests. The output
+records the tested binary's SHA-256, each case's stdout/stderr, and a summary;
+any mismatch exits nonzero. CI runs the same checks and retains their evidence.

@@ -67,7 +67,7 @@ structured pipelines for teams that need to detect WAF at scale.
 set -o pipefail
 subfinder -d "${AUTHORIZED_DOMAIN:?set an authorized domain}" -silent |
   httpx -silent |
-  wafme0w --input - --baseline --jsonl --silent
+  wafme0w --target-file - --baseline --jsonl --silent
 ```
 
 This pipeline sends normal HTTP requests with `--baseline`. Remove that flag
@@ -96,7 +96,12 @@ The v1.0.0 downloads predate the security hardening in this source tree.
 ./wafme0w --target http://127.0.0.1:8080 --baseline --jsonl
 ```
 
-`--baseline` sends a normal request; default mode sends up to nine active probes,
+Use `--target` / `-t` for a URL and repeat it for several URLs. Use
+`--target-file PATH` for a file of URL lines, or `--target-file -` for stdin.
+`--input PATH` and `-I PATH` remain equivalent spellings of `--target-file PATH`.
+Choose one input source; saved responses use `--evidence` for offline analysis.
+
+`--baseline` sends a normal request; default active mode sends up to nine requests,
 and `--fast` selects three. Redirects remain subject to scope and request budgets.
 
 ### ProjectDiscovery httpx pipelines
@@ -104,7 +109,7 @@ and `--fast` selects three. Redirects remain subject to scope and request budget
 ```sh
 # Discover URLs, then send new wafme0w requests:
 httpx -l authorized-hosts.txt -silent |
-  ./wafme0w --input - --baseline --jsonl --silent
+  ./wafme0w --target-file - --baseline --jsonl --silent
 
 # Classify exported responses without additional requests:
 httpx -l authorized-hosts.txt -silent -json -irr -probe -rstr 1048576 -rsts 1048576 |
@@ -124,10 +129,12 @@ schema 1; module and report versions are separate contracts.
 
 ```sh
 # targets.txt: one authorized URL per line.
-./wafme0w --input targets.txt --jsonl --output results.json --strict --rate 5
+./wafme0w --target-file targets.txt --jsonl --output results.json --strict --rate 5
 ```
 
-JSONL stays on stdout; human diagnostics go to stderr. `--strict` exits **2** after
+`--jsonl` streams results on stdout; `--output` / `-O` writes an atomic report
+whose extension selects JSON, JSONL, CSV or TXT. They can be used together.
+Human diagnostics go to stderr. `--strict` exits **2** after
 publishing results when evidence or browser capture is incomplete/failed/diagnosed.
 Configuration, input and output failures exit **1**; cancellation exits **130**.
 

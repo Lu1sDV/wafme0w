@@ -10,9 +10,10 @@ reference is the [2.4.2 CLI source](https://github.com/EnableSecurity/wafw00f/bl
 
 | Intent | wafw00f 2.4.2 | wafme0w v2 |
 | --- | --- | --- |
-| Scan one URL | `wafw00f URL` | `wafme0w --target URL` |
-| Read a target list | `-i targets.txt` | `--input targets.txt` or `-I targets.txt`; one HTTP(S) URL per line |
-| Read URLs from stdin | Supply an input file | `--input -`; `./-` is a literal filename |
+| Scan one URL | `wafw00f URL` | `wafme0w --target URL` or `wafme0w -t URL` |
+| Scan several direct URLs | `wafw00f URL1 URL2` | Repeat `--target URL`; one URL per flag occurrence |
+| Read a target list | `-i targets.txt` | `--target-file targets.txt`; `--input targets.txt` and `-I targets.txt` are equivalent spellings |
+| Read URLs from stdin | Supply an input file | `--target-file -`, or pipe URL lines without an explicit source; `./-` is a literal filename |
 | Continue after a named match | `-a` / `--findall` | All compiled catalogue products are classified by default; the probe sets and matching semantics differ |
 | Disable redirects | `-r` / `--noredirect` | `--redirect-policy none --max-redirects 0` |
 | Test one product | `-t PRODUCT` | No product-selection flag; provide an explicitly reviewed reduced catalogue with `--fingerprints FILE` |
@@ -20,22 +21,36 @@ reference is the [2.4.2 CLI source](https://github.com/EnableSecurity/wafw00f/bl
 | Save results | `-o report.json` | `--output report.json` or `-O report.json`; replacement is atomic |
 | Choose file format | `-f json` | Use the output extension: `.json`, `.jsonl`, `.csv`, or `.txt`; other extensions select TXT |
 | Write structured stdout | `-o - -f json`; one JSON array after the scan | `--jsonl`; streams one result object per line, including incomplete/failed targets |
-| Add headers | `-H headers.txt` | Repeat inline `-H 'Name: value'`; this flag does not read a header file |
+| Add headers | `-H headers.txt` | Repeat inline `-H 'Name: value'`; values containing commas require [CSV quoting](usage.md#request-headers), not a header file |
 | Set request timeout | `-T 5` | `--request-timeout 5s`; separately set `--target-timeout 30s` |
 | Select an HTTP proxy | `-p http://proxy:8080` | The default Go HTTP transport uses `HTTP_PROXY`, `HTTPS_PROXY`, and `NO_PROXY`; optional Chromium capture disables proxies and does not inherit those settings |
 | Inspect diagnostics | `-v` / repeated `-v` | `--debug` emits body-free recorded observations to stderr |
 | Disable colors | `--no-colors` | `--no-colors` or `NO_COLOR`; redirected human output is uncolored |
 | Print version | `-V` / `--version` | `--version` |
 
-wafw00f accepts additional CSV/JSON target-list formats. wafme0w's `--input`
+When migrating scripts, check `-t` explicitly: wafw00f uses it to select a product,
+while wafme0w uses it for a target URL. The long `--target` spelling makes that
+intent clear. The file flags `-I` and `-O` are uppercase and case-sensitive.
+
+wafw00f accepts additional CSV/JSON target-list formats. wafme0w's `--target-file`
 expects plain URL lines. For ProjectDiscovery httpx JSONL, use
 `--evidence - --evidence-format httpx`; see the
 [producer/import contract](usage.md#httpx-response-import). A wafw00f result
 report is not a saved HTTP response capture and cannot be imported as evidence.
 
+Existing `--input` and `-I` commands remain supported without deprecation
+warnings. Select one target-file spelling once; do not combine aliases or repeat
+the file flag. Direct `--target` occurrences, a target file, and `--evidence` are
+mutually exclusive. Each direct target must be nonblank and single-line. See
+[input selection](usage.md#choose-input) for precedence and stdin examples.
+
+For output, use `--jsonl` to stream to stdout. wafme0w's `--output -` names a
+literal TXT file; it does not have wafw00f's stdout meaning. `--output` / `-O`
+selects an atomic report file and can be combined with JSONL stdout.
+
 ## Choose collection intentionally
 
-wafme0w's default mode selects up to nine active probes; `--fast` selects three.
+wafme0w's default active mode selects up to nine requests; `--fast` selects three.
 `--baseline` sends the normal request only. Redirects and budgets can change the
 actual request count. None of these modes is equivalent to every wafw00f run.
 
@@ -48,7 +63,7 @@ not become complete merely because it contains a marker.
 A useful starting point for an authorized URL list is:
 
 ```sh
-wafme0w --input authorized-urls.txt --baseline --jsonl --silent \
+wafme0w --target-file authorized-urls.txt --baseline --jsonl --silent \
   --output results.json --strict --rate 5
 ```
 

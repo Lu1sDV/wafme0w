@@ -118,6 +118,30 @@ jobs:
       - name: Build
         timeout-minutes: 5
         run: go build ./cmd/wafme0w
+      - name: Stress CLI option contracts without network requests
+        if: matrix.go == '1.27.3'
+        timeout-minutes: 5
+        run: python3 tools/cli_options_smoke.py --binary "$PWD/wafme0w" --output "$RUNNER_TEMP/cli-option-contracts"
+      - name: Archive CLI filename fixtures
+        if: always() && matrix.go == '1.27.3'
+        shell: bash
+        run: |
+          # Quote/colon fixture paths are valid Linux inputs but cannot be
+          # uploaded as individual files by the cross-platform artifact API.
+          if [[ -d "$RUNNER_TEMP/cli-option-contracts" ]]; then
+            tar -czf "$RUNNER_TEMP/cli-option-contracts.tar.gz" -C "$RUNNER_TEMP/cli-option-contracts" .
+          fi
+      - name: Retain CLI option contract evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always() && matrix.go == '1.27.3'
+        with:
+          name: cli-option-contracts
+          path: |
+            ${{ runner.temp }}/cli-option-contracts.tar.gz
+            ${{ runner.temp }}/cli-option-contracts/summary.json
+            ${{ runner.temp }}/cli-option-contracts/results.json
+          if-no-files-found: warn
+          retention-days: 7
       - name: Run offline detector coverage metric
         if: matrix.go == '1.27.3'
         timeout-minutes: 15

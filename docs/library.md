@@ -13,7 +13,7 @@ tag or commit:
 
 ```sh
 go mod init example.com/waf-client # Skip if go.mod already exists.
-go get github.com/Lu1sDV/wafme0w/v2@<v2-tag-or-commit>
+go get 'github.com/Lu1sDV/wafme0w/v2@<v2-tag-or-commit>'
 ```
 
 Replace the placeholder with an actual revision; do not use a v1 release with
@@ -179,6 +179,12 @@ input needs `Config.CancelInput` or another caller-provided wakeup; callbacks an
 transports must honor cancellation and return. After successful configuration
 validation, cancellation invokes `CancelInput` once, including when the supplied
 context is already cancelled.
+
+`Config.Concurrency` defaults to 20 and must be between 1 and
+`wafme0w.MaxConcurrency` (65,536). Values outside that supported range fail
+configuration validation before reading inputs or allocating workers. The upper
+bound prevents excessive worker fan-out and counter overflow; it is not a
+recommended setting or a process memory limit.
 
 `Config.ProbeConcurrency` defaults to 1; values up to 8 parallelize later
 full-mode probes after the normal response. `Config.MaxConnections == 0`

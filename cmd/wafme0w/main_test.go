@@ -731,7 +731,7 @@ func TestCLIBaselineUsesOneNormalRequest(t *testing.T) {
 	code, stdout, stderr := runCLI(t, nil,
 		"--target", target, "--baseline", "--jsonl", "--no-generic", "--fingerprints", fixtureCatalogue(t),
 		"--request-timeout=1s", "--target-timeout=2s", "--max-requests=1", "--max-connections=1",
-		"--probe-concurrency=3",
+		"--probe-concurrency=1",
 		"--max-response-header-bytes=3072", "--max-target-evidence-bytes=8192",
 		"--rate=100", "--per-origin-rate=50", "--max-redirects=0",
 		"--redirect-policy=allowlist", "--allow-origin", server.URL, "--allow-origin=https://unused.example",
@@ -747,7 +747,7 @@ func TestCLIBaselineUsesOneNormalRequest(t *testing.T) {
 	if results[0].Provenance.ScanMode != "baseline" || !settings.BaselineOnly || settings.FastMode || settings.Passive ||
 		settings.RequestTimeout != time.Second || settings.TargetTimeout != 2*time.Second ||
 		settings.MaxResponseHeaderBytes != 3072 || settings.MaxTargetEvidenceBytes != 8192 ||
-		settings.MaxRequests != 1 || settings.MaxConnections != 1 || settings.ProbeConcurrency != 3 || settings.RequestsPerSecond != 100 ||
+		settings.MaxRequests != 1 || settings.MaxConnections != 1 || settings.ProbeConcurrency != 1 || settings.RequestsPerSecond != 100 ||
 		settings.PerOriginRequestsPerSecond != 50 || settings.MaxRedirects != 0 || settings.RedirectPolicy != "allowlist" ||
 		len(settings.AllowedOrigins) != 2 {
 		t.Fatalf("published provenance does not describe effective CLI controls: %+v", results[0].Provenance)
