@@ -32,9 +32,7 @@
 </p>
 
 <p align="center">
-  <a href="assets/demo/tern-demo-split.gif">Open full-size split demo</a> ·
-  <a href="assets/demo/tern-demo.mp4">Watch the full walkthrough</a> ·
-  <a href="docs/usage.md#offline-captures">Commands &amp; recording</a>
+  <a href="assets/demo/tern-demo-split.gif">Open full-size split demo</a>
 </p>
 
 ## 1. Build
