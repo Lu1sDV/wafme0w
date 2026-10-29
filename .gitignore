@@ -30,6 +30,7 @@ AGENTS.md
 .omp/
 .codex/
 .claude/
+/.worktree-archive/
 
 # Local build outputs and scan scratch files
 /wafme0w
