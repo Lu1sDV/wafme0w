@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="162" height="30" viewBox="0 0 162 30" role="img" aria-label="OFFLINE: NO NETWORK">
+  <title>OFFLINE: NO NETWORK</title>
+  <rect width="162" height="30" rx="3" fill="#2B292E"/>
+  <path d="M84 0h78v30H84z" fill="#A9D5B0"/>
+  <g transform="translate(8 7) scale(.67)" fill="none" stroke="#FAF6F1" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 6h14v10H5z M9 20h6 M12 16v4 M8 10l2 2 5-4"/>
+  </g>
+  <g font-family="Arial,Helvetica,sans-serif" font-size="10" font-weight="700">
+    <text x="29" y="19" fill="#FAF6F1">OFFLINE</text>
+    <text x="123" y="19" text-anchor="middle" fill="#241D20">NO NETWORK</text>
+  </g>
+</svg>

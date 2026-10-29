@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="182" height="30" viewBox="0 0 182 30" role="img" aria-label="EXPORT: JSONL + MORE">
+  <title>EXPORT: JSONL + MORE</title>
+  <rect width="182" height="30" rx="3" fill="#2B292E"/>
+  <path d="M78 0h104v30H78z" fill="#8AB4F8"/>
+  <g transform="translate(8 7) scale(.67)" fill="none" stroke="#FAF6F1" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 3h10l4 4v14H5z M14 3v5h5 M8 12h8 M8 16h6"/>
+  </g>
+  <g font-family="Arial,Helvetica,sans-serif" font-size="10" font-weight="700">
+    <text x="29" y="19" fill="#FAF6F1">EXPORT</text>
+    <text x="130" y="19" text-anchor="middle" fill="#241D20">JSONL + MORE</text>
+  </g>
+</svg>

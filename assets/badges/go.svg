@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="106" height="30" viewBox="0 0 106 30" role="img" aria-label="GO: 1.26+">
+  <title>GO: 1.26+</title>
+  <rect width="106" height="30" rx="3" fill="#2B292E"/>
+  <path d="M52 0h54v30H52z" fill="#7ACDDD"/>
+  <g transform="translate(8 7) scale(.67)" fill="none" stroke="#FAF6F1" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 7l-5 5 5 5 M16 7l5 5-5 5 M14 4l-4 16"/>
+  </g>
+  <g font-family="Arial,Helvetica,sans-serif" font-size="10" font-weight="700">
+    <text x="29" y="19" fill="#FAF6F1">GO</text>
+    <text x="79" y="19" text-anchor="middle" fill="#241D20">1.26+</text>
+  </g>
+</svg>

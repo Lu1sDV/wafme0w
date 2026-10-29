@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="132" height="30" viewBox="0 0 132 30" role="img" aria-label="CI: WORKFLOWS">
+  <title>CI: WORKFLOWS</title>
+  <rect width="132" height="30" rx="3" fill="#2B292E"/>
+  <path d="M52 0h80v30H52z" fill="#B69AFF"/>
+  <g transform="translate(8 7) scale(.67)" fill="none" stroke="#FAF6F1" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 5h9v5 M17 5l-4 4 M16 19H7v-5 M7 19l4-4"/>
+  </g>
+  <g font-family="Arial,Helvetica,sans-serif" font-size="10" font-weight="700">
+    <text x="29" y="19" fill="#FAF6F1">CI</text>
+    <text x="92" y="19" text-anchor="middle" fill="#241D20">WORKFLOWS</text>
+  </g>
+</svg>

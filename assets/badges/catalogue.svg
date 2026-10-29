@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="142" height="30" viewBox="0 0 142 30" role="img" aria-label="CATALOGUE: 172">
+  <title>CATALOGUE: 172</title>
+  <rect width="142" height="30" rx="3" fill="#2B292E"/>
+  <path d="M96 0h46v30H96z" fill="#F28B66"/>
+  <g transform="translate(8 7) scale(.67)" fill="none" stroke="#FAF6F1" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3l8 4v5c0 5-8 9-8 9s-8-4-8-9V7z M8 12l3 3 5-6"/>
+  </g>
+  <g font-family="Arial,Helvetica,sans-serif" font-size="10" font-weight="700">
+    <text x="29" y="19" fill="#FAF6F1">CATALOGUE</text>
+    <text x="119" y="19" text-anchor="middle" fill="#241D20">172</text>
+  </g>
+</svg>
