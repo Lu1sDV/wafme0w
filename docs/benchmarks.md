@@ -271,8 +271,21 @@ go run ./cmd/offlinebench -verify-run offlinebench-results
 
 Run from the repository root with usable `bwrap` namespaces. The output directory
 must be absent or empty. Gate thresholds must be finite and in `[0,1]`; product
-names must map uniquely to canonical identities within each detector. Worker
-input is limited to 8 MiB, including whitespace.
+names must map uniquely to canonical identities within each detector. The
+manifest is limited to 8 MiB and each body to 1 MiB. All referenced body bytes
+together must fit within 4 MiB; repeated references count again because worker
+JSON expands each response. Hash-verified repeated bodies share immutable
+storage during loading. Split larger corpora into separate runs. These limits
+are checked before workers start, and input-limit errors abort the run. The
+whole-run timeout includes corpus loading, and manifest/body inputs must be
+regular files. Worker input is limited to 8 MiB, including whitespace and
+base64-encoded bodies.
+
+Manifest structure is checked before allocating typed records: arrays hold at
+most 4,096 entries, narrowed to 64 responses per case and 256 headers per
+response. Objects hold at most 64 fields, nesting is limited to 16 levels, and
+the complete manifest holds at most 65,536 JSON values. The total-value limit
+also bounds collections spread across otherwise valid cases.
 
 Verify the published generation before consuming it. Cancellation before
 publication removes staging; it cannot roll back an already committed rename.

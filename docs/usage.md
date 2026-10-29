@@ -103,6 +103,14 @@ and incomplete evidence. [Captures](../assets/demo/captures.jsonl) ·
 [Split workflow demo](../assets/demo/tern-demo-split.gif) · [Video](../assets/demo/tern-demo.mp4) ·
 [Earlier asciicast](../assets/demo/demo.cast).
 
+Each native JSONL record is limited to 16 MiB and 64 observations. Each
+observation may contain at most 4,096 header values and 4,096 redirect
+destinations. Collection limits are enforced during decoding, before allocating
+the first excess element. Oversized collections fail the import; they are not
+silently truncated. Decoded bodies also obey `--max-body-bytes` (default 1 MiB).
+The separate 32 MiB raw in-flight budget bounds queued record bytes, not total
+process memory.
+
 The Tern demo runs the real CLI: human-readable evidence, a JSONL pipeline, and
 `--strict` returning exit 2 **after** saving a report containing incomplete evidence.
 It uses synthetic captures only; typing and pauses are paced for readability,
@@ -252,7 +260,8 @@ headers next, then optional source metadata. String accounting includes 16-byte
 descriptors; each header includes 32 bytes plus its name/value bytes. An identity
 that cannot fit fails the record; a header set that cannot fit becomes unavailable.
 Fixed state, catalogue references and bounded diagnostics are separate overhead;
-this is not an RSS cap. Native capture limits remain unchanged.
+this is not an RSS cap. These httpx-specific budgets do not replace the
+[native capture limits](#offline-captures).
 
 For JSON URL extraction (new acquisition, not reuse):
 

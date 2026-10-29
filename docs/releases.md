@@ -149,7 +149,7 @@ once and validates that exact commit before publication:
 
 | Gate | Required evidence |
 | --- | --- |
-| Source validation | Formatting, vet, race tests, source vulnerability scans, bounded matcher and evidence fuzzing, isolated offline comparison, httpx pipeline checks, Chromium integration, and container checks |
+| Source validation | Formatting, vet, race tests, Go source and optional Python dependency vulnerability scans, bounded matcher and evidence fuzzing, isolated offline comparison, httpx pipeline checks, Chromium integration, and container checks |
 | Native packages | Tests and extracted-archive smoke checks on Linux x64/ARM64, macOS x64/ARM64, and Windows x64 |
 | Binary identity | Packaged binaries identify the prepared source SHA, an unmodified tree, the intended target, and Go 1.27.3 |
 | Artifact verification | Binary vulnerability scans, verified hashes and identities in `manifest.json`, and `SHA256SUMS` covering the manifest and generated Homebrew formula |
@@ -188,8 +188,17 @@ atomic protection against concurrent changes.
 ## Security maintenance
 
 The [weekly security workflow](../.github/workflows/security.yml) scans maintained
-source and supported published binaries independently. A source fix does not
-clear findings in an already published binary. Rebuild, scan, validate, and
-publish a new release; deploy the new artifact rather than assuming a source
-update repairs existing downloads.
+Go source, optional Python dependency pins, and supported published binaries as
+independent failure gates. CI and release validation also audit the fully pinned
+optional benchmark requirements with `pip-audit` 2.10.1. The scanner runs in its
+own environment and audits the manifest without installing the benchmark
+packages; keep every transitive runtime dependency pinned in that manifest.
+Findings and audit errors fail validation, and reports are retained for review.
+
+A source fix does not clear findings in an already published binary. Rebuild,
+scan, validate, and publish a new release; deploy the new artifact rather than
+assuming a source update repairs existing downloads. The current `/v2` source
+must supersede v1.0.0 through a new validated `v2.*` release. Do not replace or
+overwrite the old tag or its assets. Until that release is published, use a
+reviewed source revision built with the patched toolchain above.
 

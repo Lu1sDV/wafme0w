@@ -105,13 +105,13 @@ func run(args []string) int {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	corpus, err := offlinebench.LoadCorpus(*corpusPath, *bodiesDir)
+	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+	defer cancel()
+	corpus, err := offlinebench.LoadCorpusContext(ctx, *corpusPath, *bodiesDir)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
-	defer cancel()
 	_, summary, manifest, err := offlinebench.Execute(ctx, corpus, *corpusPath, offlinebench.Config{
 		Executable:       executable,
 		Bubblewrap:       bubblewrap,

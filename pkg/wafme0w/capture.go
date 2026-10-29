@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -171,7 +170,7 @@ func (budget *captureByteBudget) release(size int) {
 }
 
 func runCapturePipeline(ctx context.Context, inputs io.Reader, concurrency int, cancelInput func(),
-	classify func(context.Context, []byte, int) (Result, error), emit func(Result) error) error {
+	classify func(context.Context, []byte, int) (Result, error), emit func(Result) error) (err error) {
 	workers := min(concurrency, runtime.GOMAXPROCS(0))
 	wakeInput := sync.OnceFunc(func() {
 		if cancelInput != nil {
@@ -190,6 +189,11 @@ func runCapturePipeline(ctx context.Context, inputs io.Reader, concurrency int, 
 		wakeInput()
 	})
 	defer func() {
+		// A cancelled pipeline can finish before AfterFunc dispatches its wake.
+		// Do not stop that callback before fulfilling the once-only error wakeup.
+		if err != nil {
+			wakeInput()
+		}
 		if !stopWake() {
 			<-inputWoken
 		}
@@ -327,15 +331,9 @@ func classifyCapture(ctx context.Context, engine *Engine, record []byte, line in
 	if len(record) > maxCaptureRecordBytes {
 		return Result{}, fmt.Errorf("capture line %d exceeds %d bytes", line, maxCaptureRecordBytes)
 	}
-	decoder := json.NewDecoder(bytes.NewReader(record))
-	decoder.DisallowUnknownFields()
-	var capture Capture
-	if err := decoder.Decode(&capture); err != nil {
+	capture, err := decodeNativeCapture(ctx, record)
+	if err != nil {
 		return Result{}, fmt.Errorf("decode capture line %d: %w", line, err)
-	}
-	var extra any
-	if err := decoder.Decode(&extra); err != io.EOF {
-		return Result{}, fmt.Errorf("capture line %d must contain exactly one JSON object", line)
 	}
 	capture.Target = strings.TrimSpace(capture.Target)
 	if err := validateCapture(capture, config.MaxBodyBytes); err != nil {
@@ -366,7 +364,7 @@ func validateCapture(capture Capture, maxBodyBytes int64) error {
 	if capture.Target == "" || len(capture.Target) >= bufio.MaxScanTokenSize {
 		return errors.New("target label must be nonempty and shorter than 64 KiB")
 	}
-	if capture.Evidence == nil || len(capture.Evidence) > 64 {
+	if capture.Evidence == nil || len(capture.Evidence) > maxCaptureObservations {
 		return errors.New("evidence must be an array of at most 64 observations")
 	}
 	for i, observation := range capture.Evidence {
@@ -385,8 +383,11 @@ func validateCapture(capture Capture, maxBodyBytes int64) error {
 		if int64(len(observation.Body)) > maxBodyBytes {
 			return fmt.Errorf("evidence %d: decoded body exceeds %d bytes", i, maxBodyBytes)
 		}
-		if len(observation.Headers) > 4096 {
+		if len(observation.Headers) > maxCaptureHeaders {
 			return fmt.Errorf("evidence %d: more than 4096 header values", i)
+		}
+		if len(observation.RedirectChain) > maxCaptureRedirects {
+			return fmt.Errorf("evidence %d: more than 4096 redirect destinations", i)
 		}
 		for _, header := range observation.Headers {
 			if !httpmeta.ValidHeaderName(header.Name) || !httpmeta.ValidHeaderValue(header.Value) {

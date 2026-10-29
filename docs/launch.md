@@ -9,8 +9,9 @@ completed by merging documentation alone.
 ## Before publishing a release
 
 - [ ] The candidate's full source, native archive, Chromium, container and
-  vulnerability gates pass. Screenshot export must withhold uncertain credential
-  geometry instead of publishing an apparently successful partial mask.
+  vulnerability gates pass, including the optional Python dependency audit.
+  Screenshot export must withhold uncertain credential geometry instead of
+  publishing an apparently successful partial mask.
 - [ ] Require all eight PR CI jobs in branch protection: both Go checks, native
   Chromium, and the five platform archive jobs. Adding Linux ARM64 and macOS
   Intel to workflow YAML does not automatically add them to required checks.
@@ -23,6 +24,8 @@ completed by merging documentation alone.
   attestations; confirm immutable releases are enabled in repository settings.
 - [ ] Make the new scanned release the supported installation route. The old
   v1.0.0 archives predate security fixes; retain clear supersession guidance.
+  Confirm the published-binary security scan passes for the actual new downloads;
+  a clean source scan or merged PR does not close the distribution gap.
 - [ ] Check the resulting GHCR package's visibility and anonymous pull behavior
   before advertising a container installation command. Enabling publication in
   a workflow is not evidence that an image already exists.

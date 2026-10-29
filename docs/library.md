@@ -174,6 +174,10 @@ fresh Chromium capture; bounded export workers may overlap sanitized asset saves
 `RunCaptured` decodes and classifies with at most `min(Config.Concurrency,
 GOMAXPROCS)` workers, then emits serially in input order. At most twice that many
 records and 32 MiB of raw records are admitted ahead of emission.
+Native records have a 16 MiB serialized limit, 64 observations, and at most
+4,096 headers and 4,096 redirect destinations per observation. The importer
+enforces collection limits before decoding an excess element; these limits do
+not change direct `Evidence` JSON unmarshalling or the `Classify` API.
 Readers, injected clients/transports, and writers remain caller-owned. Blocking
 input needs `Config.CancelInput` or another caller-provided wakeup; callbacks and
 transports must honor cancellation and return. After successful configuration
