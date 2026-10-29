@@ -130,4 +130,3 @@ shipped release.
 Replacing the existing release pipeline with GoReleaser is optional future work.
 Preserve its source-SHA freeze, native tests, binary scanning, no-overwrite policy
 and attestations if the build orchestration is ever changed.
-

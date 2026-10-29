@@ -70,4 +70,3 @@ machine-readable; human summaries and debug messages go to stderr. See
 For Go integrations, import `github.com/Lu1sDV/wafme0w/v2/pkg/wafme0w` and use
 keyed public struct literals. The module major and result JSON schema 1 are
 separate contracts.
-
