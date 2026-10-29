@@ -57,7 +57,9 @@ GOMAXPROCS)` workers, then emits serially in input order. At most twice that man
 records and 32 MiB of raw records are admitted ahead of emission.
 Readers, injected clients/transports, and writers remain caller-owned. Blocking
 input needs `Config.CancelInput` or another caller-provided wakeup; callbacks and
-transports must honor cancellation and return.
+transports must honor cancellation and return. After successful configuration
+validation, cancellation invokes `CancelInput` once, including when the supplied
+context is already cancelled.
 
 `Config.ProbeConcurrency` defaults to 1; values up to 8 parallelize later
 full-mode probes after the normal response. `Config.MaxConnections == 0`

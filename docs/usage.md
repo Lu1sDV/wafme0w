@@ -99,8 +99,9 @@ httpx -l authorized-hosts.txt -silent -json -irr -probe -rstr 1048576 -rsts 1048
 
 The compatibility profile is **httpx v1.12.0**, not a detected producer version.
 Native captures are the default evidence format and reject unknown fields. The importer
-tolerates unrelated upstream fields but rejects malformed JSON, duplicate
-consumed fields and incorrect consumed types. These input errors stop the stream
+ignores unrelated upstream values, including nested numeric metadata outside
+floating-point range, but rejects malformed JSON, duplicate consumed fields and
+incorrect consumed types. These input errors stop the stream
 with exit 1; earlier JSONL remains visible and a previous named report is preserved.
 Valid records with upstream failures or unusable channels still produce results.
 
@@ -329,7 +330,9 @@ Overrides apply to every selected request.
 | Globally in-flight requests | `--max-connections` defaults to 0, following `--concurrency` (20 unless changed). Slots include response-body reads |
 | Redirect limit | `--max-redirects` defaults to 5 per request; 0 follows none |
 
-Bodies are bounded after gzip/deflate decoding. Unsupported encodings, truncation
+Bodies are bounded after gzip/deflate decoding. Responses that cannot carry a
+message body, such as 204 and 304, have complete empty content regardless of
+encoding metadata. For body-bearing responses, unsupported encodings, truncation
 and read errors retain usable response metadata without treating unavailable
 content as a clean negative. Add request headers with `-H` / `--header` (singular).
 
@@ -361,7 +364,12 @@ DEL. TXT renders invisible formatting characters visibly; JSON/JSONL/CSV preserv
 their original values.
 
 Output failures, including an unwritable stdout for help or version output, exit with status 1 and report the error on stderr.
-On Linux, piped target input and `--evidence=-` remain cancellable with SIGINT or SIGTERM even while the producer keeps its pipe open; cancellation exits 130 without replacing the previous atomic report.
+On Linux, piped stdin and named FIFO paths selected by `--input`, `--evidence`,
+or `--fingerprints` remain cancellable with SIGINT or SIGTERM while waiting for a
+producer or more data. Cancellation exits 130 without replacing the previous
+atomic report. Named FIFOs wait for their producer and finish at its EOF.
+Named inputs on other platforms require regular files; use stdin for streams.
+Other named input types, such as devices and directories, are rejected.
 Stdin is a single-consumer stream. If Linux cannot reopen an inherited pipe, the
 CLI temporarily sets its shared nonblocking flag and restores it on close;
 concurrent readers of that same pipe are not isolated.

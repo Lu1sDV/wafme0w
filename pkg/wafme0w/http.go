@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"compress/zlib"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -74,7 +75,14 @@ func sendHTTP(ctx context.Context, options requestOpts, client *http.Client, max
 			}
 		}
 		if err != nil {
-			message := err.Error()
+			var message string
+			var urlErr *url.Error
+			if errors.As(err, &urlErr) {
+				// URLs are retained separately; do not let one crowd out the cause.
+				message = urlErr.Op + ": " + urlErr.Err.Error()
+			} else {
+				message = err.Error()
+			}
 			evidence.TransportError = strings.Clone(message[:min(len(message), 1024)])
 			if evidence.ErrorCode == "" {
 				evidence.ErrorCode = acquisitionCode(err)
@@ -151,6 +159,16 @@ func sendHTTP(ctx context.Context, options requestOpts, client *http.Client, max
 	}
 	if err != nil {
 		return evidence, fmt.Errorf("send request: %w", err)
+	}
+	method := req.Method
+	if resp.Request != nil {
+		method = resp.Request.Method
+	}
+	// These responses have no HTTP message body, regardless of representation
+	// metadata such as Content-Encoding. A successful CONNECT starts a tunnel.
+	if method == http.MethodHead || resp.StatusCode < 200 || resp.StatusCode == http.StatusNoContent || resp.StatusCode == http.StatusNotModified ||
+		(method == http.MethodConnect && resp.StatusCode < 300) {
+		return evidence, nil
 	}
 	coding := strings.ToLower(strings.TrimSpace(strings.Join(resp.Header.Values("Content-Encoding"), ",")))
 	var reader io.Reader = resp.Body

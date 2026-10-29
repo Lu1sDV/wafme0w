@@ -6,11 +6,14 @@ import (
 	"compress/gzip"
 	"compress/zlib"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"io"
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"strings"
 	"testing"
@@ -231,6 +234,115 @@ func TestHTTPDiagnosticRetentionIsBounded(t *testing.T) {
 	evidence, err := sendHTTP(context.Background(), requestOpts{Method: http.MethodGet, Target: "http://fixture.invalid"}, client, DefaultMaxBodyBytes)
 	if err == nil || evidence.ErrorCode != "transport_error" || len(evidence.TransportError) != 1024 {
 		t.Fatalf("diagnostic failure or retention limit lost: code=%q bytes=%d err=%v", evidence.ErrorCode, len(evidence.TransportError), err != nil)
+	}
+}
+
+func TestHTTPDiagnosticRetainsTLSCauseWithLongURL(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("untrusted TLS request reached the HTTP handler")
+	}))
+	defer server.Close()
+	transport := &http.Transport{TLSClientConfig: &tls.Config{RootCAs: x509.NewCertPool()}}
+	defer transport.CloseIdleConnections()
+	client := &http.Client{Transport: transport, Timeout: 5 * time.Second}
+	for _, path := range []string{"/short", "/" + strings.Repeat("x", 2048)} {
+		target := server.URL + path
+		got, err := sendHTTP(context.Background(), requestOpts{Method: http.MethodGet, Target: target}, client, DefaultMaxBodyBytes)
+		var unknownCA x509.UnknownAuthorityError
+		if !errors.As(err, &unknownCA) {
+			t.Fatalf("expected certificate verification failure, got %v", err)
+		}
+		var urlErr *url.Error
+		if !errors.As(err, &urlErr) || urlErr.URL != target || !strings.Contains(err.Error(), target) {
+			t.Fatalf("returned error lost original URL: %v", err)
+		}
+		if got.RequestURL != target || got.ErrorCode != "transport_error" || len(got.TransportError) > 1024 ||
+			!strings.Contains(got.TransportError, "x509: certificate signed by unknown authority") {
+			t.Fatalf("TLS cause lost behind URL: code=%q diagnostic=%q", got.ErrorCode, got.TransportError)
+		}
+	}
+}
+
+func TestSendHTTPBodylessResponsesIgnoreContentEncoding(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		method string
+		status int
+	}{
+		{"no content", http.MethodGet, http.StatusNoContent},
+		{"not modified", http.MethodGet, http.StatusNotModified},
+		{"head success", http.MethodHead, http.StatusOK},
+		{"head error", http.MethodHead, http.StatusForbidden},
+		{"switching protocols", http.MethodGet, http.StatusSwitchingProtocols},
+		{"connect tunnel", http.MethodConnect, http.StatusOK},
+	} {
+		for _, coding := range []string{"gzip", "deflate", "br"} {
+			t.Run(test.name+"/"+coding, func(t *testing.T) {
+				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Encoding", coding)
+					w.Header().Set("X-Fixture", "metadata")
+					w.WriteHeader(test.status)
+				}))
+				defer server.Close()
+				client := server.Client()
+				client.Timeout = 5 * time.Second
+				got, err := sendHTTP(context.Background(), requestOpts{Method: test.method, Target: server.URL, Type: "Normal", Headers: defaultHeaders}, client, DefaultMaxBodyBytes)
+				if err != nil || got.ErrorCode != "" || got.TransportError != "" || got.BodyTruncated || len(got.Body) != 0 {
+					t.Fatalf("bodyless response produced incomplete evidence: %+v, err=%v", got, err)
+				}
+				if got.StatusCode != test.status || got.Reason != http.StatusText(test.status) || got.Role != "Normal" ||
+					got.RequestURL != server.URL || got.EffectiveURL != server.URL {
+					t.Fatalf("bodyless response lost metadata: %+v", got)
+				}
+				headers := make(http.Header)
+				for _, header := range got.Headers {
+					headers.Add(header.Name, header.Value)
+				}
+				if headers.Get("Content-Encoding") != coding || headers.Get("X-Fixture") != "metadata" {
+					t.Fatalf("bodyless response lost headers: %+v", got.Headers)
+				}
+				if !availableEvidenceChannels(got).body {
+					t.Fatal("bodyless response is not complete empty content")
+				}
+			})
+		}
+	}
+}
+
+func TestSendHTTPBodyBearingResponsesStillRejectInvalidEncoding(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		method string
+		status int
+		body   string
+	}{
+		{"empty", http.MethodGet, http.StatusOK, ""},
+		{"malformed", http.MethodGet, http.StatusOK, "not encoded"},
+		{"reset content framing", http.MethodGet, http.StatusResetContent, ""},
+		{"connect rejected", http.MethodConnect, http.StatusForbidden, "not encoded"},
+	} {
+		for _, coding := range []string{"gzip", "deflate", "br"} {
+			t.Run(test.name+"/"+coding, func(t *testing.T) {
+				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Encoding", coding)
+					w.WriteHeader(test.status)
+					if _, err := io.WriteString(w, test.body); err != nil {
+						t.Errorf("write malformed body: %v", err)
+					}
+				}))
+				defer server.Close()
+				client := server.Client()
+				client.Timeout = 5 * time.Second
+				got, err := sendHTTP(context.Background(), requestOpts{Method: test.method, Target: server.URL, Headers: defaultHeaders}, client, DefaultMaxBodyBytes)
+				wantCode := "body_decode"
+				if coding == "br" {
+					wantCode = "unsupported_content_encoding"
+				}
+				if err == nil || got.ErrorCode != wantCode || got.TransportError == "" || got.StatusCode != test.status || availableEvidenceChannels(got).body {
+					t.Fatalf("invalid encoded body became complete: %+v, err=%v", got, err)
+				}
+			})
+		}
 	}
 }
 

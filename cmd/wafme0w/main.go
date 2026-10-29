@@ -180,7 +180,7 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 		}
 		return 0
 	}
-	engine, err := loadEngine(opts.FingerPrintFile)
+	engine, err := loadEngine(ctx, opts.FingerPrintFile)
 	if err != nil {
 		return fail(err)
 	}
@@ -467,21 +467,32 @@ func parseHeaders(values []string) ([]wafme0w.Header, error) {
 	return headers, nil
 }
 
-func loadEngine(path string) (*wafme0w.Engine, error) {
+func loadEngine(ctx context.Context, path string) (*wafme0w.Engine, error) {
 	var reader io.Reader = bytes.NewReader(embeddedFingerPrints)
-	var file *os.File
+	release := func() error { return nil }
 	if path != "" {
-		var err error
-		file, err = os.Open(path)
+		file, err := openInputFile(path)
 		if err != nil {
 			return nil, fmt.Errorf("open fingerprints: %w", err)
 		}
 		reader = file
+		closed := make(chan struct{})
+		var closeErr error
+		stop := context.AfterFunc(ctx, func() {
+			closeErr = file.Close()
+			close(closed)
+		})
+		release = func() error {
+			if stop() {
+				closeErr = file.Close()
+			} else {
+				<-closed
+			}
+			return closeErr
+		}
 	}
 	catalogue, err := wafme0w.ReadCatalogue(reader)
-	if file != nil {
-		err = errors.Join(err, file.Close())
-	}
+	err = errors.Join(err, release(), ctx.Err())
 	if err != nil {
 		return nil, err
 	}
@@ -495,7 +506,7 @@ func resolveInput(opts options, stdin io.Reader, piped bool) (io.Reader, func(),
 	}
 	var input io.Reader
 	if path != "" && path != "-" {
-		file, err := os.Open(path)
+		file, err := openInputFile(path)
 		if err != nil {
 			return nil, nil, fmt.Errorf("open input: %w", err)
 		}

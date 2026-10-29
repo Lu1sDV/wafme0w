@@ -29,7 +29,8 @@ distribution channel. Choose the archive for the host platform:
 
 Verify the archive against the release's `SHA256SUMS` before extraction, then put
 `wafme0w` (`wafme0w.exe` on Windows) on `PATH`. Archives include synthetic demo
-captures under `assets/demo/`.
+captures under `assets/demo/` and `LICENSE.md` with project and third-party
+redistribution notices. Keep those notices with redistributed binaries.
 
 **Legacy release warning:** v1.0.0 archives predate the dependency and toolchain
 security hardening in this source tree. Do not treat them as patched binaries;
@@ -49,9 +50,13 @@ source build above to evaluate an unreleased revision.
 
 ## Container image
 
-The [Dockerfile](../Dockerfile) builds the source tree with Go 1.27.3 and copies
-the static binary and CA certificates into a `scratch` runtime image. It contains
-neither a shell nor Chromium. Browser capture requires a native Linux installation.
+The [Dockerfile](../Dockerfile) pins the official Go 1.27.3 Alpine image by
+multi-platform digest, verifies module downloads, and builds a static binary.
+Only allowlisted source/module/license inputs enter the build context. The
+`scratch` runtime contains CA certificates and redistribution notices, but no
+shell, package manager, or Chromium. Browser capture requires native Linux.
+The default identity is UID/GID `65532:65532`; the binary, CA bundle, and license
+are root-owned and not writable by that identity.
 
 ```sh
 git clone https://github.com/Lu1sDV/wafme0w.git
@@ -66,20 +71,29 @@ docker run --rm --network none wafme0w:latest --help
 docker run --rm --network none wafme0w:latest --silent --list --no-colors
 ```
 
-Human scans spool their final URL table under `/tmp`; the image provides this
-directory with mode 1777. For a read-only runtime, mount writable temporary
-storage (size it for the number and length of result rows). For example, an
-offline, non-root scan with captures mounted read-only:
+The default working directory is `/work`. `/work` and the private `/tmp`
+directory belong to UID/GID 65532; human scans need writable temporary storage
+for their final URL table. A hardened offline run is:
 
 ```sh
-docker run --rm --network none --read-only --user 65532:65532 \
-  --tmpfs /tmp:rw,noexec,nosuid,size=64m,mode=1777 \
+docker run --rm --network none --read-only \
+  --cap-drop ALL --security-opt no-new-privileges \
+  --pids-limit 128 --memory 512m --cpus 2 \
+  --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m,mode=0700,uid=65532,gid=65532 \
   -v "$PWD/assets/demo:/captures:ro" wafme0w:latest \
   --evidence /captures/captures.jsonl --no-colors
 ```
 
-`--jsonl` and `--silent` do not need the human-table spool. Saved report files
-still require their own writable output location.
+These runtime controls cannot be enforced by a Dockerfile. Keep the runtime's
+default seccomp and host security policies. Active scans need explicitly
+authorized network access instead of `--network none`; network attachment alone
+does not enforce destination scope.
+
+`--jsonl` and `--silent` do not need the human-table spool. Saved reports need
+a writable output mount owned by the selected UID. To use a host UID via
+`--user`, also provide a writable working directory and `/tmp` mount for it.
+Size memory, PID and temporary-storage limits for the selected concurrency and
+input volume; the example limits are not universal sizing guarantees.
 
 ## Publication gates
 
@@ -105,10 +119,19 @@ in-progress publication.
 
 ### Repository controls
 
-Administrators must enforce required branch checks, prevent version-tag
-updates/deletion, restrict release permissions, and enable immutable releases.
-These are repository settings, not guarantees supplied by workflow YAML. Tag
-rechecks alone do not provide atomic protection against concurrent changes.
+Require all six CI jobs on an up-to-date `main` pull request, one approving
+review of the latest push, stale-review dismissal, and resolved conversations.
+Apply checks to administrators too, and prohibit force-pushes and branch deletion.
+Protect `v*` tags against updates/deletion without bypass actors; enable immutable
+releases before publication.
+
+Default Actions tokens should be read-only and unable to approve pull requests.
+The publication job explicitly requests `contents: write`; grant additional
+release access only to trusted maintainers.
+
+These are administrator-controlled repository settings, not guarantees supplied
+by workflow YAML. Recheck them before release; tag rechecks alone do not provide
+atomic protection against concurrent changes.
 
 ## Security maintenance
 

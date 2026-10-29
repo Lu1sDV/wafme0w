@@ -5,9 +5,10 @@
     python3 tools/smoke.py docker wafme0w:ci --runtime podman
 
 Archives are extracted and executed in a temporary directory outside the checkout.
-Container checks use only synthetic captures, no network, a read-only root filesystem
-and a non-root user. The image's default user is not changed: mounted report
-ownership remains the caller's choice through docker/podman --user.
+Container checks use only synthetic captures, no network, and the image's default
+non-root identity, including writable-image permission checks. Hardened runs add
+a read-only root filesystem and private tmpfs; a host-UID override separately
+checks mounted report ownership.
 """
 
 import argparse
@@ -247,23 +248,116 @@ def smoke_cancellation(runtime, command, image, work):
     print("Container SIGTERM interrupted open stdin without publishing a partial report")
 
 
+def smoke_default_identity(runtime, command, image, work, expected_version):
+    metadata = json.loads(run([*runtime, "image", "inspect", image], work).stdout)
+    require(len(metadata) == 1, "Expected exactly one inspected image")
+    require(metadata[0]["Config"]["User"] == "65532:65532",
+            "Image must default to numeric UID:GID 65532:65532")
+    require(metadata[0]["Config"]["WorkingDir"] == "/work", "Image must default to /work")
+    version = run([*command, "--rm", image, "--version"], work).stdout.strip()
+    require(version.startswith("wafme0w ") and "\n" not in version, version)
+    if expected_version is not None:
+        require(version == "wafme0w " + expected_version, version)
+    capture = (work / CAPTURE).read_text()
+    name = "wafme0w-default-" + uuid.uuid4().hex
+    try:
+        # No --user, mount, tmpfs or read-only flag: exercise image defaults,
+        # including its private temporary directory and owned report workdir.
+        human = run([
+            *command, "--name", name, "-i", image, "--evidence", "-",
+            "--no-colors", "--output", "report.json",
+        ], work, input=capture)
+        rootfs_path = work / "default-rootfs.tar"
+        run([*runtime, "export", "--output", str(rootfs_path), name], work)
+        with tarfile.open(rootfs_path) as rootfs:
+            members = {member.name.removeprefix("./").rstrip("/"): member
+                       for member in rootfs.getmembers()}
+            report = members["work/report.json"]
+            require((report.uid, report.gid) == (65532, 65532),
+                    "Report was not written by the inherited default UID:GID")
+            require(report.isfile() and report.size <= MAX_MEMBER_BYTES, "Invalid report")
+            with rootfs.extractfile(report) as contents:
+                records = json.load(contents)
+            check_records(records, version)
+            for path in ("usr/local/bin/wafme0w", "etc/ssl/certs/ca-certificates.crt", "LICENSE.md"):
+                member = members[path]
+                require(member.isfile() and member.size > 0 and
+                        (member.uid, member.gid) == (0, 0) and member.mode & 0o222 == 0,
+                        f"Protected image file is writable or not root-owned: {path}")
+            with rootfs.extractfile(members["LICENSE.md"]) as contents:
+                require(contents.read() == (work / "LICENSE.md").read_bytes(),
+                        "Image license/notices differ from the packaged source license")
+            for path in ("usr", "usr/local", "usr/local/bin", "etc", "etc/ssl", "etc/ssl/certs"):
+                member = members[path]
+                require(member.isdir() and (member.uid, member.gid) == (0, 0) and
+                        member.mode & 0o022 == 0, f"Unprotected image directory: {path}")
+            for path, mode in (("tmp", 0o700), ("work", 0o750)):
+                member = members[path]
+                require(member.isdir() and (member.uid, member.gid) == (65532, 65532) and
+                        member.mode & 0o777 == mode, f"Incorrect private directory: {path}")
+            require(not any(path.startswith("tmp/") for path in members),
+                    "Human report spool left temporary files")
+        for record in records:
+            require(record["target"] in human.stdout and record["target"] in human.stderr,
+                    "Default identity omitted human results or final table")
+        require("\x1b" not in human.stdout + human.stderr, "No-color output contains ANSI")
+        run([*runtime, "rm", name], work)
+        # The filesystem is writable here: failures must be Unix permission
+        # denials, not merely enforcement of the separate read-only runtime flag.
+        for path in ("/blocked.json", "/usr/local/bin/blocked.json", "/etc/ssl/certs/blocked.json"):
+            denied = run([
+                *command, "--rm", "--name", name, "-i", image,
+                "--evidence", "-", "--jsonl", "--output", path,
+            ], work, expected=1, input=capture)
+            require("permission denied" in denied.stderr.lower(),
+                    f"Protected output did not fail with a permission denial: {denied.stderr}")
+        for path in ("/usr/local/bin/wafme0w", "/etc/ssl/certs/ca-certificates.crt", "/LICENSE.md"):
+            denied = run([
+                *command, "--rm", "--name", name, "-i", image,
+                "--evidence", "-", "--jsonl", "--diagnostics-journal", path,
+            ], work, expected=1, input=capture)
+            require("permission denied" in denied.stderr.lower(),
+                    f"Protected file did not fail with a permission denial: {denied.stderr}")
+        # Podman rejects Docker's tmpfs uid/gid options. Its isolated mounts
+        # use sticky permissions; report and spool files remain mode 0600.
+        tmp_mode = "mode=0700,uid=65532,gid=65532"
+        work_mode = "mode=0750,uid=65532,gid=65532"
+        if Path(runtime[0]).name == "podman":
+            tmp_mode = work_mode = "mode=1777"
+        hardened = run([
+            *command, "--rm", "--name", name, "-i", "--read-only",
+            "--tmpfs", f"/tmp:rw,noexec,nosuid,nodev,size=64m,{tmp_mode}",
+            "--tmpfs", f"/work:rw,noexec,nosuid,nodev,size=64m,{work_mode}",
+            image, "--evidence", "-", "--jsonl", "--output", "report.json",
+        ], work, input=capture)
+        check_records(records_from(hardened.stdout), version)
+    finally:
+        subprocess.run([*runtime, "rm", "--force", name], capture_output=True, timeout=15)
+    print(f"{version}: inherited UID:GID, owned reports, private spool and protected image files passed")
+
+
 def smoke_docker(image, runtime, expected_version):
     with tempfile.TemporaryDirectory(prefix="wafme0w-container-") as temporary:
         work = Path(temporary)
-        # Prove ordinary captures/reports need neither root nor a writable image.
-        work.chmod(0o777)
+        # Only the explicit host-UID mount tests below use this shared directory;
+        # default-identity tests write inside the image's owned /work instead.
         (work / CAPTURE).parent.mkdir(parents=True)
         shutil.copyfile(Path(__file__).resolve().parents[1] / CAPTURE, work / CAPTURE)
         shutil.copyfile(Path(__file__).resolve().parents[1] / "LICENSE.md", work / "LICENSE.md")
+        command = [
+            *runtime, "run", "--network", "none", "--cap-drop", "ALL",
+            "--security-opt", "no-new-privileges", "--security-opt", "label=disable",
+            "--pids-limit", "128", "--memory", "512m", "--cpus", "1",
+        ]
+        smoke_default_identity(runtime, command, image, work, expected_version)
+        work.chmod(0o777)
         uid = getattr(os, "getuid", lambda: 65532)() or 65532
         gid = getattr(os, "getgid", lambda: 65532)() or 65532
-        command = [
-            *runtime, "run", "--rm", "--network", "none", "--read-only",
-            "--user", f"{uid}:{gid}", "--cap-drop", "ALL",
-            "--security-opt", "no-new-privileges", "--security-opt", "label=disable",
-            "--tmpfs", "/tmp:rw,noexec,nosuid,size=64m,mode=1777",
+        command.extend([
+            "--rm", "--read-only", "--user", f"{uid}:{gid}",
+            "--tmpfs", "/tmp:rw,noexec,nosuid,nodev,size=64m,mode=1777",
             "--mount", f"type=bind,source={work},target=/smoke", "--workdir", "/smoke",
-        ]
+        ])
         if Path(runtime[0]).name == "podman":
             # Rootless Podman's default subordinate IDs cannot read host-created
             # files owned by this user or let this user read mode-0600 reports.
