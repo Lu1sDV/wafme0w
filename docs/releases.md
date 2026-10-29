@@ -4,34 +4,54 @@
 
 ## Build and install
 
-The published [v1.0.0](https://github.com/Lu1sDV/wafme0w/releases/tag/v1.0.0) archives below are historical builds, not patched builds of this checkout. They predate the current dependency and toolchain security refresh. Production deployment requires a newly built, scanned patch release; updating source does not repair downloaded binaries.
+Use a security-patched **Go 1.26 or newer** toolchain. Release and container builds
+use **Go 1.27.3**.
 
-| Platform | Archive |
-| --- | --- |
-| Linux x64 | [tar.gz](https://github.com/Lu1sDV/wafme0w/releases/download/v1.0.0/wafme0w_v1.0.0_linux_amd64.tar.gz) |
-| macOS Apple silicon | [tar.gz](https://github.com/Lu1sDV/wafme0w/releases/download/v1.0.0/wafme0w_v1.0.0_darwin_arm64.tar.gz) |
-| Windows x64 | [zip](https://github.com/Lu1sDV/wafme0w/releases/download/v1.0.0/wafme0w_v1.0.0_windows_amd64.zip) |
+### Build from source
 
-Check the archive's SHA-256 against [SHA256SUMS](https://github.com/Lu1sDV/wafme0w/releases/download/v1.0.0/SHA256SUMS), extract it, and put `wafme0w` (`wafme0w.exe` on Windows) on your `PATH`. Archives include the synthetic demo captures under `assets/demo/`.
-
-### Install with Go
-
-Building from source requires **Go >= 1.26** and a supported security-patched toolchain. Release builds pin **Go 1.27.3**. This checkout targets the v2 Go module; after a v2 release is published, install it with:
-
-```sh
-go install -v github.com/Lu1sDV/wafme0w/v2/cmd/wafme0w@latest
-```
-
-Until v2 is published, build this checkout instead (the command above does not publish or install unreleased work):
+From the repository root:
 
 ```sh
 go build -o wafme0w ./cmd/wafme0w
+./wafme0w --help
 ```
+
+### Release archives
+
+[GitHub Releases](https://github.com/Lu1sDV/wafme0w/releases) is the binary
+distribution channel. Choose the archive for the host platform:
+
+| Platform | Archive suffix |
+| --- | --- |
+| Linux x64 | `_linux_amd64.tar.gz` |
+| macOS Apple silicon | `_darwin_arm64.tar.gz` |
+| Windows x64 | `_windows_amd64.zip` |
+
+Verify the archive against the release's `SHA256SUMS` before extraction, then put
+`wafme0w` (`wafme0w.exe` on Windows) on `PATH`. Archives include synthetic demo
+captures under `assets/demo/`.
+
+**Legacy release warning:** v1.0.0 archives predate the dependency and toolchain
+security hardening in this source tree. Do not treat them as patched binaries;
+production deployment requires a newly built, scanned release that passes the
+[publication gates](#publication-gates).
+
+### Install a published Go module
+
+The library and CLI use the v2 module path. Once a v2 release is published:
+
+```sh
+go install github.com/Lu1sDV/wafme0w/v2/cmd/wafme0w@latest
+```
+
+This command installs published module versions, not unreleased source. Use the
+source build above to evaluate an unreleased revision.
 
 ## Container image
 
-The image builds the local checkout with Go 1.27.3, then copies the static binary and CA certificates into a minimal runtime image.
-Browser capture runs locally on Linux and requires installed Chromium; the minimal scratch image does not include a browser.
+The [Dockerfile](../Dockerfile) builds the source tree with Go 1.27.3 and copies
+the static binary and CA certificates into a `scratch` runtime image. It contains
+neither a shell nor Chromium. Browser capture requires a native Linux installation.
 
 ```sh
 git clone https://github.com/Lu1sDV/wafme0w.git
@@ -63,34 +83,38 @@ still require their own writable output location.
 
 ## Publication gates
 
-The checked-in release workflow resolves the requested tag once and validates
-that exact commit. Publication requires formatting, vet, race tests, source
-vulnerability checks, bounded matcher fuzzing, isolated offline comparison, real
-Chromium integration, container checks, and native tests on all three release OSes.
-Archives are extracted outside the checkout; their actual binaries must identify
-the prepared SHA, an unmodified tree, the intended target, and Go 1.27.3 before
-binary vulnerability scans. `manifest.json` records those identities and hashes;
-`SHA256SUMS` also covers the manifest, and publication requires an attestation.
+The [release workflow](../.github/workflows/release.yml) resolves the requested tag
+once and validates that exact commit before publication:
 
-Tags use `vMAJOR.MINOR.PATCH[-PRERELEASE]` without build metadata. Prereleases never
-become latest, and older stable releases cannot replace a higher stable release
-as latest. Weekly security checks reassess maintained source and supported
-published binaries independently; a source fix does not clear an old binary.
+| Gate | Required evidence |
+| --- | --- |
+| Source validation | Formatting, vet, race tests, source vulnerability scans, bounded matcher and evidence fuzzing, isolated offline comparison, httpx pipeline checks, Chromium integration, and container checks |
+| Native packages | Tests and extracted-archive smoke checks on Linux x64, macOS arm64, and Windows x64 |
+| Binary identity | Packaged binaries identify the prepared source SHA, an unmodified tree, the intended target, and Go 1.27.3 |
+| Artifact verification | Binary vulnerability scans, verified hashes and identities in `manifest.json`, and `SHA256SUMS` covering the manifest |
+| Publication | Attestation, remote tag and hash rechecks, and no asset overwrite |
 
-Before publishing, administrators must enforce required branch checks, prevent
-version-tag updates/deletion, restrict release permissions, and enable immutable
-releases. Tag rechecks alone are not atomic protection against concurrent changes.
-These are repository settings, not guarantees supplied by YAML. Hosted native
-jobs and attestations must pass on the committed candidate; local cross-builds
-and agent reviews do not substitute for them.
+The [CI workflow](../.github/workflows/ci.yml) defines the source-validation
+commands and host prerequisites. Run hosted native jobs and attestations on the
+committed candidate; local cross-builds do not establish native runtime behavior.
 
-Publications use a non-cancelling queue with up to 100 pending jobs. Archive checks
-limit compressed input to 64 MiB, individual and aggregate member payloads to
-128 MiB, and total TAR expansion (including extension headers) to 160 MiB.
-Scanner output is written as it arrives, including diagnostics retained on timeout.
+Tags use `vMAJOR.MINOR.PATCH[-PRERELEASE]` without build metadata. Prereleases do
+not become latest, and older stable releases cannot replace a higher stable
+release as latest. Cross-tag publication is serialized without cancelling
+in-progress publication.
 
-The current actionlint 1.7.12 parser does not recognize GitHub’s documented
-`concurrency.queue: max` field; its syntax diagnostic is a checker limitation, not
-a reason to remove the queue. Hosted GitHub validation is still required. See
-[GitHub concurrency](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)
-and the [actionlint parser](https://github.com/rhysd/actionlint/blob/v1.7.12/parse.go#L809-L825).
+### Repository controls
+
+Administrators must enforce required branch checks, prevent version-tag
+updates/deletion, restrict release permissions, and enable immutable releases.
+These are repository settings, not guarantees supplied by workflow YAML. Tag
+rechecks alone do not provide atomic protection against concurrent changes.
+
+## Security maintenance
+
+The [weekly security workflow](../.github/workflows/security.yml) scans maintained
+source and supported published binaries independently. A source fix does not
+clear findings in an already published binary. Rebuild, scan, validate, and
+publish a new release; deploy the new artifact rather than assuming a source
+update repairs existing downloads.
+

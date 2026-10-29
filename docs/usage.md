@@ -9,7 +9,7 @@ wafme0w --help
 wafme0w --silent --list --no-colors
 ```
 
-### Collection modes
+## Collection modes
 
 | Mode | Network behavior |
 | --- | --- |
@@ -28,13 +28,13 @@ From the repository root after building:
 No network requests. The synthetic examples demonstrate a match, a clean response,
 and incomplete evidence. [Captures](../assets/demo/captures.jsonl) · [Demo recording](../assets/demo/demo.cast).
 
-## httpx response import
+## URL pipelines
 
 `--input -` explicitly selects target stdin, even when terminal auto-detection
 does not identify a pipe. A literal file named `-` is available as `./-`.
 Supply one undecorated URL per line; do not append httpx status/title/probe
 annotations. Invalid annotated input receives a format hint, never silent repair.
-Existing scheme-less target support and URI normalization remain unchanged.
+Scheme-less targets use HTTPS. Specify `http://` explicitly for plain HTTP.
 
 For a continuing upstream URL feed:
 
@@ -47,6 +47,8 @@ This performs new wafme0w requests. Each network-producing stage has its own
 rate/concurrency budgets; one stage's limit is not a pipeline-wide limit.
 `--silent` alone is not a URL output selector.
 
+## httpx response import
+
 To reuse responses instead, select offline evidence and the explicit format:
 
 ```sh
@@ -55,7 +57,7 @@ httpx -l authorized-hosts.txt -silent -json -irr -probe -rstr 1048576 -rsts 1048
 ```
 
 The compatibility profile is **httpx v1.12.0**, not a detected producer version.
-Native captures remain the default and still reject unknown fields. The importer
+Native captures are the default evidence format and reject unknown fields. The importer
 tolerates unrelated upstream fields but rejects malformed JSON, duplicate
 consumed fields and incorrect consumed types. These input errors stop the stream
 with exit 1; earlier JSONL remains visible and a previous named report is preserved.
@@ -77,7 +79,7 @@ invalid/cut base64 is diagnosed, not salvaged. Its default read/save sizes are
 selected body exports; oversized unrelated fields can still exceed the record
 limit. No cap or encoding establishes body completeness.
 Base64 padding must terminate the entire field; concatenated separately padded
-values are rejected even when they cross a streaming decoder's read boundary.
+values are invalid.
 
 ### Evidence and attribution
 
@@ -228,7 +230,7 @@ On Unix, cancellation also interrupts blocked CLI pipe outputs. Windows checks
 cancellation between writes but cannot interrupt an already blocked synchronous
 output write. Library/test writers remain caller-owned.
 
-JSONL stdout and JSON/JSONL/CSV/TXT report files retain their existing schemas.
+Use JSONL stdout or JSON/JSONL/CSV/TXT report files for structured output.
 `--jsonl` prints only the overview to stderr, not the URL table. `--silent`
 suppresses human scan output; `--no-warning` hides diagnostic prose but preserves
 outcome and completeness. Color is disabled for redirected output, `NO_COLOR`,
@@ -286,7 +288,9 @@ Overrides apply to every selected request.
 | Globally in-flight requests | `--max-connections` defaults to 0, following `--concurrency` (20 unless changed). Slots include response-body reads |
 | Redirect limit | `--max-redirects` defaults to 5 per request; 0 follows none |
 
-Bodies are bounded after gzip/deflate decoding. Unsupported encodings, truncation and read errors retain usable response metadata without treating unavailable content as a clean negative. The header option is `-H` / `--header` (singular); the old `--headers` spelling remains unsupported.
+Bodies are bounded after gzip/deflate decoding. Unsupported encodings, truncation
+and read errors retain usable response metadata without treating unavailable
+content as a clean negative. Add request headers with `-H` / `--header` (singular).
 
 Header/evidence limits reject negative values. Owned transports enforce the
 header limit while parsing; injected library transports retain responsibility

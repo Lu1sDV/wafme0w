@@ -22,7 +22,8 @@
 
 ## 1. Build
 
-Use a security-patched Go toolchain; release builds pin **Go 1.27.3**.
+Build with **Go 1.26 or newer**, using a security-patched toolchain. Release builds
+use Go 1.27.3.
 
 ```sh
 git clone https://github.com/Lu1sDV/wafme0w.git
@@ -31,9 +32,8 @@ go build -o wafme0w ./cmd/wafme0w
 ./wafme0w --help
 ```
 
-**Release caveat:** published v1.0.0 binaries predate this checkout’s security
-hardening. Use a newly scanned patch release for production; source changes do
-not update existing downloads. [Installation, Docker and release details](docs/releases.md).
+For production, use a release that passes the [release validation gates](docs/releases.md#publication-gates).
+The v1.0.0 downloads predate the security hardening in this source tree.
 
 ## 2. Scan an authorized target
 
@@ -48,11 +48,11 @@ and `--fast` selects three. Redirects remain subject to scope and request budget
 ### ProjectDiscovery httpx pipelines
 
 ```sh
-# URL discovery followed by NEW wafme0w requests:
+# Discover URLs, then send new wafme0w requests:
 httpx -l authorized-hosts.txt -silent |
   ./wafme0w --input - --baseline --jsonl --silent
 
-# Reuse exported observations with ZERO additional wafme0w requests:
+# Classify exported responses without additional requests:
 httpx -l authorized-hosts.txt -silent -json -irr -probe -rstr 1048576 -rsts 1048576 |
   ./wafme0w --evidence - --evidence-format httpx --jsonl --silent
 ```
@@ -63,8 +63,8 @@ match. This is not equivalent to active acquisition or proof of WAF absence.
 Use `set -o pipefail` when upstream process failures must fail the shell pipeline.
 [Encoding, limitations, limits and downstream recipes](docs/usage.md#httpx-response-import).
 
-This checkout uses the Go module **`github.com/Lu1sDV/wafme0w/v2`** for the expanded
-evidence API; result JSON remains schema 1 with optional nested metadata.
+The Go library uses module **`github.com/Lu1sDV/wafme0w/v2`**. Result JSON uses
+schema 1; module and report versions are separate contracts.
 
 ## 3. Automate and save results
 
@@ -79,8 +79,9 @@ Configuration, input and output failures exit **1**; cancellation exits **130**.
 
 ## Benchmarks
 
-**wafme0w vs wafw00f 2.4.2**, the same 500 Tranco targets, measured 29 October 2026.
-Single sequential sweep using saved wafme0w build `347f547`, not this checkout's newer v2/httpx-import changes:
+**wafme0w vs wafw00f 2.4.2**, measured on 500 Tranco targets on 29 October 2026.
+One sequential sweep of saved build `347f547`; these results do not measure the v2
+evidence API or httpx importer:
 
 | Workers / processes | <img src="assets/wafme0w.svg" width="20" height="20" alt=""> wafme0w fast | <img src="assets/wafme0w.svg" width="20" height="20" alt=""> wafme0w full | wafw00f |
 | --- | ---: | ---: | ---: |
@@ -90,7 +91,7 @@ Single sequential sweep using saved wafme0w build `347f547`, not this checkout's
 
 Observed wall times, not equivalent-work speedups or accuracy. wafme0w emitted
 500 results per cell; wafw00f omitted 157–159 targets. Higher concurrency changed
-evidence completeness. [Settings, outcome counts, limitations and historical results](docs/benchmarks.md#live-cli-comparison--29-october-2026).
+evidence completeness. [Methodology, result accounting and limitations](docs/benchmarks.md#live-cli-comparison).
 
 ## Major caveats
 
@@ -107,6 +108,6 @@ evidence completeness. [Settings, outcome counts, limitations and historical res
 | [Operations](docs/operations.md) | Result semantics, safe report consumption, deployment and soak checks |
 | [Releases](docs/releases.md) | Installation, Docker, validation, security scans and publication controls |
 | [Go library](docs/library.md) | Working example, ownership and streaming contracts |
-| [Benchmarks](docs/benchmarks.md) | Reproducible measurements, offline comparison and historical results |
+| [Benchmarks](docs/benchmarks.md) | Measurement methodology, results and offline conformance checks |
 
 [MIT license](LICENSE.md) · Fingerprints from [wafw00f](https://github.com/EnableSecurity/wafw00f/) · Contributor [@Fibonaccispiralz](https://github.com/Fibonaccispiralz)

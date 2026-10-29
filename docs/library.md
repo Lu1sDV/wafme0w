@@ -2,6 +2,10 @@
 
 [Quick start](../README.md) · [API reference](https://pkg.go.dev/github.com/Lu1sDV/wafme0w/v2/pkg/wafme0w)
 
+The module path is `github.com/Lu1sDV/wafme0w/v2`. Use keyed literals for exported
+structs. Go module versions and result JSON schema versions are separate contracts;
+see [versioning](#versioning).
+
 Match an already captured response without sending any requests:
 ```go
 package main
@@ -63,10 +67,9 @@ connection limit. The CLI selects zero by default.
 
 ## v2 evidence API
 
-The module path is now `github.com/Lu1sDV/wafme0w/v2`. Import-path migration is
-intentional: adding availability/provenance fields to exported structs can break
-external positional literals. Use keyed literals. Existing `Run`, `RunCaptured`,
-`Classify` and writer signatures remain; there are no legacy aliases.
+v2 adds explicit channel availability and import provenance to the evidence API.
+Applications migrating from v1 must update their import paths and use keyed
+struct literals.
 
 `Evidence.Availability` and `EvidenceSummary.Availability` are optional
 `*EvidenceAvailability` values containing `Status`, `Headers`, `Reason`, and
@@ -109,9 +112,13 @@ ahead. Imported records never invoke `Config.Client` or open upstream file paths
 `Result.Provenance.Import` records compatibility profile and source information,
 not inferred producer identity. See [import policy and limits](usage.md#httpx-response-import).
 
-Result JSON remains schema 1 with optional nested import/availability metadata.
-CSV columns and TXT keys remain unchanged; native/live output omits the new
-metadata when unused. Go module major versions and JSON schema versions are
-separate contracts. Subsequent incompatible documented API/schema changes require
-appropriate versioning. See [CLI limits](usage.md#inputs-and-limits) and
-[browser capture](browser.md) for the remaining ownership and acquisition rules.
+## Versioning
+
+Result JSON uses schema 1 with optional nested import/availability metadata.
+Native/live output omits that metadata when unused. CSV columns and TXT keys do
+not depend on whether import metadata is present. Incompatible documented Go API
+or report-schema changes require appropriate versioning.
+
+See [CLI limits](usage.md#inputs-and-limits) and [browser capture](browser.md) for
+the remaining ownership and acquisition rules.
+
