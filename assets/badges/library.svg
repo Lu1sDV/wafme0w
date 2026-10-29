@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="154" height="30" viewBox="0 0 154 30" role="img" aria-label="GO API: LIBRARY">
+  <title>GO API: LIBRARY</title>
+  <rect width="154" height="30" rx="3" fill="#2B292E"/>
+  <path d="M84 0h70v30H84z" fill="#B69AFF"/>
+  <g transform="translate(8 7) scale(.67)" fill="none" stroke="#FAF6F1" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 6l-5 6 5 6 M16 6l5 6-5 6 M14 4l-4 16"/>
+  </g>
+  <g font-family="Arial,Helvetica,sans-serif" font-size="10" font-weight="700">
+    <text x="29" y="19" fill="#FAF6F1">GO API</text>
+    <text x="119" y="19" text-anchor="middle" fill="#241D20">LIBRARY</text>
+  </g>
+</svg>
