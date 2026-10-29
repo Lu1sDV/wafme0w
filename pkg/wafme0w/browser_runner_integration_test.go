@@ -73,8 +73,8 @@ func TestBrowserRunnerIndependentOccurrencesAndSinkRelease(t *testing.T) {
 		},
 	}
 	var results []Result
-	input := server.URL + "/failure\n" + server.URL + "/failure\n" + server.URL + "/normal\n"
-	if err := Run(ctx, engine, strings.NewReader(input), config, func(result Result) error {
+	targets := []string{server.URL + "/failure", server.URL + "/failure", server.URL + "/normal"}
+	if err := Run(ctx, engine, strings.NewReader(strings.Join(targets, "\n")), config, func(result Result) error {
 		results = append(results, result)
 		return nil
 	}); err != nil {
@@ -93,6 +93,10 @@ func TestBrowserRunnerIndependentOccurrencesAndSinkRelease(t *testing.T) {
 		if ids[b.ID] || occurrences[b.Occurrence] {
 			t.Fatalf("duplicate identity: %+v", b)
 		}
+		if b.Occurrence == 0 || b.Occurrence > uint64(len(targets)) || result.Target != targets[b.Occurrence-1] ||
+			b.DOM.Saved != "owned-artifact-"+b.ID {
+			t.Fatalf("browser result/artifact drifted from its input occurrence: target=%q browser=%+v", result.Target, b)
+		}
 		ids[b.ID], occurrences[b.Occurrence] = true, true
 		for _, match := range result.Outcome.Matches {
 			if match.Product != "HTTP fixture" {
@@ -104,6 +108,59 @@ func TestBrowserRunnerIndependentOccurrencesAndSinkRelease(t *testing.T) {
 		}
 		if strings.HasSuffix(result.Target, "/failure") && len(result.Outcome.Matches) != 0 {
 			t.Fatalf("failed HTTP acquisition gained browser matches: %+v", result.Outcome)
+		}
+	}
+}
+
+func TestBrowserRunnerDoesNotHoldHTTPWorkerDuringChromium(t *testing.T) {
+	path := os.Getenv("WAFME0W_TEST_BROWSER")
+	if path == "" {
+		t.Fatal("WAFME0W_TEST_BROWSER must name native Chromium for browser integration")
+	}
+	browserStarted, secondHTTP := make(chan struct{}), make(chan struct{})
+	var browserActive, overlapped atomic.Bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		navigation := r.Header.Get("Sec-Fetch-Mode") == "navigate"
+		if navigation && r.URL.Path == "/first" {
+			browserActive.Store(true)
+			defer browserActive.Store(false)
+			close(browserStarted)
+			select {
+			case <-secondHTTP:
+			case <-r.Context().Done():
+				return
+			}
+		} else if !navigation && r.URL.Path == "/second" {
+			select {
+			case <-browserStarted:
+			case <-r.Context().Done():
+				return
+			}
+			overlapped.Store(browserActive.Load())
+			close(secondHTTP)
+		}
+		fmt.Fprint(w, "<!doctype html><h1>owned pipeline fixture</h1>")
+	}))
+	defer server.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	config := DefaultConfig()
+	config.Concurrency, config.BaselineOnly = 1, true
+	config.Browser = &BrowserConfig{Mode: "navigate", Path: path, Timeout: 8 * time.Second, Settle: 100 * time.Millisecond}
+	var results []Result
+	err := Run(ctx, emptyEngine(t), strings.NewReader(server.URL+"/first\n"+server.URL+"/second\n"), config, func(result Result) error {
+		results = append(results, result)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !overlapped.Load() || len(results) != 2 {
+		t.Fatalf("Chromium retained the only HTTP worker: overlap=%t results=%d", overlapped.Load(), len(results))
+	}
+	for _, result := range results {
+		if result.Browser == nil || result.Browser.State != "complete" {
+			t.Fatalf("browser lifecycle did not complete after overlapping HTTP: %+v", result.Browser)
 		}
 	}
 }

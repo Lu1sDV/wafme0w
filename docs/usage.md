@@ -13,8 +13,8 @@ wafme0w --silent --list --no-colors
 
 | Mode | Network behavior |
 | --- | --- |
-| Default | Up to nine selected active requests, before redirects |
-| `--fast` | Three selected active requests; fewer requests, **not passive** or a latency guarantee |
+| Default | Up to nine selected active requests, before redirects; serial after the normal request unless `--probe-concurrency` is raised |
+| `--fast` | Three selected active requests launched without a fixed stagger; fewer requests, **not passive** or a latency guarantee |
 | `--baseline` | One normal request, subject to redirect and request budgets |
 
 ## Offline captures
@@ -49,13 +49,14 @@ Overrides apply to every selected request.
 | URL input precedence | Explicit `--input` or `--target` overrides stdin; those flags are mutually exclusive; blank lines ignored |
 | Target line size | Go's 64 KiB scanner token limit |
 | Catalogue size | At most 8 MiB; one JSON array with known fields and valid HTTP header names |
-| Concurrency | `--concurrency` defaults to 20 and must be positive |
+| Target concurrency | `--concurrency` defaults to 20 and must be positive |
+| Full-mode probe concurrency | `--probe-concurrency` defaults to 1; values 2..8 run active probes concurrently after the normal response succeeds |
 | Response body size | `--max-body-bytes` defaults to 1,048,576 decoded bytes and must be positive |
 | Response header size | `--max-response-header-bytes` defaults to 65,536 bytes; 0 selects that default |
 | Retained HTTP evidence | `--max-target-evidence-bytes` defaults to 16,777,216 bytes per target across all probes; 0 selects that default |
 | Request / target deadlines | `--request-timeout` defaults to 5s; `--target-timeout` to 30s |
 | Requests per target | `--max-requests` defaults to 54, including redirects |
-| Globally in-flight requests | `--max-connections` defaults to 20, including body reads |
+| Globally in-flight requests | `--max-connections` defaults to 0, following `--concurrency` (20 unless changed). Slots include response-body reads |
 | Redirect limit | `--max-redirects` defaults to 5 per request; 0 follows none |
 
 Bodies are bounded after gzip/deflate decoding. Unsupported encodings, truncation and read errors retain usable response metadata without treating unavailable content as a clean negative. The header option is `-H` / `--header` (singular); the old `--headers` spelling remains unsupported.
@@ -73,6 +74,16 @@ diagnostics are additional overhead. Transport buffers, temporary allocations,
 classifier indexes, and Chromium are separate: this is **not a process RSS cap**.
 Size worker concurrency and container memory together. Offline JSONL retains its
 separate record/body limits; live acquisition budgets do not reinterpret captures.
+
+Offline capture classification uses at most `min(--concurrency, GOMAXPROCS)`
+workers. Records remain bounded by a 32 MiB raw in-flight byte budget and emit in
+input order; valid records before an invalid line are emitted before its error.
+
+`--journal-batch-size` defaults to 1, preserving a sync per result. Larger values
+batch up to 256 results and 1 MiB of encoded records; a partial batch syncs within
+25 ms. Results reach reports and console output only after their journal batch is
+synced. Batching can improve journal throughput at the cost of delaying each
+result until the batch is durable.
 Saved HTTP reasons and header values reject C0 controls other than HTAB and reject
 DEL. TXT renders invisible formatting characters visibly; JSON/JSONL/CSV preserve
 their original values.
@@ -83,9 +94,11 @@ Stdin is a single-consumer stream. If Linux cannot reopen an inherited pipe, the
 CLI temporarily sets its shared nonblocking flag and restores it on close;
 concurrent readers of that same pipe are not isolated.
 
-The built-in HTTP transport opens a fresh HTTP/1 connection for each request.
-This prevents transparent connection-reuse and HTTP/2 retries from bypassing
-`--max-requests` and request pacing; TLS-heavy scans pay additional handshake cost.
+The built-in HTTP transport opens a fresh HTTP/1 connection for each request and
+uses a bounded, run-local TLS session cache. TLS certificate verification remains
+enabled. Connection reuse and HTTP/2 are disabled to prevent transparent retries
+from bypassing `--max-requests` and request pacing. TLS session resumption can
+reduce handshake cost when the origin supports it, without reusing HTTP connections.
 Library callers supplying a transport (including a replacement
 `http.DefaultTransport`) own any retries or network effects inside its
 `RoundTrip` calls; the runner cannot enforce a wire-request ceiling inside that

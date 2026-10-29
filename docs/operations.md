@@ -11,6 +11,12 @@ results and journal entries may exist when a run fails. Failures before atomic
 publication preserve the previous report; later summary or journal-close errors
 can return exit 1 after the new report has already been published.
 
+The diagnostics journal syncs every result before another sink sees it by default.
+`--journal-batch-size` above 1 uses group sync: pending results are not published
+to reports or output until their whole batch is synced, and partial batches flush
+within 25 ms. A crash may lose a pending batch, but results from that batch have
+not yet been exposed to the other sinks.
+
 CSV deliberately preserves original values. Spreadsheet applications can interpret
 cells beginning with `=`, `+`, `-`, `@`, tab or carriage return as formulas; CSV
 quoting does not prevent that. Import every column explicitly as **Text** and

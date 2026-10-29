@@ -52,6 +52,7 @@ func Version() string { return programVersion }
 
 type ScanSettings struct {
 	Concurrency                int           `json:"concurrency"`
+	ProbeConcurrency           int           `json:"probe_concurrency"`
 	FastMode                   bool          `json:"fast_mode"`
 	BaselineOnly               bool          `json:"baseline_only"`
 	Passive                    bool          `json:"passive"`
@@ -103,7 +104,8 @@ func makeResult(engine *Engine, target, origin string, evidence []Evidence, conf
 		Provenance: ResultProvenance{
 			ProgramVersion: Version(), CatalogueSHA256: engine.Digest(), ScanMode: mode,
 			Settings: ScanSettings{
-				Concurrency: config.Concurrency, FastMode: config.FastMode, BaselineOnly: config.BaselineOnly,
+				Concurrency: config.Concurrency, ProbeConcurrency: config.ProbeConcurrency,
+				FastMode: config.FastMode, BaselineOnly: config.BaselineOnly,
 				Passive: config.Passive, ExcludeGeneric: config.ExcludeGeneric, MaxBodyBytes: config.MaxBodyBytes,
 				MaxResponseHeaderBytes: config.MaxResponseHeaderBytes, MaxTargetEvidenceBytes: config.MaxTargetEvidenceBytes,
 				RequestTimeout: config.RequestTimeout, TargetTimeout: config.TargetTimeout,
@@ -142,13 +144,20 @@ func makeResult(engine *Engine, target, origin string, evidence []Evidence, conf
 
 // Run streams one result per nonblank input line to emit, serially in completion
 // order. Target failures are results; configuration, input, context, and sink
-// failures are returned. Input lines are bounded by bufio.MaxScanTokenSize and
-// both work queues are unbuffered. Run never closes inputs or retains results.
+// failures are returned. HTTP workers pass only body-free results to a bounded
+// browser stage with one fresh Chromium capture at a time and two export workers.
+// Without browser observation, both work queues are unbuffered. Input lines are
+// bounded by bufio.MaxScanTokenSize. Run never closes inputs or retains results.
 //
 // A blocking reader requires Config.CancelInput (or independent caller wakeup).
 // Cancellation, including private sink-failure cancellation, invokes that callback.
 // No input scanner goroutine is abandoned. Emit must also return for shutdown.
 func Run(ctx context.Context, engine *Engine, inputs io.Reader, config Config, emit func(Result) error) error {
+	return run(ctx, engine, inputs, config, emit, captureBrowser)
+}
+
+func run(ctx context.Context, engine *Engine, inputs io.Reader, config Config, emit func(Result) error,
+	capture func(context.Context, string, string, uint64, Config) browserCapture) error {
 	if ctx == nil || engine == nil || inputs == nil || emit == nil {
 		return errors.New("context, engine, inputs, and result callback are required")
 	}
@@ -189,13 +198,17 @@ func Run(ctx context.Context, engine *Engine, inputs io.Reader, config Config, e
 		occurrence uint64
 	}
 	targets := make(chan targetWork)
-	var browserPermit chan struct{}
-	var browserRunID string
-	if config.Browser != nil && config.Browser.Mode != "off" {
-		browserPermit = make(chan struct{}, 1)
-		browserRunID = rand.Text()
-	}
 	results := make(chan Result)
+	var browserJobs chan browserWork
+	var browserDone chan struct{}
+	if config.Browser != nil && config.Browser.Mode != "off" {
+		browserJobs = make(chan browserWork, min(config.Concurrency, 20))
+		browserDone = make(chan struct{})
+		go func() {
+			defer close(browserDone)
+			runBrowserStage(workCtx, browserJobs, results, config, policy, capture)
+		}()
+	}
 	sinkErrors := make(chan error, 1)
 	go func() {
 		var sinkErr error
@@ -223,13 +236,19 @@ func Run(ctx context.Context, engine *Engine, inputs io.Reader, config Config, e
 						return
 					}
 					result := classifyTarget(workCtx, engine, work.target, config, policy)
-					if browserPermit != nil {
-						result.Browser = observeBrowser(workCtx, work.target, fmt.Sprintf("%s-%d", browserRunID, work.occurrence), work.occurrence, result.Origin, config, policy, browserPermit)
-					}
-					select {
-					case <-workCtx.Done():
-						return
-					case results <- result:
+					if browserJobs != nil {
+						work := browserWork{result: result, occurrence: work.occurrence, queuedAt: time.Now().UTC()}
+						select {
+						case browserJobs <- work:
+						case <-workCtx.Done():
+							return
+						}
+					} else {
+						select {
+						case results <- result:
+						case <-workCtx.Done():
+							return
+						}
 					}
 				}
 			}
@@ -255,6 +274,10 @@ func Run(ctx context.Context, engine *Engine, inputs io.Reader, config Config, e
 		wakeInput()
 	}
 	workers.Wait()
+	if browserJobs != nil {
+		close(browserJobs)
+		<-browserDone
+	}
 	close(results)
 	return errors.Join(inputErr, <-sinkErrors, ctx.Err())
 }
@@ -279,23 +302,87 @@ func classifyTarget(ctx context.Context, engine *Engine, target string, config C
 	return makeResult(engine, target, origin, evidence, config)
 }
 
-func observeBrowser(ctx context.Context, target, id string, occurrence uint64, origin string, config Config, policy *outboundPolicy, permit chan struct{}) *BrowserReport {
-	queuedAt := time.Now()
-	if origin == "" || !policy.allowed(origin) {
-		capture := browserCapture{report: BrowserReport{
-			ID: id, Occurrence: occurrence, Mode: config.Browser.Mode,
-			State: "skipped", Reason: "target_scope", URL: target, QueuedAt: queuedAt,
-			DOM: BrowserAsset{State: "skipped"}, Screenshot: BrowserAsset{State: "skipped"},
-		}}
-		return exportBrowserCapture(ctx, &capture, *config.Browser)
+type browserWork struct {
+	result     Result
+	occurrence uint64
+	queuedAt   time.Time
+}
+
+type browserExportWork struct {
+	result  Result
+	capture browserCapture
+}
+
+func runBrowserStage(ctx context.Context, jobs <-chan browserWork, results chan<- Result, config Config, policy *outboundPolicy,
+	acquire func(context.Context, string, string, uint64, Config) browserCapture) {
+	// ponytail: two exports allow a slow artifact sink to overlap the next fresh
+	// capture without retaining raw assets proportional to target concurrency.
+	const exportWorkers = 2
+	permits := make(chan struct{}, exportWorkers)
+	captures := make(chan browserExportWork)
+	var exporters sync.WaitGroup
+	for range exportWorkers {
+		exporters.Add(1)
+		go func() {
+			defer exporters.Done()
+			for work := range captures {
+				if ctx.Err() != nil {
+					<-permits
+					continue
+				}
+				work.result.Browser = exportBrowserCapture(ctx, &work.capture, *config.Browser)
+				// Only sanitized, body-free metadata may wait on result emission.
+				work.capture = browserCapture{}
+				select {
+				case results <- work.result:
+				case <-ctx.Done():
+				}
+				<-permits
+			}
+		}()
 	}
-	select {
-	case <-ctx.Done():
-		return nil
-	case permit <- struct{}{}:
+	defer func() {
+		close(captures)
+		exporters.Wait()
+	}()
+	runID := rand.Text()
+	for {
+		var work browserWork
+		select {
+		case <-ctx.Done():
+			return
+		case next, ok := <-jobs:
+			if !ok {
+				return
+			}
+			work = next
+		}
+		select {
+		case permits <- struct{}{}:
+		case <-ctx.Done():
+			return
+		}
+		if ctx.Err() != nil {
+			<-permits
+			return
+		}
+		id := fmt.Sprintf("%s-%d", runID, work.occurrence)
+		var capture browserCapture
+		if work.result.Origin == "" || !policy.allowed(work.result.Origin) {
+			capture.report = BrowserReport{
+				ID: id, Occurrence: work.occurrence, Mode: config.Browser.Mode,
+				State: "skipped", Reason: "target_scope", URL: work.result.Target,
+				DOM: BrowserAsset{State: "skipped"}, Screenshot: BrowserAsset{State: "skipped"},
+			}
+		} else {
+			capture = acquire(ctx, work.result.Target, id, work.occurrence, config)
+		}
+		capture.report.QueuedAt = work.queuedAt
+		select {
+		case captures <- browserExportWork{result: work.result, capture: capture}:
+		case <-ctx.Done():
+			<-permits
+			return
+		}
 	}
-	capture := captureBrowser(ctx, target, id, occurrence, config)
-	<-permit
-	capture.report.QueuedAt = queuedAt
-	return exportBrowserCapture(ctx, &capture, *config.Browser)
 }

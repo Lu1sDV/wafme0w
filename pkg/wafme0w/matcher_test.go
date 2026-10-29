@@ -194,6 +194,64 @@ func TestFoldBytesPreservesCallerStorage(t *testing.T) {
 	}
 }
 
+func TestMatcherMandatoryGuardEquivalence(t *testing.T) {
+	patterns := []string{
+		`(?i)lengthy-prefix.*tail`,
+		`(?i)lengthy-prefix.*(tail|ending)`,
+		`(?i)(lengthy-prefix.*tail|other-prefix.+ending).*finish`,
+		`(?i)(lengthy-prefix.*tail|[0-9]+).*finish`,
+		`(?i)(lengthy-prefix.*tail)?finish`,
+		`(?i)(lengthy-prefix.*tail){0,2}finish`,
+		`(?i)(lengthy-prefix.*tail){2,3}finish`,
+		`(?i)^lengthy-prefix.*tail$`,
+		`(?i)\blengthy-prefix.*tail\b`,
+		`(?i)\Blengthy-prefix.*tail\B`,
+		`(?i)lengthy-prefix.*(?-i:UPPER).*tail`,
+		`(?i)lengthy-prefix.*�.*tail`,
+		`(?i)Kelvin.*ſuffix.*ς`,
+		strings.Repeat(`(?i)segment.*`, 18) + `end`,
+		`(?i)(` + strings.Join([]string{
+			"one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+			"ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen",
+		}, "|") + `).*finish`,
+	}
+	samples := []string{
+		"", "lengthy-prefix", "tail", "tail lengthy-prefix", "lengthy-prefixTAIL",
+		"lengthy-prefix ending", "lengthy-prefix other tail finish",
+		"other-prefix ending finish", "other-prefix ending", "123finish", "finish",
+		"lengthy-prefix tail lengthy-prefix tail finish", "lengthy-prefix UPPER tail",
+		"lengthy-prefix upper tail", "lengthy-prefix\xffTAIL", "lengthy-prefix�TAIL",
+		"lengthy-prefix tail\n", "xlengthy-prefix tailx", "ſeventeen finish",
+		"KELVIN ſUFFIX Σ", "kelvin suffix ς", "\xfflengthy-prefix tail\xff",
+		strings.Repeat("lengthy-prefix ", 1024),
+		strings.Repeat("lengthy-prefix ", 1024) + "TAIL",
+		strings.Repeat("segment ", 18) + "end",
+	}
+	for _, pattern := range patterns {
+		t.Run(pattern, func(t *testing.T) {
+			matcher, err := compileFingerprint(FingerPrint{Type: "Content", Pattern: pattern})
+			if err != nil {
+				t.Fatal(err)
+			}
+			oracle := regexp.MustCompile(pattern)
+			for _, sample := range samples {
+				body := []byte(sample)
+				folded := foldBytes(body)
+				mask := contentMask(folded)
+				for _, indexed := range []bool{false, true} {
+					response := responseData{body: body, foldedBody: folded, bodyMask: mask, bodyFilter: true, allowIndex: indexed}
+					if indexed {
+						response.bodyQuadgrams = newQuadgramFilter(folded)
+					}
+					if got, want := matcher.matchBody(&response), oracle.Match(body); got != want {
+						t.Fatalf("indexed=%t, body %q: got %t, want %t", indexed, sample, got, want)
+					}
+				}
+			}
+		})
+	}
+}
+
 func TestContentFilterSaturation(t *testing.T) {
 	var diverse strings.Builder
 	for first := byte(32); first < 127; first++ {

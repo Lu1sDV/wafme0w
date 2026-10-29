@@ -3,12 +3,17 @@ package wafme0w
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -240,15 +245,18 @@ func TestSuccessfulRunDoesNotCancelInput(t *testing.T) {
 	}
 }
 
-func TestRunProvenanceIncludesAcquisitionEvidenceLimits(t *testing.T) {
+func TestRunProvenanceIncludesEffectiveAcquisitionSettings(t *testing.T) {
 	for _, configured := range []bool{false, true} {
 		config := DefaultConfig()
 		wantHeaders, wantEvidence := config.MaxResponseHeaderBytes, config.MaxTargetEvidenceBytes
+		wantProbes := 1
 		if configured {
 			config.MaxResponseHeaderBytes, config.MaxTargetEvidenceBytes = 3072, 8192
+			config.ProbeConcurrency, wantProbes = 3, 3
 			wantHeaders, wantEvidence = 3072, 8192
 		} else {
 			config.MaxResponseHeaderBytes, config.MaxTargetEvidenceBytes = 0, 0
+			config.ProbeConcurrency = 0
 		}
 		var settings ScanSettings
 		err := Run(context.Background(), emptyEngine(t), strings.NewReader("invalid://fixture"), config, func(result Result) error {
@@ -258,7 +266,7 @@ func TestRunProvenanceIncludesAcquisitionEvidenceLimits(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if settings.MaxResponseHeaderBytes != wantHeaders || settings.MaxTargetEvidenceBytes != wantEvidence {
+		if settings.MaxResponseHeaderBytes != wantHeaders || settings.MaxTargetEvidenceBytes != wantEvidence || settings.ProbeConcurrency != wantProbes {
 			t.Fatalf("configured=%t: effective evidence limits missing from provenance: %+v", configured, settings)
 		}
 	}
@@ -347,5 +355,310 @@ func TestRunEmitsInCompletionOrder(t *testing.T) {
 	}
 	if len(targets) != 2 || targets[0] != "http://fast.invalid" || targets[1] != "http://slow.invalid" {
 		t.Fatalf("results were not emitted in completion order: %v", targets)
+	}
+}
+
+func browserStageConfig(t *testing.T) Config {
+	t.Helper()
+	if runtime.GOOS != "linux" {
+		t.Skip("browser capture requires Linux")
+	}
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := DefaultConfig()
+	config.BaselineOnly = true
+	config.Browser = &BrowserConfig{Mode: "navigate", Path: executable}
+	return config
+}
+
+func savedBrowserCapture(target, id string, occurrence uint64, config Config) browserCapture {
+	dom := fmt.Sprintf("<!doctype html><h1>browser-marker-%d</h1><input name=password value=browser-secret>", occurrence)
+	return browserCapture{
+		report: BrowserReport{ID: id, Occurrence: occurrence, Mode: config.Browser.Mode, State: "complete",
+			StartedAt: time.Now().UTC(), FinishedAt: time.Now().UTC(),
+			URL: target + "?token=browser-query-secret", DOM: BrowserAsset{State: "acquired", Bytes: len(dom)},
+			Screenshot: BrowserAsset{State: "not_selected"}, Headers: []Header{{Name: "Authorization", Value: "browser-header-secret"}}},
+		dom: dom,
+	}
+}
+
+func TestRunBrowserStageFreesHTTPWorkersAndBoundsQueue(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		config := browserStageConfig(t)
+		config.Concurrency = 1
+		var requests, captures, activeCaptures, exports atomic.Int32
+		config.Client = &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+			requests.Add(1)
+			return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader("http-only marker")), Request: request}, nil
+		})}
+		input := &captureRecordsReader{records: make([]string, 30)}
+		for i := range input.records {
+			input.records[i] = fmt.Sprintf("http://fixture.invalid/%d\n", i)
+		}
+		release := make(chan struct{})
+		var results []Result
+		releaseExports := make(chan struct{})
+		config.Browser.SaveText = func(ctx context.Context, artifact BrowserArtifact) (string, error) {
+			exports.Add(1)
+			select {
+			case <-releaseExports:
+				return "owned-" + artifact.CaptureID, nil
+			case <-ctx.Done():
+				return "", ctx.Err()
+			}
+		}
+		engine := emptyEngine(t)
+		done := make(chan error, 1)
+		go func() {
+			done <- run(context.Background(), engine, input, config, func(result Result) error {
+				results = append(results, result)
+				return nil
+			}, func(ctx context.Context, target, id string, occurrence uint64, config Config) browserCapture {
+				if activeCaptures.Add(1) != 1 {
+					t.Error("Chromium captures overlapped")
+				}
+				defer activeCaptures.Add(-1)
+				captures.Add(1)
+				if occurrence == 1 {
+					<-release
+				}
+				return savedBrowserCapture(target, id, occurrence, config)
+			})
+		}()
+		synctest.Wait()
+		// One browser capture, one queued HTTP result, one HTTP worker waiting
+		// to queue its result, and one scanner-held target: all fixed bounds.
+		if requests.Load() != 3 || captures.Load() != 1 || input.readRecords != 4 || len(results) != 0 {
+			t.Errorf("browser blocked HTTP workers or admitted an unbounded queue: HTTP=%d captures=%d read=%d results=%d",
+				requests.Load(), captures.Load(), input.readRecords, len(results))
+		}
+		time.Sleep(time.Second) // Advances only fake time while the first capture is blocked.
+		close(release)
+		synctest.Wait()
+		if captures.Load() != 2 || exports.Load() != 2 || requests.Load() != 5 || input.readRecords != 6 || len(results) != 0 {
+			t.Errorf("blocked exports retained unbounded captures or HTTP results: captures=%d exports=%d HTTP=%d read=%d results=%d",
+				captures.Load(), exports.Load(), requests.Load(), input.readRecords, len(results))
+		}
+		close(releaseExports)
+		if err := <-done; err != nil {
+			t.Fatal(err)
+		}
+		if len(results) != len(input.records) || captures.Load() != int32(len(input.records)) || activeCaptures.Load() != 0 {
+			t.Fatalf("browser pipeline lost work or returned before joining: results=%d captures=%d active=%d", len(results), captures.Load(), activeCaptures.Load())
+		}
+		for _, result := range results {
+			if report := result.Browser; report.Occurrence == 2 && !report.QueuedAt.Before(report.StartedAt) {
+				t.Errorf("QueuedAt was recorded after waiting for Chromium: %+v", report)
+			}
+		}
+	})
+}
+
+func TestRunBrowserStageAssociatesOccurrencesAndOverlapsSanitizedExports(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		config := browserStageConfig(t)
+		config.Concurrency = 3
+		firstBrowser := make(chan struct{})
+		var firstOnce sync.Once
+		config.Client = &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+			if request.URL.Path == "/slow" {
+				select {
+				case <-firstBrowser:
+				case <-request.Context().Done():
+					return nil, request.Context().Err()
+				}
+			}
+			return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader("http-only marker private-http-body")), Request: request}, nil
+		})}
+		secondExport := make(chan struct{})
+		var exports atomic.Int32
+		var savedMu sync.Mutex
+		saved := make(map[uint64]string)
+		config.Browser.SaveText = func(ctx context.Context, artifact BrowserArtifact) (string, error) {
+			content, err := io.ReadAll(artifact.Content)
+			if err != nil {
+				return "", err
+			}
+			if strings.Contains(string(content), "browser-secret") || !strings.Contains(string(content), fmt.Sprintf("browser-marker-%d", artifact.Occurrence)) {
+				t.Errorf("artifact was unsanitized or associated with another occurrence: %q", content)
+			}
+			if exports.Add(1) == 1 {
+				select {
+				case <-secondExport:
+				case <-ctx.Done():
+					return "", ctx.Err()
+				}
+			} else {
+				firstOnce.Do(func() { close(secondExport) })
+			}
+			reference := "owned-" + artifact.CaptureID
+			savedMu.Lock()
+			saved[artifact.Occurrence] = reference
+			savedMu.Unlock()
+			return reference, nil
+		}
+		engine, err := Compile([]WAF{
+			{Name: "HTTP fixture", Schemas: []Scheme{{FingerPrints: []FingerPrint{{Type: "Content", Pattern: "http-only marker"}}}}},
+			{Name: "Browser must not classify", Schemas: []Scheme{{FingerPrints: []FingerPrint{{Type: "Content", Pattern: "browser-marker"}}}}},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		targets := []string{"http://fixture.invalid/slow", "http://fixture.invalid/duplicate", "http://fixture.invalid/duplicate", "http://fixture.invalid/last"}
+		var captureOrder []uint64
+		var results []Result
+		err = run(context.Background(), engine, strings.NewReader(strings.Join(targets, "\n")), config, func(result Result) error {
+			results = append(results, result)
+			return nil
+		}, func(ctx context.Context, target, id string, occurrence uint64, config Config) browserCapture {
+			captureOrder = append(captureOrder, occurrence)
+			if len(captureOrder) == 1 {
+				close(firstBrowser)
+			}
+			return savedBrowserCapture(target, id, occurrence, config)
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(results) != len(targets) || exports.Load() != int32(len(targets)) || len(captureOrder) != len(targets) || captureOrder[0] == 1 {
+			t.Fatalf("did not exercise HTTP reordering and overlapping exports: results=%d exports=%d capture order=%v", len(results), exports.Load(), captureOrder)
+		}
+		ids := make(map[string]bool)
+		occurrences := make(map[uint64]bool)
+		for _, result := range results {
+			report := result.Browser
+			if report == nil || report.Occurrence == 0 || report.Occurrence > uint64(len(targets)) {
+				t.Fatalf("missing browser identity: %+v", report)
+			}
+			if result.Target != targets[report.Occurrence-1] || occurrences[report.Occurrence] || ids[report.ID] {
+				t.Fatalf("browser identity drifted from the HTTP occurrence: target=%q report=%+v", result.Target, report)
+			}
+			occurrences[report.Occurrence], ids[report.ID] = true, true
+			if report.DOM.SaveState != "saved" || report.DOM.Saved != saved[report.Occurrence] || report.QueuedAt.IsZero() {
+				t.Fatalf("artifact did not follow its occurrence: %+v", report)
+			}
+			if len(result.Outcome.Matches) != 1 || result.Outcome.Matches[0].Product != "HTTP fixture" {
+				t.Fatalf("browser assets contaminated HTTP classification: %+v", result.Outcome)
+			}
+			encoded, err := json.Marshal(result)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, secret := range []string{"browser-secret", "browser-query-secret", "browser-header-secret", "private-http-body", "browser-marker"} {
+				if strings.Contains(string(encoded), secret) {
+					t.Errorf("queued result retained private acquired content %q", secret)
+				}
+			}
+		}
+	})
+}
+
+func TestRunBrowserStageCancellationAndSinkFailureJoinAllOwners(t *testing.T) {
+	for _, sinkFailure := range []bool{false, true} {
+		t.Run(fmt.Sprintf("sink-failure=%t", sinkFailure), func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				reader, writer := io.Pipe()
+				defer reader.Close()
+				defer writer.Close()
+				input := &signalSecondRead{Reader: reader, blocked: make(chan struct{})}
+				config := browserStageConfig(t)
+				config.Concurrency = 2
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				sentinel := errors.New("browser result sink failed")
+				firstBrowser, browserActive, browserStopped := make(chan struct{}), make(chan struct{}), make(chan struct{})
+				httpActive, httpStopped := make(chan struct{}), make(chan struct{})
+				config.Client = &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+					switch request.URL.Path {
+					case "/browser-active":
+						select {
+						case <-firstBrowser:
+						case <-request.Context().Done():
+							return nil, request.Context().Err()
+						}
+					case "/http-active":
+						close(httpActive)
+						<-request.Context().Done()
+						close(httpStopped)
+						return nil, request.Context().Err()
+					}
+					return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader("")), Request: request}, nil
+				})}
+				wakeups := 0
+				config.CancelInput = func() {
+					wakeups++
+					_ = reader.Close()
+				}
+				calls := 0
+				engine := emptyEngine(t)
+				done := make(chan error, 1)
+				go func() {
+					done <- run(ctx, engine, input, config, func(Result) error {
+						calls++
+						<-browserActive
+						<-httpActive
+						<-input.blocked
+						if sinkFailure {
+							return sentinel
+						}
+						cancel()
+						return nil
+					}, func(ctx context.Context, target, id string, occurrence uint64, config Config) browserCapture {
+						if strings.HasSuffix(target, "/first") {
+							close(firstBrowser)
+						} else {
+							close(browserActive)
+							<-ctx.Done()
+							close(browserStopped)
+						}
+						return savedBrowserCapture(target, id, occurrence, config)
+					})
+				}()
+				if _, err := io.WriteString(writer, "http://fixture.invalid/first\nhttp://fixture.invalid/browser-active\nhttp://fixture.invalid/http-active\n"); err != nil {
+					t.Fatal(err)
+				}
+				err := <-done
+				want := error(context.Canceled)
+				if sinkFailure {
+					want = sentinel
+				}
+				if !errors.Is(err, want) || calls != 1 || wakeups != 1 {
+					t.Fatalf("shutdown changed first failure or emitted again: err=%v calls=%d wakeups=%d", err, calls, wakeups)
+				}
+				for name, stopped := range map[string]<-chan struct{}{"HTTP": httpStopped, "browser": browserStopped} {
+					select {
+					case <-stopped:
+					default:
+						t.Errorf("%s owner was not joined", name)
+					}
+				}
+			})
+		})
+	}
+}
+
+func TestRunBrowserStageDrainsCompletedWorkAfterInputFailure(t *testing.T) {
+	config := browserStageConfig(t)
+	config.Client = &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader("")), Request: request}, nil
+	})}
+	sentinel := errors.New("target input failed")
+	input := &trackedReader{Reader: io.MultiReader(strings.NewReader("http://fixture.invalid/first\nhttp://fixture.invalid/second\n"), failingReader{sentinel})}
+	var results []Result
+	err := run(context.Background(), emptyEngine(t), input, config, func(result Result) error {
+		results = append(results, result)
+		return nil
+	}, func(ctx context.Context, target, id string, occurrence uint64, config Config) browserCapture {
+		return savedBrowserCapture(target, id, occurrence, config)
+	})
+	if !errors.Is(err, sentinel) || len(results) != 2 || input.closed {
+		t.Fatalf("input failure discarded browser work or closed caller input: err=%v results=%d closed=%v", err, len(results), input.closed)
+	}
+	for _, result := range results {
+		if result.Browser == nil || result.Browser.State != "complete" {
+			t.Fatalf("completed browser capture was not drained: %+v", result.Browser)
+		}
 	}
 }

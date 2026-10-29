@@ -329,3 +329,67 @@ func TestContentLengthHintDoesNotReserveSharedBodyBudget(t *testing.T) {
 		}
 	}
 }
+
+func TestDecodedResponsesDoNotShareStreamState(t *testing.T) {
+	for _, coding := range []string{"gzip", "deflate"} {
+		t.Run(coding, func(t *testing.T) {
+			t.Parallel()
+			for _, test := range []struct {
+				content string
+				limit   int64
+				corrupt bool
+			}{
+				{content: strings.Repeat("first stream ", 4000), limit: 17},
+				{content: strings.Repeat("second stream ", 3000), limit: DefaultMaxBodyBytes},
+				{content: "bad checksum", limit: DefaultMaxBodyBytes, corrupt: true},
+				{content: "after failure", limit: DefaultMaxBodyBytes},
+				{content: "", limit: DefaultMaxBodyBytes},
+				{content: strings.Repeat("exact", 2048), limit: 5 * 2048},
+			} {
+				var encoded bytes.Buffer
+				var writer io.WriteCloser
+				if coding == "gzip" {
+					writer = gzip.NewWriter(&encoded)
+				} else {
+					writer = zlib.NewWriter(&encoded)
+				}
+				if _, err := io.WriteString(writer, test.content); err != nil {
+					t.Fatal(err)
+				}
+				if err := writer.Close(); err != nil {
+					t.Fatal(err)
+				}
+				if test.corrupt {
+					encoded.Bytes()[encoded.Len()-1] ^= 0xff
+				}
+				body := &trackedResponseBody{Reader: bytes.NewReader(encoded.Bytes())}
+				client := &http.Client{Transport: bodyTrackingTransport{response: &http.Response{
+					StatusCode: http.StatusOK, Header: http.Header{"Content-Encoding": {coding}}, Body: body,
+				}}}
+				got, err := sendHTTP(context.Background(), requestOpts{Method: http.MethodGet, Target: "http://fixture.invalid"}, client, test.limit)
+				want := test.content[:min(int64(len(test.content)), test.limit)]
+				if (err != nil) != test.corrupt || string(got.Body) != want || got.BodyTruncated != (int64(len(test.content)) > test.limit) || body.closes != 1 {
+					t.Fatalf("stream state leaked: body=%q want=%q truncated=%t closed=%d err=%v", got.Body, want, got.BodyTruncated, body.closes, err)
+				}
+			}
+		})
+	}
+}
+
+func TestBoundedBodyReaderRejectsRepeatedEmptyReads(t *testing.T) {
+	reader := &intermittentEmptyReader{}
+	body, err := readBoundedBody(reader, 100, 0)
+	if !errors.Is(err, io.ErrNoProgress) || string(body) != "x" || reader.calls != 101 {
+		t.Fatalf("no-progress read lost partial body or bounded retries: body=%q calls=%d err=%v", body, reader.calls, err)
+	}
+}
+
+type intermittentEmptyReader struct{ calls int }
+
+func (r *intermittentEmptyReader) Read(p []byte) (int, error) {
+	r.calls++
+	if r.calls == 1 {
+		return copy(p, "x"), nil
+	}
+	return 0, nil
+}
