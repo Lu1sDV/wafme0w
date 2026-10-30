@@ -5,9 +5,22 @@ on:
     tags: ['v*']
   workflow_dispatch:
     inputs:
-      tag:
-        description: Existing vMAJOR.MINOR.PATCH[-PRERELEASE] tag (no build metadata)
+      bump:
+        description: Automatic increment (ignored when version or tag is supplied)
         required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      version:
+        description: Exact NEW version (e.g. v2.0.5 or v2.1.0-rc.1); overrides bump; leave tag empty
+        required: false
+        type: string
+      tag:
+        description: EXISTING tag for recovery; leave empty when creating a new version
+        required: false
         type: string
 
 permissions:
@@ -18,14 +31,18 @@ env:
   GH_REPO: ${{ github.repository }}
 
 concurrency:
-  group: release-${{ inputs.tag || github.ref_name }}
+  # Keep version allocation, registry delivery and tap updates in one queue.
+  group: release-delivery-${{ github.repository }}
   cancel-in-progress: false
+  queue: max
 
 jobs:
   prepare:
-    name: Validate tag and freeze peeled source SHA
+    name: Check delivery access, choose version and freeze source
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions:
+      contents: write
     outputs:
       tag: ${{ steps.prepare.outputs.tag }}
       revision: ${{ steps.prepare.outputs.revision }}
@@ -33,17 +50,64 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
-      - name: Resolve supplied tag once, including annotated tags
+      - name: Validate release request
+        id: request
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          python - <<'PY'
+          import os
+          import sys
+          from pathlib import Path
+          sys.path.insert(0, 'tools')
+          import release_start
+          stable = release_start.validate_request(
+              os.environ['RELEASE_TAG'], os.environ['RELEASE_VERSION'],
+              os.environ['GITHUB_EVENT_NAME'], os.environ['GITHUB_REF'])
+          with Path(os.environ['GITHUB_OUTPUT']).open('a', encoding='utf-8') as output:
+              output.write(f'stable={str(stable).lower()}\n')
+          PY
+      - name: Check stable delivery configuration before creating a tag
+        if: steps.request.outputs.stable == 'true'
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          NEW_RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.tag == '' }}
+          PUBLISH_GHCR: ${{ vars.WAFME0W_PUBLISH_GHCR }}
+        run: |
+          if [[ "$NEW_RELEASE" == true && "$PUBLISH_GHCR" != true ]]; then
+            echo 'Set the repository variable WAFME0W_PUBLISH_GHCR=true before starting full delivery.' >&2
+            exit 1
+          fi
+          python tools/homebrew_release.py --check-access --tap Lu1sDV/homebrew-tap
+      - name: Create the next version or resolve the supplied immutable tag
         id: prepare
         env:
-          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+          RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_BUMP: ${{ inputs.bump || 'patch' }}
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: python tools/release.py prepare --tag "$RELEASE_TAG"
+        run: |
+          if [[ -n "$RELEASE_TAG" ]]; then
+            python tools/release.py prepare --tag "$RELEASE_TAG"
+          else
+            # Continue this run: GITHUB_TOKEN-created tags do not start a second workflow.
+            python tools/release_start.py --bump "$RELEASE_BUMP" --version "$RELEASE_VERSION" \
+              --revision "$GITHUB_SHA"
+          fi
+      - name: Record the selected release
+        env:
+          RELEASE_TAG: ${{ steps.prepare.outputs.tag }}
+          RELEASE_SHA: ${{ steps.prepare.outputs.revision }}
+        run: |
+          printf '## Release %s\n\nSource: `%s`\n\nDelivery continues after all validation gates pass.\n' \
+            "$RELEASE_TAG" "$RELEASE_SHA" >> "$GITHUB_STEP_SUMMARY"
 
   ci:
     name: Required complete CI on frozen source
@@ -199,7 +263,7 @@ jobs:
 
   publish:
     name: Publish verified assets without overwrite
-    # Serialize cross-tag latest promotion without serializing validation.
+    # Also coordinate with releases still running an older workflow revision.
     concurrency:
       group: release-publication-${{ github.repository }}
       cancel-in-progress: false
@@ -294,3 +358,58 @@ jobs:
       - name: Remove registry credentials
         if: always()
         run: docker logout ghcr.io
+
+  publish-homebrew:
+    name: Audit, test and update the Homebrew tap
+    needs: [prepare, publish, publish-container]
+    # An explicitly disabled registry channel must not suppress a stable tap
+    # update; a failed registry delivery must. Prereleases never replace stable.
+    if: >-
+      ${{ !cancelled() && needs.prepare.outputs.prerelease == 'false' &&
+          needs.publish.result == 'success' &&
+          (needs.publish-container.result == 'success' || needs.publish-container.result == 'skipped') }}
+    runs-on: macos-15
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+      RELEASE_SHA: ${{ needs.prepare.outputs.revision }}
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+      HOMEBREW_NO_ANALYTICS: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.revision }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: release-verified
+          path: dist
+      - name: Verify the published formula before running Homebrew
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python tools/homebrew_release.py --verify-only --tag "$RELEASE_TAG" \
+            --revision "$RELEASE_SHA" --dist dist
+      - name: Audit and test the candidate formula against published archives
+        run: |
+          brew tap Lu1sDV/tap https://github.com/Lu1sDV/homebrew-tap.git
+          cp dist/wafme0w.rb "$(brew --repository Lu1sDV/tap)/Formula/wafme0w.rb"
+          brew audit --strict --online Lu1sDV/tap/wafme0w
+          brew install --formula Lu1sDV/tap/wafme0w
+          brew test Lu1sDV/tap/wafme0w
+      - name: Commit the verified formula to the tap
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          python tools/homebrew_release.py --tag "$RELEASE_TAG" --revision "$RELEASE_SHA" \
+            --tap Lu1sDV/homebrew-tap --dist dist
+      - name: Record completed stable delivery
+        run: |
+          printf '## Delivery complete: %s\n\n[GitHub release](https://github.com/%s/releases/tag/%s)\n\nHomebrew: `brew install Lu1sDV/tap/wafme0w`\n' \
+            "$RELEASE_TAG" "$GITHUB_REPOSITORY" "$RELEASE_TAG" >> "$GITHUB_STEP_SUMMARY"
