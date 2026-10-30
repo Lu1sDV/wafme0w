@@ -17,6 +17,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"golang.org/x/net/html"
 )
 
 func TestBrowserExportSanitizesStructuredContentWithoutChangingAcquisition(t *testing.T) {
@@ -43,7 +45,7 @@ func TestBrowserExportSanitizesStructuredContentWithoutChangingAcquisition(t *te
 			Screenshot:  BrowserAsset{State: "not_selected"},
 			Limitations: []string{"Resource denied: https://u:limitation-secret@example.test/?token=limitation-token"},
 		},
-		dom: rawDOM,
+		dom: rawDOM, domSnapshot: browserDOMSnapshotFixture(t, rawDOM),
 	}
 	originalReport, err := json.Marshal(capture.report)
 	if err != nil {
@@ -171,7 +173,7 @@ func TestBrowserExportRecognizesCredentialAttributeValues(t *testing.T) {
 			capture := browserCapture{report: BrowserReport{
 				ID: "credential-fields", Occurrence: 7, State: "complete",
 				DOM: BrowserAsset{State: "acquired", Bytes: len(raw)},
-			}, dom: raw}
+			}, dom: raw, domSnapshot: browserDOMSnapshotFixture(t, raw)}
 			var saved []byte
 			report := exportBrowserCapture(context.Background(), &capture, BrowserConfig{Mode: "navigate", SaveText: func(_ context.Context, artifact BrowserArtifact) (string, error) {
 				if artifact.MIME != "application/json" || artifact.CaptureID != "credential-fields" || artifact.Occurrence != 7 {
@@ -213,6 +215,62 @@ func TestBrowserExportRecognizesCredentialAttributeValues(t *testing.T) {
 			}
 			if capture.dom != raw || capture.report.DOM.SaveState != "" || capture.report.DOM.SHA256 != "" || capture.report.DOM.Bytes != len(raw) {
 				t.Fatal("export mutated acquisition-owned state")
+			}
+		})
+	}
+}
+
+func TestBrowserExportPreservesAcquiredCredentialAncestry(t *testing.T) {
+	const secret = "REVIEW-CREDENTIAL-SECRET"
+	const namespace = "http://www.w3.org/1999/xhtml"
+	for _, test := range []struct {
+		name, raw, snapshot string
+	}{
+		{
+			name:     "paragraph implicit closure",
+			raw:      `<body><p id="token"><div>` + secret + `</div></p><span>public sibling</span></body>`,
+			snapshot: `[{"parent":-1,"tag":"body","namespace":"` + namespace + `"},{"parent":0,"tag":"p","namespace":"` + namespace + `","attributes":[{"name":"id","value":"token"}]},{"parent":1,"tag":"div","namespace":"` + namespace + `"},{"parent":2,"text":"` + secret + `"},{"parent":0,"tag":"span","namespace":"` + namespace + `"},{"parent":4,"text":"public sibling"}]`,
+		},
+		{
+			name:     "table foster parenting",
+			raw:      `<body><table id="token"><div>` + secret + `</div></table><span>public sibling</span></body>`,
+			snapshot: `[{"parent":-1,"tag":"body","namespace":"` + namespace + `"},{"parent":0,"tag":"table","namespace":"` + namespace + `","attributes":[{"name":"id","value":"token"}]},{"parent":1,"tag":"div","namespace":"` + namespace + `"},{"parent":2,"text":"` + secret + `"},{"parent":0,"tag":"span","namespace":"` + namespace + `"},{"parent":4,"text":"public sibling"}]`,
+		},
+		{
+			// A script text node can contain literal closing/opening tags. Its
+			// outerHTML is ambiguous even though the apparent tags are balanced.
+			name:     "raw script text inside credential subtree",
+			raw:      `<body><div id="token"><script></script></div><div>` + secret + `</div><div><script></script></div><span>public sibling</span></body>`,
+			snapshot: `[{"parent":-1,"tag":"body","namespace":"` + namespace + `"},{"parent":0,"tag":"div","namespace":"` + namespace + `","attributes":[{"name":"id","value":"token"}]},{"parent":0,"tag":"span","namespace":"` + namespace + `"},{"parent":2,"text":"public sibling"}]`,
+		},
+		{
+			name:     "foreign content breakout",
+			raw:      `<body><svg id="token"><p>` + secret + `</p></svg><span>public sibling</span></body>`,
+			snapshot: `[{"parent":-1,"tag":"body","namespace":"` + namespace + `"},{"parent":0,"tag":"span","namespace":"` + namespace + `"},{"parent":1,"text":"public sibling"}]`,
+		},
+		{
+			name:     "namespaced credential marker",
+			raw:      `<body><div id="token"><span>` + secret + `</span></div><span>public sibling</span></body>`,
+			snapshot: `[{"parent":-1,"tag":"body","namespace":"` + namespace + `"},{"parent":0,"tag":"div","namespace":"` + namespace + `","attributes":[{"name":"id","value":"token","namespace":"urn:credential-fixture"}]},{"parent":1,"tag":"span","namespace":"` + namespace + `"},{"parent":2,"text":"` + secret + `"},{"parent":0,"tag":"span","namespace":"` + namespace + `"},{"parent":4,"text":"public sibling"}]`,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			capture := browserCapture{report: BrowserReport{State: "complete", DOM: BrowserAsset{State: "acquired", Bytes: len(test.raw)}}, dom: test.raw, domSnapshot: test.snapshot}
+			var saved []byte
+			report := exportBrowserCapture(context.Background(), &capture, BrowserConfig{Mode: "navigate", SaveText: func(_ context.Context, artifact BrowserArtifact) (string, error) {
+				var err error
+				saved, err = io.ReadAll(artifact.Content)
+				return "sanitized-dom.json", err
+			}})
+			if bytes.Contains(saved, []byte(secret)) {
+				t.Fatalf("recognized credential escaped its acquired subtree: %s", saved)
+			}
+			if report.State != "complete" || report.DOM.SaveState != "saved" || !bytes.Contains(saved, []byte("public sibling")) {
+				t.Fatalf("safe sibling or export state lost: report=%+v output=%s", report, saved)
+			}
+			rawHash := sha256.Sum256([]byte(test.raw))
+			if report.DOM.AcquiredSHA256 != hex.EncodeToString(rawHash[:]) || capture.dom != test.raw || capture.domSnapshot != test.snapshot {
+				t.Fatal("sanitization changed raw acquisition identity or content")
 			}
 		})
 	}
@@ -319,14 +377,18 @@ func TestBrowserExportRejectsImageThatExpandsPastOutputLimit(t *testing.T) {
 }
 
 func TestBrowserExportDOMFailuresNeverReachSink(t *testing.T) {
+	validSnapshot := browserDOMSnapshotFixture(t, "<p>safe DOM</p>")
 	for name, capture := range map[string]browserCapture{
-		"incomplete":           {dom: "<html><body><p>unfinished"},
-		"mismatched":           {dom: "<div><span>text</div></span>"},
-		"partial tag":          {dom: "<html><body></body></html><input password=secret"},
-		"oversized input":      {dom: strings.Repeat("x", browserMaxDOM+1)},
-		"oversized projection": {dom: strings.Repeat("<p>"+strings.Repeat(`"`, 4096)+"</p>", 200)},
-		"reported truncation":  {dom: "<p>complete prefix</p>", report: BrowserReport{DOM: BrowserAsset{Truncated: true}}},
-		"invalid UTF-8":        {dom: "<p>\xff</p>"},
+		"missing snapshot": {dom: "<p>raw HTML alone cannot prove ancestry</p>"},
+		"oversized input":  {dom: strings.Repeat("x", browserMaxDOM+1), domSnapshot: validSnapshot},
+		// The browser's JSON.stringify keeps '<' literal. The final inert JSON
+		// encoder escapes it, so a valid bounded snapshot can exceed output limits.
+		"oversized projection": {
+			dom:         "<p>" + strings.Repeat("&lt;", 200000) + "</p>",
+			domSnapshot: `[{"parent":-1,"tag":"p","namespace":"` + browserHTMLNamespace + `"},{"parent":0,"text":"` + strings.Repeat("<", 200000) + `"}]`,
+		},
+		"reported truncation": {dom: "<p>complete prefix</p>", domSnapshot: validSnapshot, report: BrowserReport{DOM: BrowserAsset{Truncated: true}}},
+		"invalid UTF-8":       {dom: "<p>\xff</p>", domSnapshot: validSnapshot},
 	} {
 		t.Run(name, func(t *testing.T) {
 			capture.report.State = "complete"
@@ -342,12 +404,65 @@ func TestBrowserExportDOMFailuresNeverReachSink(t *testing.T) {
 	}
 }
 
+func TestBrowserExportStructuralDOMFailuresNeverReachSink(t *testing.T) {
+	root := browserDOMSnapshotEntry{Parent: -1, Tag: "div", Namespace: browserHTMLNamespace}
+	encode := func(entries []browserDOMSnapshotEntry) string {
+		t.Helper()
+		data, err := json.Marshal(entries)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(data)
+	}
+	tooMany := []browserDOMSnapshotEntry{root}
+	for range browserMaxDOMNodes {
+		tooMany = append(tooMany, browserDOMSnapshotEntry{Parent: 0})
+	}
+	tooDeep := []browserDOMSnapshotEntry{root}
+	for i := range browserMaxDOMDepth {
+		tooDeep = append(tooDeep, browserDOMSnapshotEntry{Parent: i, Tag: "div", Namespace: browserHTMLNamespace})
+	}
+	for name, snapshot := range map[string]string{
+		"missing": "", "empty": "[]", "null": "null", "malformed": "[", "unknown fields": `[{"parent":-1,"unknown":true}]`,
+		"forward parent":         encode([]browserDOMSnapshotEntry{root, {Parent: 2, Text: "secret"}}),
+		"text parent":            encode([]browserDOMSnapshotEntry{root, {Parent: 0, Text: "text"}, {Parent: 1, Text: "secret"}}),
+		"second root":            encode([]browserDOMSnapshotEntry{root, root}),
+		"foreign root":           encode([]browserDOMSnapshotEntry{{Parent: -1, Tag: "svg", Namespace: "http://www.w3.org/2000/svg"}}),
+		"ambiguous element text": encode([]browserDOMSnapshotEntry{{Parent: -1, Tag: "div", Namespace: browserHTMLNamespace, Text: "secret"}}),
+		"text attributes":        encode([]browserDOMSnapshotEntry{root, {Parent: 0, Text: "secret", Attributes: []browserDOMSnapshotAttribute{{Name: "id", Value: "token"}}}}),
+		"trailing data":          encode([]browserDOMSnapshotEntry{root}) + "{}",
+		"oversized":              strings.Repeat(" ", browserMaxDOM+1),
+		"too many nodes":         encode(tooMany), "too much depth": encode(tooDeep),
+	} {
+		t.Run(name, func(t *testing.T) {
+			capture := browserCapture{report: BrowserReport{State: "complete", DOM: BrowserAsset{State: "acquired"}}, dom: "<div>raw acquisition remains available</div>", domSnapshot: snapshot}
+			report := exportBrowserCapture(context.Background(), &capture, BrowserConfig{Mode: "navigate", SaveText: func(context.Context, BrowserArtifact) (string, error) {
+				t.Fatal("invalid structural DOM reached SaveText")
+				return "", nil
+			}})
+			if report.State != "partial" || report.DOM.State != "acquired" || report.DOM.SaveState != "failed" || report.DOM.Saved != "" {
+				t.Fatalf("invalid structural DOM lost failure/acquisition state: %+v", report)
+			}
+		})
+	}
+	for name, entries := range map[string][]browserDOMSnapshotEntry{
+		"node boundary": tooMany[:browserMaxDOMNodes], "depth boundary": tooDeep[:browserMaxDOMDepth],
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := browserSanitizeDOM(context.Background(), encode(entries)); err != nil {
+				t.Fatalf("exact structural DOM boundary rejected: %v", err)
+			}
+		})
+	}
+}
+
 func TestBrowserExportCancellationAndSinkFailuresPreserveAcquisition(t *testing.T) {
 	for _, stage := range []string{"DOM", "screenshot"} {
 		for _, failure := range []string{"cancelled before", "sink error", "cancelled by sink", "empty reference"} {
 			t.Run(stage+"/"+failure, func(t *testing.T) {
 				capture := browserExportImageFixture(t, 4, 3)
 				capture.dom = "<p>safe DOM</p>"
+				capture.domSnapshot = browserDOMSnapshotFixture(t, capture.dom)
 				capture.report.DOM.State = "acquired"
 				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
@@ -392,6 +507,7 @@ func TestBrowserExportCancellationAndSinkFailuresPreserveAcquisition(t *testing.
 
 func TestBrowserExportUnselectedImageAndSinkPanic(t *testing.T) {
 	capture := browserCapture{report: BrowserReport{State: "complete", DOM: BrowserAsset{State: "acquired"}, Screenshot: BrowserAsset{State: "acquired", Bytes: 12}}, dom: "<p>safe</p>", image: []byte("invalid raw image")}
+	capture.domSnapshot = browserDOMSnapshotFixture(t, capture.dom)
 	for _, config := range []BrowserConfig{
 		{Mode: "screenshot"},
 		{Mode: "navigate", SaveScreenshot: func(context.Context, BrowserArtifact) (string, error) {
@@ -410,6 +526,45 @@ func TestBrowserExportUnselectedImageAndSinkPanic(t *testing.T) {
 		}
 	}()
 	exportBrowserCapture(context.Background(), &capture, BrowserConfig{Mode: "navigate", SaveText: func(context.Context, BrowserArtifact) (string, error) { panic("caller panic") }})
+}
+
+// Existing fixtures use ordinary parsed HTML. Adversarial DOM ancestry tests
+// provide explicit parent records instead, because parsing would repair them.
+func browserDOMSnapshotFixture(t *testing.T, raw string) string {
+	t.Helper()
+	document, err := html.Parse(strings.NewReader(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var entries []browserDOMSnapshotEntry
+	var visit func(*html.Node, int)
+	visit = func(node *html.Node, parent int) {
+		if node.Type == html.ElementNode || node.Type == html.TextNode {
+			if node.Namespace != "" {
+				return
+			}
+			entry := browserDOMSnapshotEntry{Parent: parent}
+			if node.Type == html.ElementNode {
+				entry.Tag, entry.Namespace = node.Data, browserHTMLNamespace
+				for _, attribute := range node.Attr {
+					entry.Attributes = append(entry.Attributes, browserDOMSnapshotAttribute{Name: attribute.Key, Value: attribute.Val, Namespace: attribute.Namespace})
+				}
+			} else {
+				entry.Text = node.Data
+			}
+			parent = len(entries)
+			entries = append(entries, entry)
+		}
+		for child := node.FirstChild; child != nil; child = child.NextSibling {
+			visit(child, parent)
+		}
+	}
+	visit(document, -1)
+	snapshot, err := json.Marshal(entries)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(snapshot)
 }
 
 func browserExportImageFixture(t *testing.T, width, height int) browserCapture {

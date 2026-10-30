@@ -336,15 +336,15 @@ input,div{position:absolute;left:20px;width:300px;height:30px;border:0;padding:0
 </body></html>`)
 	}))
 	defer fixture.Close()
-	capture := captureBrowser(context.Background(), fixture.URL+"/", "credential-attributes", 1, config)
-	if capture.report.State != "complete" || !capture.geometryOK || len(capture.secrets) != 4 {
-		t.Fatalf("credential attribute capture or geometry incomplete: %+v, geometry=%t rects=%+v", capture.report, capture.geometryOK, capture.secrets)
-	}
 	var dom, screenshot []byte
 	config.Browser.SaveText = func(_ context.Context, artifact BrowserArtifact) (string, error) {
 		var err error
 		dom, err = io.ReadAll(artifact.Content)
 		return "sanitized-dom.json", err
+	}
+	capture := captureBrowser(context.Background(), fixture.URL+"/", "credential-attributes", 1, config)
+	if capture.report.State != "complete" || !capture.geometryOK || len(capture.secrets) != 4 {
+		t.Fatalf("credential attribute capture or geometry incomplete: %+v, geometry=%t rects=%+v", capture.report, capture.geometryOK, capture.secrets)
 	}
 	config.Browser.SaveScreenshot = func(_ context.Context, artifact BrowserArtifact) (string, error) {
 		var err error
@@ -425,16 +425,16 @@ func TestBrowserCredentialSubtreeGeometryRejectsUnsafeExports(t *testing.T) {
 				io.WriteString(w, `<!doctype html><html><head><style>body{margin:0;font:16px sans-serif}.credential{position:absolute;left:20px;top:20px;width:300px;height:30px;background:red}.child{display:block;width:300px;height:30px}</style></head><body>`+test.markup+`</body></html>`)
 			}))
 			defer fixture.Close()
-			capture := captureBrowser(context.Background(), fixture.URL+"/", "credential-subtree", 1, config)
-			if capture.report.State != "complete" || len(capture.image) == 0 {
-				t.Fatalf("fixture did not acquire a screenshot: %+v", capture.report)
-			}
 			var dom []byte
 			screenshotCalls := 0
 			config.Browser.SaveText = func(_ context.Context, artifact BrowserArtifact) (string, error) {
 				var err error
 				dom, err = io.ReadAll(artifact.Content)
 				return "sanitized-dom.json", err
+			}
+			capture := captureBrowser(context.Background(), fixture.URL+"/", "credential-subtree", 1, config)
+			if capture.report.State != "complete" || len(capture.image) == 0 {
+				t.Fatalf("fixture did not acquire a screenshot: %+v", capture.report)
 			}
 			config.Browser.SaveScreenshot = func(_ context.Context, artifact BrowserArtifact) (string, error) {
 				screenshotCalls++

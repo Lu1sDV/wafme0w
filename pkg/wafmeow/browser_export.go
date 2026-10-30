@@ -121,10 +121,10 @@ func exportBrowserCapture(ctx context.Context, capture *browserCapture, config B
 		if report.DOM.State == "acquired" {
 			var content []byte
 			var err error
-			if report.DOM.Truncated {
-				err = errors.New("truncated DOM cannot be safely exported")
+			if report.DOM.Truncated || len(capture.dom) == 0 || len(capture.dom) > browserMaxDOM || !utf8.ValidString(capture.dom) {
+				err = errors.New("invalid or truncated DOM cannot be safely exported")
 			} else {
-				content, err = browserSanitizeDOM(ctx, capture.dom)
+				content, err = browserSanitizeDOM(ctx, capture.domSnapshot)
 			}
 			if err != nil {
 				report.DOM.SaveState = "failed"
@@ -392,16 +392,10 @@ type browserDOMNode struct {
 	Children   []browserDOMNode  `json:"children,omitempty"`
 }
 
-func browserSanitizeDOM(ctx context.Context, raw string) ([]byte, error) {
-	if len(raw) == 0 || len(raw) > browserMaxDOM || !utf8.ValidString(raw) {
-		return nil, errors.New("invalid DOM size or encoding")
-	}
-	if err := browserValidateDOM(ctx, raw); err != nil {
-		return nil, err
-	}
-	document, err := html.Parse(strings.NewReader(raw))
+func browserSanitizeDOM(ctx context.Context, snapshot string) ([]byte, error) {
+	document, err := browserReadDOMSnapshot(ctx, snapshot)
 	if err != nil {
-		return nil, errors.New("DOM parsing failed")
+		return nil, err
 	}
 	projection, err := browserProjectDOM(ctx, document, 0)
 	if err != nil {
@@ -422,54 +416,88 @@ func browserSanitizeDOM(ctx context.Context, raw string) ([]byte, error) {
 	return output.Bytes(), nil
 }
 
-// outerHTML is serialized markup, not a hand-authored HTML fragment. Reject
-// unclosed/mismatched serialized structure rather than relying on parser repair.
-func browserValidateDOM(ctx context.Context, raw string) error {
-	tokenizer := html.NewTokenizer(strings.NewReader(raw))
-	tokenizer.SetMaxBuf(browserMaxDOM)
-	var stack []string
-	for {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		kind := tokenizer.Next()
-		if kind == html.ErrorToken {
-			if tokenizer.Err() != io.EOF || len(stack) != 0 || len(tokenizer.Raw()) != 0 {
-				return errors.New("incomplete DOM structure")
-			}
-			return nil
-		}
-		switch kind {
-		case html.CommentToken:
-			if !bytes.HasPrefix(tokenizer.Raw(), []byte("<!--")) || !bytes.HasSuffix(tokenizer.Raw(), []byte("-->")) {
-				return errors.New("malformed DOM comment")
-			}
-		case html.DoctypeToken:
-			if !bytes.HasSuffix(tokenizer.Raw(), []byte(">")) {
-				return errors.New("incomplete DOM declaration")
-			}
-		case html.StartTagToken:
-			token := tokenizer.Token()
-			switch token.Data {
-			case "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr":
-				continue
-			}
-			stack = append(stack, token.Data)
-			if len(stack) > 128 {
-				return errors.New("DOM nesting exceeds export limit")
-			}
-		case html.EndTagToken:
-			token := tokenizer.Token()
-			if len(stack) == 0 || stack[len(stack)-1] != token.Data {
-				return errors.New("mismatched DOM structure")
-			}
-			stack = stack[:len(stack)-1]
-		case html.TextToken:
-			if (len(stack) == 0 || stack[len(stack)-1] != "script" && stack[len(stack)-1] != "style") && bytes.Contains(tokenizer.Raw(), []byte("<")) {
-				return errors.New("malformed DOM text")
-			}
-		}
+type browserDOMSnapshotEntry struct {
+	Parent     int                           `json:"parent"`
+	Tag        string                        `json:"tag,omitempty"`
+	Text       string                        `json:"text,omitempty"`
+	Namespace  string                        `json:"namespace,omitempty"`
+	Attributes []browserDOMSnapshotAttribute `json:"attributes,omitempty"`
+}
+
+type browserDOMSnapshotAttribute struct {
+	Name      string `json:"name"`
+	Value     string `json:"value"`
+	Namespace string `json:"namespace,omitempty"`
+}
+
+// The isolated world records actual parent indexes before HTML serialization can
+// lose ancestry. Never reparse outerHTML here: HTML repair, foreign-content rules
+// and raw-text end tags can move a credential's descendants outside its subtree.
+func browserReadDOMSnapshot(ctx context.Context, snapshot string) (*html.Node, error) {
+	if len(snapshot) == 0 || len(snapshot) > browserMaxDOM || !utf8.ValidString(snapshot) {
+		return nil, errors.New("invalid or unavailable structural DOM snapshot")
 	}
+	decoder := json.NewDecoder(strings.NewReader(snapshot))
+	decoder.DisallowUnknownFields()
+	if token, err := decoder.Token(); err != nil || token != json.Delim('[') {
+		return nil, errors.New("invalid structural DOM snapshot")
+	}
+	document := &html.Node{Type: html.DocumentNode}
+	var nodes []*html.Node
+	var depths []int
+	for decoder.More() {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		if len(nodes) >= browserMaxDOMNodes {
+			return nil, errors.New("structural DOM node limit exceeded")
+		}
+		var entry browserDOMSnapshotEntry
+		if err := decoder.Decode(&entry); err != nil {
+			return nil, errors.New("invalid structural DOM entry")
+		}
+		parent, depth := document, 1
+		if entry.Parent == -1 && len(nodes) == 0 && entry.Tag != "" {
+			// Exactly one element root, followed only by backward parent references.
+		} else if entry.Parent < 0 || entry.Parent >= len(nodes) || nodes[entry.Parent].Type != html.ElementNode {
+			return nil, errors.New("invalid structural DOM parent")
+		} else {
+			parent, depth = nodes[entry.Parent], depths[entry.Parent]+1
+		}
+		if depth > browserMaxDOMDepth {
+			return nil, errors.New("DOM nesting exceeds export limit")
+		}
+		node := &html.Node{Type: html.TextNode, Data: entry.Text}
+		if entry.Tag != "" {
+			if entry.Namespace != browserHTMLNamespace || entry.Text != "" {
+				return nil, errors.New("unsupported structural DOM element")
+			}
+			node.Type, node.Data = html.ElementNode, browserDOMName(entry.Tag)
+			for _, attribute := range entry.Attributes {
+				node.Attr = append(node.Attr, html.Attribute{Namespace: attribute.Namespace, Key: browserDOMName(attribute.Name), Val: attribute.Value})
+			}
+		} else if entry.Namespace != "" || len(entry.Attributes) != 0 {
+			return nil, errors.New("invalid structural DOM text")
+		}
+		parent.AppendChild(node)
+		nodes, depths = append(nodes, node), append(depths, depth)
+	}
+	if token, err := decoder.Token(); err != nil || token != json.Delim(']') || len(nodes) == 0 {
+		return nil, errors.New("incomplete structural DOM snapshot")
+	}
+	if decoder.Decode(new(any)) != io.EOF {
+		return nil, errors.New("trailing structural DOM content")
+	}
+	return document, nil
+}
+
+func browserDOMName(name string) string {
+	return strings.Map(func(r rune) rune {
+		if r >= 'A' && r <= 'Z' {
+			return r + ('a' - 'A')
+		}
+		return r
+	}, name)
 }
 
 func browserProjectDOM(ctx context.Context, node *html.Node, depth int) (browserDOMNode, error) {
@@ -477,7 +505,7 @@ func browserProjectDOM(ctx context.Context, node *html.Node, depth int) (browser
 	if err := ctx.Err(); err != nil {
 		return result, err
 	}
-	if depth > 128 {
+	if depth > browserMaxDOMDepth {
 		return result, errors.New("DOM nesting exceeds export limit")
 	}
 	if node.Type == html.TextNode {

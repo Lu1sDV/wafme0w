@@ -34,6 +34,7 @@ type browserDOM struct {
 	Identity  string `json:"identity"`
 	HTML      string `json:"html"`
 	Truncated bool   `json:"truncated"`
+	Snapshot  string `json:"snapshot"`
 }
 
 type browserGeometry struct {
@@ -271,13 +272,53 @@ const browserReadinessInit = `(() => {
 const browserReadinessPoll = `globalThis.__wafCapture.poll()`
 const browserRenderingOpportunity = `new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve(globalThis.__wafCapture.poll()))))`
 
-var browserDOMScript = fmt.Sprintf(`(() => {
+var browserDOMScript = fmt.Sprintf(`(saveText) => {
   const source = document.documentElement ? document.documentElement.outerHTML : "";
   const bytes = new TextEncoder().encode(source.slice(0, %d + 1));
   let end = Math.min(bytes.length, %d);
   if (end < bytes.length) while (end > 0 && (bytes[end] & 192) === 128) end--;
-  return {identity:globalThis.__wafCapture.identity, html:new TextDecoder("utf-8", {fatal:true}).decode(bytes.subarray(0,end)), truncated:source.length > %d || bytes.length > end};
-})()`, browserMaxDOM, browserMaxDOM, browserMaxDOM)
+  const result = {identity:globalThis.__wafCapture.identity, html:new TextDecoder("utf-8", {fatal:true}).decode(bytes.subarray(0,end)), truncated:source.length > %d || bytes.length > end};
+  if (!saveText || result.truncated || !document.documentElement) return result;
+  // Record actual DOM ancestry in this same synchronous observation. Parsing
+  // outerHTML would repair paragraphs/tables and can reinterpret raw-text or
+  // foreign content. Neither operation is safe before credential redaction.
+  const namespace = %q;
+  const omitted = new Set(["script", "style", "iframe", "frame", "frameset", "object", "embed", "applet", "base", "link", "svg", "math", "template"]);
+  const included = node => node.nodeType !== Node.ELEMENT_NODE || node.namespaceURI === namespace && !omitted.has(node.localName.toLowerCase());
+  const root = document.documentElement;
+  if (!included(root)) return result;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+    acceptNode: node => included(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
+  });
+  const indexes = new WeakMap(), depths = [], records = [], encoder = new TextEncoder();
+  let retained = 2;
+  for (let node = root; node; node = walker.nextNode()) {
+    if (records.length >= %d) return result;
+    const parent = node === root ? -1 : indexes.get(node.parentNode);
+    if (parent === undefined) return result;
+    const depth = parent === -1 ? 1 : depths[parent] + 1;
+    if (depth > %d) return result;
+    const entry = {parent};
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      entry.tag = node.localName;
+      entry.namespace = node.namespaceURI;
+      entry.attributes = [];
+      for (const attribute of node.attributes) {
+        // Namespaced markers still identify credential subtrees. Go omits
+        // their values only after identifying the enclosing credential field.
+        entry.attributes.push({name:attribute.localName, value:attribute.value, namespace:attribute.namespaceURI || ""});
+      }
+    } else entry.text = node.data;
+    const encoded = JSON.stringify(entry);
+    retained += encoder.encode(encoded).length + (records.length ? 1 : 0);
+    if (retained > %d) return result;
+    indexes.set(node, records.length);
+    depths.push(depth);
+    records.push(encoded);
+  }
+  result.snapshot = "[" + records.join(",") + "]";
+  return result;
+}`, browserMaxDOM, browserMaxDOM, browserMaxDOM, browserHTMLNamespace, browserMaxDOMNodes, browserMaxDOMDepth, browserMaxDOM)
 
 const browserGeometryScript = `(fields) => {
   const state = globalThis.__wafCapture;
