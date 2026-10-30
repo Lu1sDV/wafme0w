@@ -147,32 +147,32 @@ Configuration, input and output failures exit **1**; cancellation exits **130**.
 
 ### Recorded live CLI comparison
 
-The **2,000-target run completed on 30 October 2026** recorded a **5.90× median
-elapsed-time ratio at 100 workers in fast mode**: 28 seconds for wafme0w versus
-2m 45s for wafw00f 2.4.2. Each configuration ran three complete blocks over the
-first 2,000 Tranco `ZJ8PG` domains, scanned under explicit authorization.
+Median elapsed time for **2,000 authorized HTTPS targets**, with **three runs per
+configuration**, completed on 30 October 2026. Lower is better.
 
-| Workers / processes | Mode | wafw00f 2.4.2 median elapsed | wafme0w median elapsed | wafw00f returned / attempted | wafme0w returned / complete / attempted | Median elapsed ratio |
-| ---: | --- | --- | --- | --- | --- | --- |
-| 1 | Fast | 70m 27s | 29m 29s | 1542–1544 / 2000 | 2000 / 1390–1415 / 2000 | 2.39× |
-| 1 | Full | 70m 27s | 78m 05s | 1542–1544 / 2000 | 2000 / 1442–1452 / 2000 | 0.90× |
-| 5 | Fast | 15m 26s | 7m 27s | 1539–1541 / 2000 | 2000 / 1431–1437 / 2000 | 2.07× |
-| 5 | Full | 15m 26s | 14m 30s | 1539–1541 / 2000 | 2000 / 1448–1450 / 2000 | 1.06× |
-| 10 | Fast | 7m 46s | 3m 48s | 1539–1541 / 2000 | 2000 / 1446–1454 / 2000 | 2.04× |
-| 10 | Full | 7m 46s | 7m 18s | 1539–1541 / 2000 | 2000 / 1436–1452 / 2000 | 1.07× |
-| 50 | Fast | 3m 45s | 49s | 1537–1538 / 2000 | 2000 / 1449–1455 / 2000 | 4.55× |
-| 50 | Full | 3m 45s | 1m 40s | 1537–1538 / 2000 | 2000 / 1433–1446 / 2000 | 2.24× |
-| 100 | Fast | 2m 45s | 28s | 1534–1545 / 2000 | 2000 / 1437–1460 / 2000 | 5.90× |
-| 100 | Full | 2m 45s | 1m 02s | 1534–1545 / 2000 | 2000 / 1368–1410 / 2000 | 2.66× |
+**CPU:** Intel Core Ultra 9 275HX (4 logical CPUs allowed) · **RAM:** 32 GB.
 
-Ratios above 1 mean wafme0w took less wall time in that configuration; full mode
-at one worker was slower. The measured binary came from clean commit `836252b`
-(Go `1.26.10`, `vcs.modified=false`), SHA-256
-`3278f85f1a8134ef75d6181846f0841d0f8402008f90ad8a39ffab446f844319`. Probes, TLS
-behavior and evidence completeness differ between the tools: wafw00f returned
-about 1,540 of 2,000 targets, and full mode at 100 workers dropped to 1,368–1,410
-complete. These are observed end-to-end timings, not proof of equal work.
-[Full methodology and accounting](docs/benchmarks.md#live-cli-comparison).
+| Workers / processes | wafw00f 2.4.2 | wafme0w fast | wafme0w full |
+| ---: | ---: | ---: | ---: |
+| 1 | 70m 27s | 29m 29s | 78m 05s |
+| 5 | 15m 26s | 7m 27s | 14m 30s |
+| 10 | 7m 46s | 3m 48s | 7m 18s |
+| 50 | 3m 45s | 49s | 1m 40s |
+| 100 | 2m 45s | 28s | 1m 02s |
+
+**Detection results at 100 workers/processes** — targets out of 2,000, shown as
+the range across three runs.
+
+| Targets with… | wafw00f 2.4.2 | wafme0w fast | wafme0w full |
+| --- | ---: | ---: | ---: |
+| Named WAF match | 856–858 | 853–858 | 845–852 |
+| Generic WAF signal | 411–423 | 424–430 | 492–504 |
+| Returned result | 1,534–1,545 | 2,000 | 2,000 |
+| Complete evidence | Not reported | 1,437–1,460 | 1,368–1,410 |
+
+Named matches and generic signals can overlap, including on incomplete results.
+Different probes, TLS policies and evidence completeness prevent an accuracy
+comparison. [Full results, methodology and build details](docs/benchmarks.md#live-cli-comparison).
 
 ### Reproducible offline comparison
 

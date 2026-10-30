@@ -67,28 +67,36 @@ root URLs, scanned under explicit authorization, and stock wafw00f 2.4.2.
 
 ### Wall-clock results
 
-| Workers / processes | Mode | wafw00f 2.4.2 median elapsed | wafme0w median elapsed | wafw00f returned / attempted | wafme0w returned / complete / attempted | Median elapsed ratio |
-| ---: | --- | --- | --- | --- | --- | --- |
-| 1 | Fast | 70m 27s (67m 27s–73m 44s) | 29m 29s (28m 54s–30m 15s) | 1542–1544 / 2000 | 2000 / 1390–1415 / 2000 | 2.39× |
-| 1 | Full | 70m 27s (67m 27s–73m 44s) | 78m 05s (75m 17s–79m 18s) | 1542–1544 / 2000 | 2000 / 1442–1452 / 2000 | 0.90× |
-| 5 | Fast | 15m 26s (15m 09s–16m 16s) | 7m 27s (7m 26s–7m 32s) | 1539–1541 / 2000 | 2000 / 1431–1437 / 2000 | 2.07× |
-| 5 | Full | 15m 26s (15m 09s–16m 16s) | 14m 30s (14m 21s–14m 40s) | 1539–1541 / 2000 | 2000 / 1448–1450 / 2000 | 1.06× |
-| 10 | Fast | 7m 46s (6m 52s–8m 14s) | 3m 48s (3m 46s–3m 51s) | 1539–1541 / 2000 | 2000 / 1446–1454 / 2000 | 2.04× |
-| 10 | Full | 7m 46s (6m 52s–8m 14s) | 7m 18s (7m 10s–7m 28s) | 1539–1541 / 2000 | 2000 / 1436–1452 / 2000 | 1.07× |
-| 50 | Fast | 3m 45s (3m 43s–3m 51s) | 49s (49s–50s) | 1537–1538 / 2000 | 2000 / 1449–1455 / 2000 | 4.55× |
-| 50 | Full | 3m 45s (3m 43s–3m 51s) | 1m 40s (1m 39s–1m 46s) | 1537–1538 / 2000 | 2000 / 1433–1446 / 2000 | 2.24× |
-| 100 | Fast | 2m 45s (1m 40s–2m 50s) | 28s (27s–28s) | 1534–1545 / 2000 | 2000 / 1437–1460 / 2000 | 5.90× |
-| 100 | Full | 2m 45s (1m 40s–2m 50s) | 1m 02s (54s–1m 05s) | 1534–1545 / 2000 | 2000 / 1368–1410 / 2000 | 2.66× |
+Times are **medians of three runs**; parentheses show the shortest–longest run.
+Lower is better. Concurrency means target workers for wafme0w and separate CLI
+processes for wafw00f.
 
-Each ratio divides wafw00f's median elapsed time by wafme0w's for that mode and
-concurrency. Values above 1 mean less elapsed time for wafme0w. The one-worker
-full-mode ratio below 1 preserves that slower result.
+| Workers / processes | wafw00f 2.4.2 | wafme0w fast | wafme0w full |
+| ---: | ---: | ---: | ---: |
+| 1 | 70m 27s (67m 27s–73m 44s) | 29m 29s (28m 54s–30m 15s) | 78m 05s (75m 17s–79m 18s) |
+| 5 | 15m 26s (15m 09s–16m 16s) | 7m 27s (7m 26s–7m 32s) | 14m 30s (14m 21s–14m 40s) |
+| 10 | 7m 46s (6m 52s–8m 14s) | 3m 48s (3m 46s–3m 51s) | 7m 18s (7m 10s–7m 28s) |
+| 50 | 3m 45s (3m 43s–3m 51s) | 49s (49s–50s) | 1m 40s (1m 39s–1m 46s) |
+| 100 | 2m 45s (1m 40s–2m 50s) | 28s (27s–28s) | 1m 02s (54s–1m 05s) |
 
-All 45 cells exited 0 without a watchdog kill, and no completed cell was repeated
-to replace an inconvenient value. Fast mode's advantage widens with concurrency,
-from 2.39× at one worker to 5.90× at 100; full mode gains more slowly. Different
-probe sets, TLS policies, evidence completeness and network state prevent reading
-these ratios as equivalent-work speedups.
+#### Elapsed-time ratios
+
+Each recorded ratio divides wafw00f's median elapsed time by wafme0w's for the
+same concurrency. **Above 1 favors wafme0w; below 1 favors wafw00f.**
+
+| Workers / processes | wafme0w fast | wafme0w full |
+| ---: | ---: | ---: |
+| 1 | 2.39× | 0.90× |
+| 5 | 2.07× | 1.06× |
+| 10 | 2.04× | 1.07× |
+| 50 | 4.55× | 2.24× |
+| 100 | 5.90× | 2.66× |
+
+Fast mode's largest observed time advantage was at 100 workers; full mode was
+slower than wafw00f at one worker. All 45 measured runs exited 0 without a
+watchdog kill, and no completed run was repeated to replace an inconvenient
+value. Different probe sets, TLS policies, evidence completeness and network
+state prevent reading these ratios as equivalent-work speedups.
 
 ### Result accounting
 
@@ -131,10 +139,13 @@ behavior.
 | wafme0w | Commit `836252b`, Go `1.26.10-X:nodwarf5`, `vcs.modified=false` |
 | wafw00f | Unmodified 2.4.2, Python 3.14.8; 189 package files matched the installation manifest |
 | Targets | First 2,000 ranked domains of [Tranco ZJ8PG, 28 October 2026](https://tranco-list.eu/list/ZJ8PG/1000000), as HTTPS root URLs |
-| Host | Linux `7.2.13-100.fc43.x86_64`, x86_64, glibc 2.42, Intel Core Ultra 9 275HX, four allowed logical CPUs, 32 GB RAM |
+| CPU | Intel Core Ultra 9 275HX, four allowed logical CPUs |
+| RAM | 32 GB |
+| OS | Linux `7.2.13-100.fc43.x86_64`, x86_64, glibc 2.42 |
 
-The clean-build flag means the commit identifier plus the toolchain reproduces
-the measured binary. Recorded SHA-256 identities:
+`vcs.modified=false` records a clean source tree at build time. The binary hash
+identifies the exact executable used for these measurements. Recorded SHA-256
+identities:
 
 - Binary: `3278f85f1a8134ef75d6181846f0841d0f8402008f90ad8a39ffab446f844319`
 - Target file: `6f0633e401040fb2a5d76608952a6be8a81327c572bcafe5865f3421c09e29c6`
