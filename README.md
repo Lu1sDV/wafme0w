@@ -160,8 +160,19 @@ configuration**, completed on 30 October 2026. Lower is better.
 | 50 | 3m 45s | 49s | 1m 40s |
 | 100 | 2m 45s | 28s | 1m 02s |
 
-Probe behavior, TLS policy and evidence completeness differ between tools.
-[Methodology, build details and result counts](docs/benchmarks.md#live-cli-comparison).
+**Detection results at 100 workers/processes** — targets out of 2,000, shown as
+the range across three runs.
+
+| Targets with… | wafw00f 2.4.2 | wafme0w fast | wafme0w full |
+| --- | ---: | ---: | ---: |
+| Named WAF match | 856–858 | 853–858 | 845–852 |
+| Generic WAF signal | 411–423 | 424–430 | 492–504 |
+| Returned result | 1,534–1,545 | 2,000 | 2,000 |
+| Complete evidence | Not reported | 1,437–1,460 | 1,368–1,410 |
+
+Named matches and generic signals can overlap, including on incomplete results.
+Different probes, TLS policies and evidence completeness prevent an accuracy
+comparison. [Full results, methodology and build details](docs/benchmarks.md#live-cli-comparison).
 
 ### Reproducible offline comparison
 
