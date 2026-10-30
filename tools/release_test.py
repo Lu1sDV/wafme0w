@@ -119,6 +119,25 @@ class ReleasePolicyTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "already exists"):
                     release.prepare("v2.0.0")
 
+    def test_prepare_never_replaces_a_frozen_manual_revision(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "outputs"
+            with patch.dict(os.environ, {"GITHUB_OUTPUT": str(output)}), \
+                    patch.object(release, "remote_revision", return_value="c" * 40), \
+                    patch.object(release, "repository_releases") as releases, \
+                    patch.object(release, "validate_candidate") as validate:
+                with self.assertRaisesRegex(ValueError, "frozen manual release source"):
+                    release.prepare("v2.0.1", expected_revision="b" * 40)
+                releases.assert_not_called()
+                validate.assert_not_called()
+                self.assertFalse(output.exists())
+            with patch.dict(os.environ, {"GITHUB_OUTPUT": str(output)}), \
+                    patch.object(release, "remote_revision", return_value="b" * 40), \
+                    patch.object(release, "repository_releases", return_value=[]), \
+                    patch.object(release, "validate_candidate"):
+                release.prepare("v2.0.1", expected_revision="b" * 40)
+            self.assertEqual(output.read_text(), f"tag=v2.0.1\nrevision={'b' * 40}\nprerelease=false\n")
+
     def test_build_identity_rejects_dirty_wrong_revision_and_toolchain(self):
         revision = "b" * 40
         info = (f"binary: {release.GO_VERSION}\n"

@@ -2,6 +2,93 @@
 
 [Quick start](../README.md) · [Operations](operations.md)
 
+## Release when ready
+
+Merge the changes you want to ship, then open **Actions → Release → Run workflow**
+on `main`. Leave **bump** as `patch` and **tag** empty for a normal fix release.
+The workflow chooses the next version, creates its annotated tag, runs all release
+gates, publishes the GitHub archives and GHCR images, and updates the Homebrew tap.
+For example, after `v2.0.0`, the default selection is `v2.0.1`.
+
+The same action is available from an authenticated GitHub CLI:
+
+```sh
+gh workflow run release.yml --repo Lu1sDV/wafme0w --ref main -f bump=patch
+```
+
+Choose `minor` for compatible features or `major` for an incompatible release;
+the numbers are calculated from the highest published stable version. Drafts
+and prereleases do not change that baseline. A major bump must already agree
+with the candidate's Go module path. This is an explicit release policy, not
+an attempt to infer compatibility from commit messages.
+
+The source SHA is fixed when you click **Run workflow**. A new release requires
+that SHA to still be the tip of `main` when the queued run starts, with new commits
+since the latest stable tag and that tag in its history. If `main` advances while
+the request waits, start a fresh run. The workflow records the version and exact
+source in its summary; subsequent merges cannot change that candidate.
+
+Merging a PR runs CI. Delivery starts only with **Run workflow** or an explicitly
+pushed `v*` tag. The manually created tag and all delivery stages run in the same
+workflow, because a tag created with `GITHUB_TOKEN` does not trigger another push
+workflow. [GitHub's token documentation](https://docs.github.com/en/actions/concepts/security/github_token)
+explains this behavior.
+
+### One-time delivery setup
+
+Before the first stable delivery:
+
+1. Keep the repository Actions variable `WAFME0W_PUBLISH_GHCR` set to `true`,
+   with package access and visibility configured as described
+   [below](#versioned-ghcr-publication).
+2. Create a fine-grained personal access token owned by `Lu1sDV`, limited to
+   **`homebrew-tap`**, with **Contents: Read and write**. Store it in this
+   repository's **Settings → Secrets and variables → Actions → New repository
+   secret** as **`HOMEBREW_TAP_TOKEN`**. Set an appropriate expiry and renew it
+   before it expires. The tap's default branch must permit this identity to
+   commit its formula update.
+3. Allow the repository's Actions token to create new release tags and publish
+   releases under the repository's rules. The workflow requests `contents: write`
+   only in tag preparation and archive publication; existing tags are never
+   force-updated.
+
+The dedicated tap credential is necessary because `GITHUB_TOKEN` is restricted
+to the workflow's repository. It is exposed only to the access preflight and the
+final tap API update, never to Homebrew's formula audit, install or test. The
+preflight checks for a configured credential, a writable tap and its expected
+formula before creating a new tag. Repository rules and token scopes can still
+reject a later write; that failure remains visible in the release run.
+
+### Existing tags and interrupted runs
+
+The optional **tag** input accepts an existing
+`vMAJOR.MINOR.PATCH[-PRERELEASE]` tag and ignores **bump**. Use it for a prerelease
+or to resume an unpublished candidate; its source must contain the current
+release helpers. An existing tag must never be moved to fix a failed candidate.
+Prereleases publish their archives and the configured GHCR channel, and leave
+the stable Homebrew formula alone.
+
+Release runs queue without cancelling a running delivery. An annotated tag
+created by the manual flow records its owning workflow run, allowing preparation
+to recover that exact tag on a rerun. It cannot claim another run's tag, allocate
+another version on a retry, or replace a published release. A fresh run that
+finds its next version already tagged stops and asks you to recover that candidate
+instead of silently skipping a version.
+
+Use **Re-run failed jobs** after fixing a transient failure. A failure before
+tag creation with no recorded tag requires a new manual dispatch. If a GitHub
+draft or any GHCR version tags were already created, inspect the partial
+publication first: the existing publication helpers deliberately refuse to
+overwrite them. Do not rerun all jobs after a successful GitHub publication.
+A failed Homebrew-only job can be retried; an already identical formula is a
+successful no-op, and a newer or unexpected formula is never overwritten.
+
+GitHub, GHCR and Homebrew are separate publication steps. Treat delivery as
+complete when all configured delivery jobs succeed; the normal new-release
+flow requires all three. This workflow distributes
+the CLI and container image; running a container on a server remains a separate
+deployment decision.
+
 ## Build and install
 
 Use a security-patched **Go 1.26 or newer** toolchain. Release and container builds
@@ -65,11 +152,14 @@ Published formulae are maintained in the
 brew install Lu1sDV/tap/wafme0w
 ```
 
-The workflow still does not push to that tap. After each publication, verify the
-downloaded formula and archives, copy the formula to `Formula/wafme0w.rb` in the tap,
-and require `brew audit --strict --online` and `brew test` to pass against the fresh
-tap before announcing a release as installable through Homebrew. Until the tap
-carries the release's archive hashes, `brew install` serves an older version.
+Stable delivery verifies the formula and archive hashes against the published
+GitHub assets, runs `brew audit --strict --online`, installs the fresh formula
+and runs `brew test` on macOS before updating only `Formula/wafme0w.rb` in the tap.
+The update checks the existing blob SHA to detect concurrent edits, rejects
+downgrades and unexpected formula changes, and accepts an already identical
+formula on retry. Until that job succeeds, `brew install` can still serve the
+previous version. The [one-time credential setup](#one-time-delivery-setup) enables
+this step without a manual formula copy for each release.
 
 ## Container image
 
@@ -158,8 +248,8 @@ the container binary hash to `manifest.json`.
 
 ## Publication gates
 
-The [release workflow](../.github/workflows/release.yml) resolves the requested tag
-once and validates that exact commit before publication:
+The [release workflow](../.github/workflows/release.yml) creates or resolves the
+requested tag once and validates that exact commit before publication:
 
 | Gate | Required evidence |
 | --- | --- |
@@ -169,6 +259,7 @@ once and validates that exact commit before publication:
 | Artifact verification | Binary vulnerability scans, verified hashes and identities in `manifest.json`, and `SHA256SUMS` covering the manifest and generated Homebrew formula |
 | Containers | Native x64/ARM64 build and hardened offline smoke of the exact archived binaries; GHCR writes occur only after successful archive publication and explicit repository opt-in |
 | Publication | Attestation, remote tag and hash rechecks, and no asset overwrite |
+| Stable Homebrew delivery | Published asset hashes match the verified bundle; formula audit, install and offline test pass; tap update is an optimistic, monotonic change |
 
 The [CI workflow](../.github/workflows/ci.yml) defines the source-validation
 commands and host prerequisites. Run hosted native jobs and attestations on the
@@ -191,7 +282,7 @@ Protect `v*` tags against updates/deletion without bypass actors; enable immutab
 releases before publication.
 
 Default Actions tokens should be read-only and unable to approve pull requests.
-The archive publication job explicitly requests `contents: write`; only the
+The tag preparation and archive publication jobs explicitly request `contents: write`; only the
 separate GHCR publication job requests `packages: write`, with attestation/OIDC
 permissions. Grant additional release access only to trusted maintainers.
 

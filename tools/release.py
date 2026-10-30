@@ -145,9 +145,11 @@ def remote_revision(remote, tag):
     return revision
 
 
-def prepare(tag):
+def prepare(tag, *, expected_revision=None):
     key = version_key(tag)
     revision = remote_revision("origin", tag)
+    require(expected_revision is None or revision == expected_revision,
+            "Remote tag differs from the frozen manual release source")
     require(not any(item["tag_name"] == tag for item in repository_releases()),
             f"Release {tag} already exists; refusing overwrite (including drafts)")
     validate_candidate(tag, revision, fetch=True)
@@ -348,8 +350,9 @@ def publish(args):
                      f"All {len(TARGETS)} native archives passed required CI, native package tests, extracted-archive "
                      "offline smoke and binary vulnerability scans. See manifest.json for exact source, "
                      "compiler, binary and archive hashes; SHA256SUMS also covers the manifest and generated "
-                     "Homebrew formula. The formula is a release asset for an operator-managed tap; "
-                     "no public Homebrew tap is implied. "
+                     "Homebrew formula. Stable delivery updates "
+                     "[Lu1sDV/homebrew-tap](https://github.com/Lu1sDV/homebrew-tap) after its audit and test pass; "
+                     "check the release workflow's Homebrew job before installing this version through the tap. "
                      "Synthetic demo captures are examples, not detection-accuracy evidence. "
                      "Use network scanning only where authorized.\n\n"
                      f"Version-specific changes: https://github.com/{os.environ['GH_REPO']}/releases/tag/{args.tag} "
