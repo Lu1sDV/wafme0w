@@ -345,7 +345,7 @@ go test ./pkg/wafmeow -run '^$' -bench '^BenchmarkAcquisitionPipeline$' -benchme
 ```
 
 The acquisition matrix uses owned HTTP/TLS loopback fixtures, four workers, and
-the full catalogue. Baseline/full modes perform exactly one/nine probes over
+the full catalogue. Baseline/full modes perform exactly one/eight probes over
 reused HTTP/1 connections per target. Bodies cover small HTML, 32 KiB HTML, and
 gzip. Compilation and fixture setup are outside timing; acquisition,
 classification, and serial result delivery are inside.

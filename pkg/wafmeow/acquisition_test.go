@@ -674,7 +674,7 @@ func TestRetainedHTTPBudgetConcurrentFastProbes(t *testing.T) {
 	}
 }
 
-func TestDefaultRetainedHTTPBudgetPreservesNineFullBodies(t *testing.T) {
+func TestDefaultRetainedHTTPBudgetPreservesEightFullBodies(t *testing.T) {
 	body := strings.Repeat("x", int(DefaultMaxBodyBytes))
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Server", "fixture")
@@ -682,8 +682,8 @@ func TestDefaultRetainedHTTPBudgetPreservesNineFullBodies(t *testing.T) {
 	}))
 	defer server.Close()
 	evidence := acquireHTTPFixture(t, server.URL, DefaultConfig())
-	if len(evidence) != 9 {
-		t.Fatalf("captured %d probes, want 9", len(evidence))
+	if len(evidence) != 8 {
+		t.Fatalf("captured %d probes, want 8", len(evidence))
 	}
 	for _, observation := range evidence {
 		if observation.StatusCode != 200 || len(observation.Body) != len(body) || observation.BodyTruncated || observation.ErrorCode != "" {
@@ -707,7 +707,7 @@ func TestConfiguredHeaderLimitStillHonorsAggregateBudget(t *testing.T) {
 	config.MaxResponseHeaderBytes = 3 << 20
 	config.MaxTargetEvidenceBytes = 5 << 20
 	evidence := acquireHTTPFixture(t, server.URL, config)
-	if len(evidence) != 9 || retainedHTTPFixtureBytes(evidence) > config.MaxTargetEvidenceBytes {
+	if len(evidence) != 8 || retainedHTTPFixtureBytes(evidence) > config.MaxTargetEvidenceBytes {
 		t.Fatalf("configured large headers escaped aggregate bound: observations=%d bytes=%d", len(evidence), retainedHTTPFixtureBytes(evidence))
 	}
 	for i, observation := range evidence {

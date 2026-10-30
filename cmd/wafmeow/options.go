@@ -37,7 +37,7 @@ type InputOptions struct {
 }
 
 type ModeOptions struct {
-	FastMode       bool `long:"fast" description:"Use the reduced three-request set (active); full mode uses up to nine before redirects"`
+	FastMode       bool `long:"fast" description:"Use the reduced three-request set (active); full mode uses up to eight before redirects"`
 	BaselineOnly   bool `long:"baseline" description:"Send only the normal request, plus allowed redirects; no active probes"`
 	ExcludeGeneric bool `long:"no-generic" description:"Skip generic anomaly checks; keep named WAF fingerprint matching"`
 }
