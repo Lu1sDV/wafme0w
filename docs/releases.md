@@ -192,8 +192,35 @@ and runs `brew test` on macOS before updating only `Formula/wafmeow.rb` in the t
 The update checks the existing blob SHA to detect concurrent edits, rejects
 downgrades and unexpected formula changes, and accepts an already identical
 formula on retry. Until that job succeeds, `brew install` can still serve the
-previous version. The [one-time credential setup](#one-time-delivery-setup) enables
-this step without a manual formula copy for each release.
+previous version of an existing formula; the new `wafmeow` formula is unavailable
+until its first successful publication. The
+[one-time credential setup](#one-time-delivery-setup) enables this step without a
+manual formula copy for each release.
+
+#### Migrate an existing Homebrew installation
+
+Only the `wafmeow` formula receives new releases. An existing
+`Lu1sDV/tap/wafme0w` installation remains a separate package: `brew upgrade` does
+not switch it to the renamed formula.
+
+After the first release under the new name has completed its Homebrew job,
+install and verify the new package while keeping the old installation available:
+
+```sh
+brew update
+brew install Lu1sDV/tap/wafmeow
+wafmeow --version
+```
+
+Update scripts to invoke `wafmeow` and change Brewfile entries to
+`Lu1sDV/tap/wafmeow`. Once the new installation and updated commands work, you can
+remove the old package:
+
+```sh
+brew uninstall Lu1sDV/tap/wafme0w
+```
+
+Future updates use `brew upgrade Lu1sDV/tap/wafmeow`.
 
 ## Container image
 

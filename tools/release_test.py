@@ -385,6 +385,11 @@ class ReleasePolicyTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "Remote tag moved"):
                     release.publish(args)
                 command.assert_not_called()
+                notes = (dist / "release-notes.txt").read_text()
+                self.assertIn("`Lu1sDV/tap/wafme0w` installations do not migrate through `brew upgrade`", notes)
+                self.assertIn("install and verify `wafmeow` before removing the old package", notes)
+                self.assertIn(f"https://github.com/example/repo/blob/{args.revision}/docs/releases.md"
+                              "#migrate-an-existing-homebrew-installation", notes)
 
     def test_tag_move_after_upload_retains_draft_without_publishing(self):
         with tempfile.TemporaryDirectory() as temporary:
