@@ -13,7 +13,7 @@ import (
 	"testing"
 )
 
-func TestOwnedTransportResumesTLSOnFreshVerifiedHTTP1Connections(t *testing.T) {
+func TestOwnedTransportResumesVerifiedTLSOnReusedAndFreshHTTP1Connections(t *testing.T) {
 	for _, version := range []struct {
 		name  string
 		value uint16
@@ -22,8 +22,8 @@ func TestOwnedTransportResumesTLSOnFreshVerifiedHTTP1Connections(t *testing.T) {
 			var requests, connections atomic.Int32
 			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				requests.Add(1)
-				if r.ProtoMajor != 1 || !r.Close || r.TLS == nil {
-					t.Errorf("probe did not use a fresh HTTP/1 TLS connection: proto=%s close=%v tls=%v", r.Proto, r.Close, r.TLS != nil)
+				if r.ProtoMajor != 1 || r.Close || r.TLS == nil {
+					t.Errorf("probe did not use a keep-alive HTTP/1 TLS connection: proto=%s close=%v tls=%v", r.Proto, r.Close, r.TLS != nil)
 				}
 				_, _ = io.WriteString(w, "verified TLS fixture")
 			}))
@@ -44,7 +44,7 @@ func TestOwnedTransportResumesTLSOnFreshVerifiedHTTP1Connections(t *testing.T) {
 			transport.TLSClientConfig.RootCAs = roots
 			defer transport.CloseIdleConnections()
 			client := policy.client(server.URL)
-			check := func(client *http.Client, wantResumed bool) {
+			check := func(client *http.Client, wantConnections int32, wantResumed bool) {
 				t.Helper()
 				response, err := client.Get(server.URL)
 				if err != nil {
@@ -58,19 +58,23 @@ func TestOwnedTransportResumesTLSOnFreshVerifiedHTTP1Connections(t *testing.T) {
 				if response.TLS == nil || response.TLS.DidResume != wantResumed || len(response.TLS.VerifiedChains) == 0 {
 					t.Fatalf("TLS resumption or certificate verification changed: want_resumed=%v state=%+v", wantResumed, response.TLS)
 				}
+				if got := connections.Load(); got != wantConnections {
+					t.Fatalf("TLS connections=%d, want %d", got, wantConnections)
+				}
 			}
-			for i := range 4 {
-				check(client, i != 0)
-			}
+			check(client, 1, false) // verified handshake on a fresh connection
+			check(client, 1, false) // same connection reused by the next probe
+			transport.CloseIdleConnections()
+			check(client, 2, true) // session resumption on a new verified connection
 			// Another Run owns a distinct cache; no session state escapes this run.
 			other := newOutboundPolicy(config)
 			otherTransport := other.base.Transport.(*http.Transport)
 			otherTransport.Proxy = nil
 			otherTransport.TLSClientConfig.RootCAs = roots
 			defer otherTransport.CloseIdleConnections()
-			check(other.client(server.URL), false)
-			if requests.Load() != 5 || connections.Load() != 5 {
-				t.Fatalf("TLS caching changed wire work: requests=%d connections=%d, want 5 each", requests.Load(), connections.Load())
+			check(other.client(server.URL), 3, false)
+			if requests.Load() != 4 || connections.Load() != 3 {
+				t.Fatalf("TLS caching changed wire work: requests=%d connections=%d, want 4 and 3", requests.Load(), connections.Load())
 			}
 		})
 	}

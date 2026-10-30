@@ -25,6 +25,31 @@ func TestExcessiveConcurrencyRejectedBeforeInput(t *testing.T) {
 	}
 }
 
+func TestDefaultConnectionLimitFollowsTargetAndProbeConcurrency(t *testing.T) {
+	for _, test := range []struct {
+		concurrency int
+		probe       int
+		explicit    int
+		want        int
+	}{
+		{1, 1, 0, 1},
+		{1, 8, 0, 8},
+		{20, 8, 0, 20},
+		{1, 8, 1, 1},
+	} {
+		config := DefaultConfig()
+		config.Concurrency, config.ProbeConcurrency, config.MaxConnections = test.concurrency, test.probe, test.explicit
+		normalized := config.normalized()
+		if err := normalized.validate(); err != nil {
+			t.Fatalf("concurrency=%d probe=%d explicit=%d: %v", test.concurrency, test.probe, test.explicit, err)
+		}
+		if normalized.MaxConnections != test.want {
+			t.Fatalf("concurrency=%d probe=%d explicit=%d: connections=%d, want %d",
+				test.concurrency, test.probe, test.explicit, normalized.MaxConnections, test.want)
+		}
+	}
+}
+
 func TestSupportedConcurrencyBoundsValidateWithoutStartingWorkers(t *testing.T) {
 	for _, concurrency := range []int{1, 20, 65536} {
 		config := DefaultConfig()

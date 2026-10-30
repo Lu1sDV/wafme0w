@@ -33,6 +33,50 @@ completed by merging documentation alone.
   URLs, then publish it in a maintained tap if Homebrew distribution is wanted.
   Do not advertise a tap that has not been created and tested.
 
+## CI coverage and recovery
+
+The [CI workflow](../.github/workflows/ci.yml) runs the full suite for pull
+requests and for pushes to `main`. Open PRs provide feature-branch validation,
+avoiding a second copy of the same suite on each push. The
+[release workflow](../.github/workflows/release.yml) still calls reusable CI with
+the prepared, frozen source SHA in `inputs.ref`; all CI jobs check out that
+candidate. All eight existing check contexts remain: the two Go `check` jobs,
+`Local Chromium integration`, and `Native PR test and archive smoke` for
+Linux x64/ARM64, macOS x64/ARM64 and Windows x64. Keep their names and branch
+protection requirements aligned when changing the workflow.
+
+The pinned httpx installation, candidate build, loopback smoke test and usage
+matrix have separate step deadlines and visible progress. Setup and artifact
+uploads also have explicit deadlines within the existing job budgets. These
+execution limits cannot resolve a job that is still waiting for a runner.
+
+Investigate the actual Actions run before recovering a pending check:
+
+| Observed state | Next action |
+| --- | --- |
+| Queued or waiting for a hosted runner | Confirm this is the current attempt, then check runner allocation and service availability. Command timeouts cannot resolve provisioning. |
+| Executing without progress | Inspect the active step, logs and its deadline. Use normal cancellation first if the run must be stopped. |
+| Completed run with a pending PR check | Refresh the run/check data and compare the event, head SHA and attempt with the current PR. Check whether strict branch protection requires an updated base. |
+
+Record the run identity and obtain the affected job's `databaseId`, then rerun
+that job after resolving the cause. The
+[CLI rerun guidance](https://cli.github.com/manual/gh_run_rerun) distinguishes
+this ID from the number shown in a job's web URL:
+
+```sh
+gh run view RUN_ID --repo Lu1sDV/wafmeow --json event,headSha,attempt,status,conclusion
+gh run view RUN_ID --repo Lu1sDV/wafmeow --json jobs --jq '.jobs[] | {name, databaseId, status, conclusion}'
+gh run rerun RUN_ID --repo Lu1sDV/wafmeow --job JOB_DATABASE_ID
+```
+
+Use [force-cancel](https://docs.github.com/en/rest/actions/workflow-runs#force-cancel-a-workflow-run)
+only for a still-active run that does not respond to normal cancellation.
+[Reruns](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs)
+retain the original event's SHA and ref. If the PR needs a newer base, update it
+and validate the resulting candidate before merging. Preserve the required
+gates; do not remove checks or replace them with automatically successful
+statuses. A completed old run does not validate a newer candidate.
+
 ## Positioning and evidence
 
 Use this tagline consistently in the README, release introduction and launch
@@ -63,9 +107,13 @@ saved synthetic corpus,” with the exact workload and environment. The live tab
 completes different amounts of work and does not support an unqualified “× faster”
 headline. The README carries the recorded live comparison with explicit mode,
 date, build and accounting links: on the 2,000-target run from clean commit
-`836252b`, the **median elapsed ratio was 5.90× at 100 workers in fast mode and
-0.90× at one worker in full mode**, so slower cells must stay visible beside faster
-ones. Report per-block returned and complete counts with any live claim, and keep
+`836252b`, before HTTP/1 connection reuse
+([ADR 0002](../adrs/0002-http1-connection-reuse-for-probes.md)), the **median
+elapsed ratio was 5.90× at 100 workers in fast mode and 0.90× at one worker in
+full mode**. The reused-connection build's one-worker result is recorded in the
+[connection-reuse comparison](benchmarks.md#connection-reuse-comparison); do not
+merge it into the older table. Slower cells must stay visible beside faster ones.
+Report per-block returned and complete counts with any live claim, and keep
 offline conformance results attached to their own workload. The
 [2,000-target protocol](benchmarks.md#a-new-2000-target-run) governs the next run.
 

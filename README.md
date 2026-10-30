@@ -174,6 +174,15 @@ Named matches and generic signals can overlap, including on incomplete results.
 Different probes, TLS policies and evidence completeness prevent an accuracy
 comparison. [Full results, methodology and build details](docs/benchmarks.md#live-cli-comparison).
 
+The 2,000-target table predates HTTP/1 probe reuse
+([ADR 0002](adrs/0002-http1-connection-reuse-for-probes.md)). At one worker, the
+reused-connection full build completed a **500-target median of 580.9 s** versus
+**874.6 s** for wafw00f 2.4.2 (1.51×); on the first 100 entries it was 96.4 s
+versus 143.3 s (1.49×) and 173.4 s for the fresh-connection build (44% less
+time). See the
+[connection-reuse comparison](docs/benchmarks.md#connection-reuse-comparison)
+for per-block accounting, paired A/B, scaling and controlled loopback results.
+
 ### Reproducible offline comparison
 
 Run the [reproducible offline comparison](docs/benchmarks.md#reproduce-the-current-checkout)
