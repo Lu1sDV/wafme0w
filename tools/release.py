@@ -402,7 +402,10 @@ def scan_published(args):
             dist = Path(temporary)
             expected = assets[tag]
             binary_stem = next(iter(expected)).split("_", 1)[0]
-            command("gh", "release", "download", tag, "--dir", str(dist), *sorted(expected))
+            download = ["gh", "release", "download", tag, "--dir", str(dist)]
+            for name in sorted(expected):
+                download.extend(("--pattern", name))
+            command(*download)
             require({path.name for path in dist.iterdir()} == set(expected), f"Missing or unexpected published archives: {tag}")
             require(all((dist / name).stat().st_size == size <= MAX_ARCHIVE_BYTES
                         for name, size in expected.items()), f"Published archive size changed after preflight: {tag}")

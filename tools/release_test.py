@@ -1,5 +1,6 @@
 """Offline release-policy checks: python3 -m unittest discover -s tools -p '*_test.py'."""
 
+import argparse
 import hashlib
 import copy
 import gzip
@@ -399,6 +400,99 @@ class ReleasePolicyTests(unittest.TestCase):
                     release.publish(args)
                 self.assertEqual(command.call_count, 1)
                 self.assertEqual(command.call_args.args[:3], ("gh", "release", "create"))
+
+
+class PublishedReleaseScanTests(unittest.TestCase):
+    def published_release(self, tag, prefix, targets=release.TARGETS):
+        archives = {}
+        for name, (target_os, _) in release.archive_names(tag, targets, prefix).items():
+            binary = prefix + (".exe" if target_os == "windows" else "")
+            files = ((binary, name.encode()), ("LICENSE.md", b"fixture license"),
+                     (smoke.CAPTURE.as_posix(), b"fixture capture"))
+            buffer = io.BytesIO()
+            if name.endswith(".zip"):
+                with zipfile.ZipFile(buffer, "w") as output:
+                    for member, content in files:
+                        output.writestr(member, content)
+            else:
+                with tarfile.open(fileobj=buffer, mode="w:gz") as output:
+                    for member, content in files:
+                        info = tarfile.TarInfo(member)
+                        info.size = len(content)
+                        output.addfile(info, io.BytesIO(content))
+            archives[name] = buffer.getvalue()
+        item = {"tag_name": tag, "draft": False, "prerelease": "-" in tag,
+                "assets": [{"name": name, "size": len(content)} for name, content in archives.items()]}
+        return item, archives
+
+    def download(self, archives_by_tag, mutate=None):
+        def command(*args):
+            self.assertEqual(args[:3], ("gh", "release", "download"))
+            # gh accepts a single positional tag; each asset selector needs its
+            # own option. Enforce that boundary without requiring gh in CI.
+            parser = argparse.ArgumentParser(add_help=False)
+            parser.add_argument("tag")
+            parser.add_argument("--dir", required=True)
+            parser.add_argument("--pattern", action="append", default=[])
+            options, extra = parser.parse_known_args(args[3:])
+            self.assertEqual(extra, [], "gh release download accepts only one positional tag")
+            archives = archives_by_tag[options.tag]
+            self.assertCountEqual(options.pattern, archives)
+            dist = Path(options.dir)
+            for name in options.pattern:
+                (dist / name).write_bytes(archives[name])
+            if mutate is not None:
+                mutate(dist)
+            return ""
+        return command
+
+    def test_downloads_and_scans_legacy_and_current_releases_even_after_a_finding(self):
+        legacy, legacy_archives = self.published_release("v1.0.0", "wafme0w", release.LEGACY_TARGETS)
+        current, current_archives = self.published_release("v2.0.0-rc.1", "wafmeow")
+        archives = {legacy["tag_name"]: legacy_archives, current["tag_name"]: current_archives}
+        for vulnerable in (False, True):
+            with self.subTest(vulnerable=vulnerable), tempfile.TemporaryDirectory() as temporary:
+                reports = Path(temporary) / "reports"
+                scanned = []
+
+                def scan(binary, report):
+                    name = report.name.removesuffix(".govulncheck.txt")
+                    self.assertEqual(report.parent, reports)
+                    stem = name.split("_", 1)[0]
+                    self.assertEqual(binary.name, stem + (".exe" if name.endswith(".zip") else ""))
+                    self.assertEqual(binary.read_bytes(), name.encode())
+                    scanned.append(name)
+                    return not (vulnerable and len(scanned) == 1)
+
+                with patch.object(release, "repository_releases", return_value=[legacy, current]), \
+                        patch.object(release, "command", side_effect=self.download(archives)) as download, \
+                        patch.object(release, "scan_binary", side_effect=scan):
+                    if vulnerable:
+                        with self.assertRaisesRegex(ValueError, "Supported published binaries have vulnerabilities"):
+                            release.scan_published(SimpleNamespace(reports=reports))
+                    else:
+                        release.scan_published(SimpleNamespace(reports=reports))
+                    self.assertEqual(download.call_count, 2)
+                self.assertCountEqual(scanned, [*legacy_archives, *current_archives])
+
+    def test_downloaded_asset_set_and_sizes_are_checked_before_extraction(self):
+        item, archives = self.published_release("v2.0.0", "wafmeow")
+        first = next(iter(archives))
+        mutations = (
+            ("missing", lambda dist: (dist / first).unlink(), "Missing or unexpected"),
+            ("extra", lambda dist: (dist / "unexpected.zip").write_bytes(b"extra"), "Missing or unexpected"),
+            ("size", lambda dist: (dist / first).write_bytes(archives[first] + b"changed"), "size changed"),
+        )
+        for name, mutate, message in mutations:
+            with self.subTest(name=name), \
+                    patch.object(release, "repository_releases", return_value=[item]), \
+                    patch.object(release, "command", side_effect=self.download({item["tag_name"]: archives}, mutate)), \
+                    patch.object(release, "extract_archive") as extract, \
+                    patch.object(release, "scan_binary") as scan:
+                with self.assertRaisesRegex(ValueError, message):
+                    release.scan_published(SimpleNamespace(reports=Path("unused")))
+                extract.assert_not_called()
+                scan.assert_not_called()
 
 
 if __name__ == "__main__":
