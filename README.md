@@ -106,7 +106,7 @@ Use `--target` / `-t` for a URL and repeat it for several URLs. Use
 `--input PATH` and `-I PATH` remain equivalent spellings of `--target-file PATH`.
 Choose one input source; saved responses use `--evidence` for offline analysis.
 
-`--baseline` sends a normal request; default active mode sends up to nine requests,
+`--baseline` sends a normal request; default active mode sends up to eight requests,
 and `--fast` selects three. Redirects remain subject to scope and request budgets.
 
 ### ProjectDiscovery httpx pipelines

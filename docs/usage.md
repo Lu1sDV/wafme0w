@@ -69,7 +69,7 @@ their literal contents; headers use the documented CSV quoting rules.
 
 | Mode | Network behavior |
 | --- | --- |
-| Default | Up to nine selected active requests, before redirects; serial after the normal request unless `--probe-concurrency` is raised |
+| Default | Up to eight selected active requests, before redirects; serial after the normal request unless `--probe-concurrency` is raised |
 | `--fast` | Three selected active requests launched without a fixed stagger; fewer requests, **not passive** or a latency guarantee |
 | `--baseline` | One normal request, subject to redirect and request budgets |
 

@@ -121,7 +121,7 @@ func benchmarkAcquisitionPipeline(b *testing.B, engine *Engine, useTLS, baseline
 	}
 	b.Cleanup(transport.CloseIdleConnections)
 	config.Client = &http.Client{Transport: transport}
-	roles := []string{"Normal", "NoUserAgent", "NonExistent", "XssAttack", "XxeAttack", "LfiAttack", "CentralAttack", "SqliAttack", "RceAttack"}
+	roles := []string{"Normal", "NoUserAgent", "NonExistent", "XssAttack", "XxeAttack", "LfiAttack", "CentralAttack", "JndiAttack"}
 	if baseline {
 		roles = roles[:1]
 	}
