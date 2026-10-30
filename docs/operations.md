@@ -58,7 +58,9 @@ JSON/JSONL if that import policy cannot be guaranteed.
 ## Deployment boundaries
 
 Scan only authorized systems. Set explicit scope, timeouts, request budgets, and
-rates for the deployment. Size worker concurrency and memory limits together;
+rates for the deployment. Active mode sends exploit-shaped payloads, including a
+JNDI canary that can make a vulnerable target attempt a loopback LDAP connection;
+see [active probe payloads](usage.md#active-probe-payloads). Size worker concurrency and memory limits together;
 the retained-evidence budget is not a process RSS cap.
 
 A hosted service accepting arbitrary targets additionally needs independently

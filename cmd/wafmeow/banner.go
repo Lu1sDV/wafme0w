@@ -284,8 +284,6 @@ func probeTag(role string, au *aurora.Aurora) aurora.Value {
 		return au.BrightYellow(tag)
 	case "CentralAttack":
 		return au.Yellow(tag)
-	case "SqliAttack":
-		return au.BrightRed(tag)
 	case "RceAttack":
 		return au.Red(tag)
 	}

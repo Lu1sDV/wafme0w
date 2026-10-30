@@ -10,10 +10,10 @@ import (
 )
 
 const (
-	xssString  = "<script>alert(\"XSS\");</script>"
-	sqliString = "UNION SELECT ALL FROM information_schema AND ' or SLEEP(5) or '"
+	xssString  = `"><script>alert("XSS")</script>`
+	sqliString = `' OR 1=1 UNION SELECT ALL FROM information_schema AND ' or SLEEP(5) or '-- -"><script>alert("XSS")</script>`
 	lfiString  = "../../../../etc/passwd"
-	rceString  = "/bin/cat /etc/passwd; ping 127.0.0.1; curl google.com"
+	jndiString = `${jndi:ldap://127.0.0.1:1/a}`
 	xxeString  = "<!ENTITY xxe SYSTEM \"file:///etc/shadow\">]><pwn>&hack;</pwn>"
 )
 
@@ -46,9 +46,16 @@ func newTypeOptions(target string) []requestOpts {
 		{Method: "GET", Target: target, Params: map[string]string{"p": xssString}, Headers: defaultHeaders, Type: "XssAttack"},
 		{Method: "GET", Target: target, Params: map[string]string{"p": xxeString}, Headers: defaultHeaders, Type: "XxeAttack"},
 		{Method: "GET", Target: target, Params: map[string]string{"p": lfiString}, Headers: defaultHeaders, Type: "LfiAttack"},
-		{Method: "GET", Target: target, Params: map[string]string{"l": lfiString, "d": xssString, "v": sqliString}, Headers: defaultHeaders, Type: "CentralAttack"},
-		{Method: "GET", Target: target, Params: map[string]string{"p": sqliString}, Headers: defaultHeaders, Type: "SqliAttack"},
-		{Method: "GET", Target: target, Params: map[string]string{"p": rceString}, Headers: defaultHeaders, Type: "RceAttack"},
+		{Method: "GET", Target: target, Params: map[string]string{
+			"l":  lfiString,
+			"l2": `..\..\..\..\etc\passwd`,
+			"d":  xssString,
+			"v":  sqliString,
+			"c":  ";wafmeow-canary",
+			"r":  "\r\nX-Wafmeow: canary",
+			"h":  "() { :;};",
+		}, Headers: defaultHeaders, Type: "CentralAttack"},
+		{Method: "GET", Target: target, Params: map[string]string{"p": jndiString}, Headers: defaultHeaders, Type: "JndiAttack"},
 	}
 }
 

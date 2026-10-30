@@ -69,13 +69,36 @@ their literal contents; headers use the documented CSV quoting rules.
 
 | Mode | Network behavior |
 | --- | --- |
-| Default | Up to nine selected active requests, before redirects; serial after the normal request unless `--probe-concurrency` is raised |
+| Default | Up to eight selected active requests, before redirects; serial after the normal request unless `--probe-concurrency` is raised |
 | `--fast` | Three selected active requests launched without a fixed stagger; fewer requests, **not passive** or a latency guarantee |
 | `--baseline` | One normal request, subject to redirect and request budgets |
 
 `--fast` and `--baseline` are mutually exclusive. Values 2..8 for
 `--probe-concurrency` apply to default full mode; fast and baseline modes require
 the default value of 1. Explicit `--probe-concurrency 1` is also valid.
+
+### Active probe payloads
+
+Full mode sends one normal request, one no-user-agent request, one random-path
+request, and five active probes: separate XSS, XXE and LFI probes (`p`), one
+combined probe (`l`, `l2`, `d`, `v`, `c`, `r`, `h`), and a JNDI canary (`p`).
+`--fast` sends the normal, no-user-agent and combined probes only, so the JNDI
+canary and the separate XSS/XXE/LFI probe values never leave the client.
+`--baseline` sends no probes at all.
+
+SQL-injection and command-injection payloads travel inside the combined probe,
+because one request per payload multiplied the requests a target sees. A
+blocking response to that probe is recorded against `CentralAttack`;
+acquisition cannot tell which of its payloads triggered the block. Removing the
+standalone SQL-injection and command-injection probes therefore trades
+diagnostic precision for fewer requests, and it is not evidence of equivalent
+detection coverage. Use saved captures or an authorized comparison run when you
+need to know which payload a specific target rejects.
+
+The JNDI canary is `${jndi:ldap://127.0.0.1:1/a}`. It contacts no external
+callback endpoint, but a vulnerable target can still attempt an LDAP connection
+to port 1 on its own loopback interface. Active mode, including this probe, has
+target-side effects; use it only on systems you are authorized to test.
 
 HTTP acquisition settings such as request/target timeouts, request and connection
 budgets, redirect limits and request rates apply to live requests. Supplying them

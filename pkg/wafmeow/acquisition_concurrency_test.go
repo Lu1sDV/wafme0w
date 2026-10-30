@@ -208,7 +208,7 @@ func (b *baselineCompletionBody) Close() error {
 }
 
 func TestFullProbeConcurrencyIsBoundedAndKeepsEvidenceOrder(t *testing.T) {
-	for _, workers := range []int{1, 2, 8} {
+	for _, workers := range []int{1, 2, 7} {
 		t.Run(strconv.Itoa(workers), func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				config := DefaultConfig()
@@ -235,10 +235,10 @@ func TestFullProbeConcurrencyIsBoundedAndKeepsEvidenceOrder(t *testing.T) {
 				started := requests.Load()
 				close(release)
 				evidence := <-done
-				if started != int32(workers+1) || requests.Load() != 9 || len(evidence) != 9 {
+				if started != int32(workers+1) || requests.Load() != 8 || len(evidence) != 8 {
 					t.Fatalf("probe fan-out not bounded: blocked=%d workers=%d requests=%d evidence=%d", started, workers, requests.Load(), len(evidence))
 				}
-				roles := []string{"Normal", "NoUserAgent", "NonExistent", "XssAttack", "XxeAttack", "LfiAttack", "CentralAttack", "SqliAttack", "RceAttack"}
+				roles := []string{"Normal", "NoUserAgent", "NonExistent", "XssAttack", "XxeAttack", "LfiAttack", "CentralAttack", "JndiAttack"}
 				for i, observation := range evidence {
 					if observation.Role != roles[i] || observation.StatusCode != 200 || observation.ErrorCode != "" || string(observation.Body) != observation.RequestURL {
 						t.Fatalf("evidence index %d no longer identifies its probe: %+v", i, observation)
@@ -289,15 +289,15 @@ func TestFullProbeFanoutHonorsSharedRequestBudget(t *testing.T) {
 				exhausted++
 			}
 		}
-		want := min(9, budget)
-		if requests.Load() != int32(want) || len(evidence) != 9 || usable != want || exhausted != 9-want {
+		want := min(8, budget)
+		if requests.Load() != int32(want) || len(evidence) != 8 || usable != want || exhausted != 8-want {
 			t.Fatalf("fan-out exceeded budget %d: requests=%d usable=%d exhausted=%d evidence=%+v", budget, requests.Load(), usable, exhausted, evidence)
 		}
 	}
 }
 
 func TestFullProbeFanoutCountsRedirectsAgainstSharedRequestBudget(t *testing.T) {
-	for _, budget := range []int{2, 3, 10, 17} {
+	for _, budget := range []int{2, 3, 10, 15} {
 		config := DefaultConfig()
 		config.ProbeConcurrency, config.MaxRequests = 8, budget
 		var requests atomic.Int32
@@ -308,7 +308,7 @@ func TestFullProbeFanoutCountsRedirectsAgainstSharedRequestBudget(t *testing.T) 
 			return &http.Response{StatusCode: 302, Header: http.Header{"Location": {"/done"}}, Body: http.NoBody}, nil
 		})}
 		evidence := acquireHTTPFixture(t, "http://fixture.invalid", config)
-		if requests.Load() != int32(budget) || len(evidence) != 9 || evidence[0].StatusCode != 204 {
+		if requests.Load() != int32(budget) || len(evidence) != 8 || evidence[0].StatusCode != 204 {
 			t.Fatalf("fan-out redirects escaped wire budget %d: requests=%d evidence=%+v", budget, requests.Load(), evidence)
 		}
 		for _, observation := range evidence {
@@ -330,7 +330,7 @@ func TestFullProbeFanoutPreservesUsableBaselineWithBodyFailure(t *testing.T) {
 		return &http.Response{StatusCode: 204, Body: http.NoBody}, nil
 	})}
 	evidence := acquireHTTPFixture(t, "http://fixture.invalid", config)
-	if requests.Load() != 9 || len(evidence) != 9 || evidence[0].StatusCode != 200 || evidence[0].ErrorCode != "body_read" {
+	if requests.Load() != 8 || len(evidence) != 8 || evidence[0].StatusCode != 200 || evidence[0].ErrorCode != "body_read" {
 		t.Fatalf("usable baseline metadata was discarded: requests=%d evidence=%+v", requests.Load(), evidence)
 	}
 }
@@ -358,7 +358,7 @@ func TestFullProbeFanoutCancellationJoinsConnectionWaiters(t *testing.T) {
 		started := requests.Load()
 		cancel()
 		evidence := <-done
-		if started != 2 || requests.Load() != 2 || len(evidence) != 9 || len(policy.slots) != 0 {
+		if started != 2 || requests.Load() != 2 || len(evidence) != 8 || len(policy.slots) != 0 {
 			t.Fatalf("cancelled fan-out leaked/admitted requests: started=%d requests=%d slots=%d evidence=%+v", started, requests.Load(), len(policy.slots), evidence)
 		}
 		for _, observation := range evidence[1:] {
@@ -385,7 +385,7 @@ func TestFullProbeFanoutRetainedEvidenceBudgetBoundary(t *testing.T) {
 	for _, limit := range []int64{exact, exact - 1} {
 		config.MaxTargetEvidenceBytes = limit
 		evidence := acquireHTTPFixture(t, "http://fixture.invalid/target", config)
-		if len(evidence) != 9 || retainedHTTPFixtureBytes(evidence) > limit {
+		if len(evidence) != 8 || retainedHTTPFixtureBytes(evidence) > limit {
 			t.Fatalf("fan-out escaped shared evidence budget %d: %+v", limit, evidence)
 		}
 		diagnosed := false
