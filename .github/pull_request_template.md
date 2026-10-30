@@ -29,5 +29,5 @@ environment explicitly; ordinary Go tests do not cover every CI/release gate.
 - [ ] Expected labels and review status were assessed independently rather than generated from detector output.
 
 For suspected vulnerabilities, use the process in
-[SECURITY.md](https://github.com/Lu1sDV/wafme0w/blob/main/SECURITY.md) before posting
+[SECURITY.md](https://github.com/Lu1sDV/wafmeow/blob/main/SECURITY.md) before posting
 details in this public pull request.

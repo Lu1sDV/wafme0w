@@ -1,8 +1,8 @@
-# Contributing to wafme0w
+# Contributing to wafmeow
 
-wafme0w accepts fixes, documentation, and carefully reviewed fingerprint evidence.
+wafmeow accepts fixes, documentation, and carefully reviewed fingerprint evidence.
 Start with a small change that explains the problem and the resulting behavior.
-For suspected vulnerabilities in wafme0w, follow [SECURITY.md](SECURITY.md)
+For suspected vulnerabilities in wafmeow, follow [SECURITY.md](SECURITY.md)
 before posting details in a public issue or pull request.
 
 ## Set up a checkout
@@ -13,16 +13,16 @@ newer runs the development helpers; Python is not a dependency of the CLI.
 The examples below use a POSIX shell and run from the repository root.
 
 ```sh
-git clone https://github.com/Lu1sDV/wafme0w.git
-cd wafme0w
+git clone https://github.com/Lu1sDV/wafmeow.git
+cd wafmeow
 go mod download
-go build -o wafme0w ./cmd/wafme0w
-./wafme0w --help
-./wafme0w --evidence assets/demo/captures.jsonl --jsonl --no-colors
+go build -o wafmeow ./cmd/wafmeow
+./wafmeow --help
+./wafmeow --evidence assets/demo/captures.jsonl --jsonl --no-colors
 ```
 
 The last command uses synthetic saved responses and sends no requests. Build
-`wafme0w.exe` on Windows. For network behavior, use `httptest` servers or other
+`wafmeow.exe` on Windows. For network behavior, use `httptest` servers or other
 owned loopback fixtures. A public hostname or an existing capture is not
 authorization to scan its source.
 
@@ -80,16 +80,16 @@ unless they ran.
 | Offline comparison or reviewed fixtures | Both detector adapters and the isolated comparison/verification commands in [docs/benchmarks.md](docs/benchmarks.md#offline-comparison) |
 
 ```sh
-go test ./pkg/wafme0w -run '^$' -fuzz '^FuzzMatcherRegexpEquivalence$' -fuzztime=30s -parallel=2 -timeout=3m
-go test ./pkg/wafme0w -run '^$' -fuzz '^FuzzAvailabilityUnusableBody$' -fuzztime=10s -parallel=2 -timeout=2m
-go test ./pkg/wafme0w -run '^$' -fuzz '^FuzzHTTPXImportCannotInventCompleteChannels$' -fuzztime=10s -parallel=2 -timeout=2m
+go test ./pkg/wafmeow -run '^$' -fuzz '^FuzzMatcherRegexpEquivalence$' -fuzztime=30s -parallel=2 -timeout=3m
+go test ./pkg/wafmeow -run '^$' -fuzz '^FuzzAvailabilityUnusableBody$' -fuzztime=10s -parallel=2 -timeout=2m
+go test ./pkg/wafmeow -run '^$' -fuzz '^FuzzHTTPXImportCannotInventCompleteChannels$' -fuzztime=10s -parallel=2 -timeout=2m
 ```
 
 For browser changes, run as a non-root Linux user with an installed native
 Chromium executable. Set `WAFME0W_TEST_BROWSER` to its absolute path, then run:
 
 ```sh
-go test -race -tags browser_integration ./pkg/wafme0w -run '^TestBrowser' -count=1 -timeout=3m
+go test -race -tags browser_integration ./pkg/wafmeow -run '^TestBrowser' -count=1 -timeout=3m
 ```
 
 Ordinary `go test ./...` does not run the tagged browser integration or the
@@ -118,7 +118,7 @@ ground truth. Review one product/schema at a time where possible.
    private target names, credentials, session cookies, personal data, and
    customer content. If removing sensitive values also removes the marker,
    discuss a synthetic reproducer instead of posting the original capture.
-4. Update `cmd/wafme0w/resources/waf-fingerprints.json` and the relevant regression
+4. Update `cmd/wafmeow/resources/waf-fingerprints.json` and the relevant regression
    tests. For corpus fixtures, use SHA-256-addressed bodies under
    `tools/offlinebench/testdata/bodies/` and explicit expectations in
    `tools/offlinebench/testdata/corpus.json`.
@@ -128,7 +128,7 @@ ground truth. Review one product/schema at a time where possible.
    `baseline-untested`. A synthetic fixture remains synthetic-conformance.
 6. Run the relevant checks above. Explain changes in expected detector
    disagreements; never regenerate expected labels or review status from
-   wafme0w/wafw00f output to make the checks pass.
+   wafmeow/wafw00f output to make the checks pass.
 
 If adapting an upstream rule, cite its repository, immutable revision, and file.
 Retain applicable attribution and redistribution terms in [LICENSE.md](LICENSE.md).
@@ -159,4 +159,4 @@ current work before starting, and propose the smallest useful scope.
 | Review one inherited schema | Select one `baseline-untested` entry in `coverage-contract.json` and contribute reviewed positive/negative fixtures with honest provenance |
 | Add a runnable library example | Add a small Go `Example` test for `Engine.Classify` that produces stable output from synthetic saved evidence |
 | Improve isolation troubleshooting | Document how to distinguish missing `bwrap` from a namespace/AppArmor denial, using CI's setup without weakening isolation |
-| Explain httpx fixture maintenance | Document the saved producer fixture manifest and hashes under `pkg/wafme0w/testdata/httpx-v1.12.0/`, including a safe review checklist for a future producer update |
+| Explain httpx fixture maintenance | Document the saved producer fixture manifest and hashes under `pkg/wafmeow/testdata/httpx-v1.12.0/`, including a safe review checklist for a future producer update |

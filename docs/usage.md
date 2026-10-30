@@ -5,8 +5,8 @@
 Inspect the CLI or list the bundled catalogue without sending requests:
 
 ```sh
-wafme0w --help
-wafme0w --silent --list --no-colors
+wafmeow --help
+wafmeow --silent --list --no-colors
 ```
 
 The `--flag value` spellings below work on every supported platform. Windows
@@ -40,11 +40,11 @@ HTTPS; specify `http://` for plain HTTP. These examples use your own local serve
 or an authorized URL file:
 
 ```sh
-wafme0w --target http://127.0.0.1:8080 --target http://127.0.0.1:8081 \
+wafmeow --target http://127.0.0.1:8080 --target http://127.0.0.1:8081 \
   --baseline --jsonl
-wafme0w --target-file authorized-urls.txt --baseline --jsonl
+wafmeow --target-file authorized-urls.txt --baseline --jsonl
 printf '%s\n' http://127.0.0.1:8080 |
-  wafme0w --target-file - --baseline --jsonl
+  wafmeow --target-file - --baseline --jsonl
 ```
 
 Empty or multiline direct-target arguments and conflicting/repeated singular
@@ -94,7 +94,7 @@ its separate dependencies, scope and resource limits.
 From the repository root after building:
 
 ```sh
-./wafme0w --evidence assets/demo/captures.jsonl --jsonl
+./wafmeow --evidence assets/demo/captures.jsonl --jsonl
 ```
 
 No network requests. The synthetic examples demonstrate a match, a clean response,
@@ -129,20 +129,20 @@ encoder. From the repository root, choose a fresh output directory:
 
 ```sh
 tern shot assets/demo/tern-demo.txt --theme both --scale 1 \
-  --out /tmp/wafme0w-demo --flat
+  --out /tmp/wafmeow-demo --flat
 for suffix in '' '-dark'; do
-  ffmpeg -i "/tmp/wafme0w-demo/wafme0w-tern${suffix}.mp4" \
+  ffmpeg -i "/tmp/wafmeow-demo/wafmeow-tern${suffix}.mp4" \
     -filter_complex '[0:v]fps=15,scale=1200:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle' \
-    -loop 0 "/tmp/wafme0w-demo/tern-demo${suffix}.gif"
+    -loop 0 "/tmp/wafmeow-demo/tern-demo${suffix}.gif"
 done
 tern shot assets/demo/tern-split.txt --theme dark --scale 1 \
-  --out /tmp/wafme0w-demo/split --flat
-ffmpeg -i /tmp/wafme0w-demo/split/human-dark.mp4 \
-  -i /tmp/wafme0w-demo/split/automation-dark.mp4 \
+  --out /tmp/wafmeow-demo/split --flat
+ffmpeg -i /tmp/wafmeow-demo/split/human-dark.mp4 \
+  -i /tmp/wafmeow-demo/split/automation-dark.mp4 \
   -filter_complex '[0:v]fps=15[l];[1:v]fps=15[r];[l][r]hstack=shortest=1,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle' \
-  -loop 0 /tmp/wafme0w-demo/tern-demo-split.gif
-ffmpeg -i /tmp/wafme0w-demo/tern-demo-split.gif \
-  -frames:v 1 /tmp/wafme0w-demo/tern-demo-split.png
+  -loop 0 /tmp/wafmeow-demo/tern-demo-split.gif
+ffmpeg -i /tmp/wafmeow-demo/tern-demo-split.gif \
+  -frames:v 1 /tmp/wafmeow-demo/tern-demo-split.png
 ```
 
 The presentation script builds an isolated temporary binary and removes its
@@ -161,10 +161,10 @@ For a continuing upstream URL feed:
 
 ```sh
 httpx -stream -silent < authorized-hosts.txt |
-  wafme0w --target-file - --jsonl --silent
+  wafmeow --target-file - --jsonl --silent
 ```
 
-This performs new wafme0w requests. Each network-producing stage has its own
+This performs new wafmeow requests. Each network-producing stage has its own
 rate/concurrency budgets; one stage's limit is not a pipeline-wide limit.
 `--silent` alone is not a URL output selector.
 
@@ -174,7 +174,7 @@ To reuse responses instead, select offline evidence and the explicit format:
 
 ```sh
 httpx -l authorized-hosts.txt -silent -json -irr -probe -rstr 1048576 -rsts 1048576 |
-  wafme0w --evidence - --evidence-format httpx --jsonl --silent
+  wafmeow --evidence - --evidence-format httpx --jsonl --silent
 ```
 
 The compatibility profile is **httpx v1.12.0**, not a detected producer version.
@@ -190,7 +190,7 @@ Encoding is declared, never detected. For base64 exports:
 ```sh
 httpx -l authorized-hosts.txt -silent -json -irrb -no-decode -probe \
   -rstr 1048576 -rsts 1398104 |
-  wafme0w --evidence - --evidence-format httpx \
+  wafmeow --evidence - --evidence-format httpx \
     --httpx-response-encoding base64 --jsonl --silent
 ```
 
@@ -225,7 +225,7 @@ An exact empty chunk terminator emitted by the producer's reconstructed
 Other trailing nonblank material or another response block makes headers
 unavailable rather than silently selecting the first response.
 The importer never reads paths or fetches URLs mentioned in upstream records.
-Upstream technology/CDN labels never become wafme0w matches.
+Upstream technology/CDN labels never become wafmeow matches.
 
 Each nonblank record is one independent Normal observation. Duplicates stay
 separate, in input order. Requested `url` and original `input` remain distinct;
@@ -268,13 +268,13 @@ For JSON URL extraction (new acquisition, not reuse):
 ```sh
 httpx -l authorized-hosts.txt -silent -json |
   jq --unbuffered -r 'select(.failed != true) | .url // empty' |
-  wafme0w --jsonl --silent
+  wafmeow --jsonl --silent
 ```
 
 For a reverse pipeline selecting named matches:
 
 ```sh
-wafme0w --target-file urls.txt --jsonl --silent |
+wafmeow --target-file urls.txt --jsonl --silent |
   jq --unbuffered -r 'select(((.outcome.matches // []) | length) > 0) | .target' |
   httpx -stream -silent -status-code
 ```
@@ -285,12 +285,12 @@ Avoid upstream filters that discard challenge/block responses.
 
 ### Reproduce the producer boundary check
 
-Install httpx separately; it is not a wafme0w runtime dependency:
+Install httpx separately; it is not a wafmeow runtime dependency:
 
 ```sh
 go install github.com/projectdiscovery/httpx/cmd/httpx@v1.12.0
-go build -o wafme0w ./cmd/wafme0w
-python3 tools/httpx_smoke.py --binary ./wafme0w --httpx "$(go env GOPATH)/bin/httpx"
+go build -o wafmeow ./cmd/wafmeow
+python3 tools/httpx_smoke.py --binary ./wafmeow --httpx "$(go env GOPATH)/bin/httpx"
 ```
 
 The Linux smoke requires `strace` and GNU `time`, runs only owned loopback fixtures, verifies
@@ -298,13 +298,13 @@ text/base64 attribution and strict outcomes, traces the importer for Internet
 network attempts, and checks 50,000 independent records with incremental validation
 and child peak-RSS measurements against a smaller run. Frozen real-producer
 fixtures and their invocation/hash manifest live under
-`pkg/wafme0w/testdata/httpx-v1.12.0/`; they are synthetic conformance evidence,
+`pkg/wafmeow/testdata/httpx-v1.12.0/`; they are synthetic conformance evidence,
 not real-world detector-accuracy labels.
 
 For the CLI usage matrix, supply each installed producer version explicitly:
 
 ```sh
-python3 tools/httpx_usage_matrix.py --binary ./wafme0w \
+python3 tools/httpx_usage_matrix.py --binary ./wafmeow \
   --httpx /path/to/httpx-v1.9.0 --httpx /path/to/httpx-v1.12.0 \
   --output /new/usage-matrix-results
 ```
@@ -344,7 +344,7 @@ This offline example streams results and publishes a report before returning
 exit 2 for the synthetic incomplete-evidence case:
 
 ```sh
-wafme0w --evidence assets/demo/captures.jsonl --jsonl --silent \
+wafmeow --evidence assets/demo/captures.jsonl --jsonl --silent \
   --output results.json --strict
 ```
 
@@ -405,7 +405,7 @@ trust bundle:
 
 ```sh
 SSL_CERT_FILE=/path/to/approved-ca-bundle.pem \
-  ./wafme0w --target https://internal.example --baseline
+  ./wafmeow --target https://internal.example --baseline
 ```
 
 This replaces Go's default certificate-file location; do not blindly trust a
@@ -420,7 +420,7 @@ not a header-file path. Names are case-insensitive: later entries replace earlie
 values and built-in defaults, including `Origin` and `User-Agent`.
 
 ```sh
-wafme0w --target http://127.0.0.1:8080 --baseline \
+wafmeow --target http://127.0.0.1:8080 --baseline \
   -H 'Origin: https://example.test' \
   -H 'User-Agent: my-client' \
   --header 'X-Tag: demo'
@@ -432,7 +432,7 @@ first or only entry. Double embedded quotes inside a CSV-quoted entry. The outer
 single quotes in these POSIX-shell examples preserve the inner CSV quotes:
 
 ```sh
-wafme0w --target http://127.0.0.1:8080 --baseline \
+wafmeow --target http://127.0.0.1:8080 --baseline \
   -H '"Accept: text/html, application/json"' \
   -H '"X-Label: say ""hello""", X-Tag: demo'
 ```
@@ -537,8 +537,8 @@ opaque implementation.
 On Linux, build the CLI and choose a fresh output directory:
 
 ```sh
-go build -o wafme0w ./cmd/wafme0w
-python3 tools/cli_options_smoke.py --binary ./wafme0w \
+go build -o wafmeow ./cmd/wafmeow
+python3 tools/cli_options_smoke.py --binary ./wafmeow \
   --output benchmarks/cli-options-01
 ```
 

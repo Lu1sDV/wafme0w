@@ -60,7 +60,7 @@ func Start(ctx context.Context, options Options) (*Runtime, error) {
 	if err := ValidateExecutable(options.BrowserPath); err != nil {
 		return nil, err
 	}
-	directory, err := os.MkdirTemp("", "wafme0w-browser-")
+	directory, err := os.MkdirTemp("", "wafmeow-browser-")
 	if err != nil {
 		return nil, err
 	}

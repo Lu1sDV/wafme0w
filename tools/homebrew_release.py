@@ -21,11 +21,11 @@ from urllib.parse import quote
 import release
 
 
-FORMULA_PATH = "Formula/wafme0w.rb"
+FORMULA_PATH = "Formula/wafmeow.rb"
 MAX_FORMULA_BYTES = 65536
 
 
-def github_api(path, *, tap=False, payload=None, paginate=False):
+def github_api(path, *, tap=False, payload=None, paginate=False, allow_missing=False):
     environment = os.environ.copy()
     tap_token = environment.pop("HOMEBREW_TAP_TOKEN", "")
     if tap:
@@ -43,6 +43,8 @@ def github_api(path, *, tap=False, payload=None, paginate=False):
         # Report a useful API status without echoing subprocess output or any
         # credential, including when a caller has enabled gh debug logging.
         status = re.search(r"\bHTTP ([0-9]{3})\b", error.stderr or "")
+        if allow_missing and status and status.group(1) == "404":
+            return None
         reason = f"HTTP {status.group(1)}" if status else f"exit {error.returncode}"
         target = "tap" if tap else "source"
         raise ValueError(f"GitHub {target} API request failed ({reason}); no write was retried") from error
@@ -80,7 +82,12 @@ def tap_state(tap, source):
                     "HOMEBREW_TAP_TOKEN must have permission to push to the Homebrew tap")
     branch = metadata.get("default_branch")
     release.require(isinstance(branch, str) and bool(branch), "Homebrew tap has no default branch")
-    current = github_api(f"repos/{tap}/contents/{FORMULA_PATH}?ref={quote(branch, safe='')}", tap=True)
+    current = github_api(f"repos/{tap}/contents/{FORMULA_PATH}?ref={quote(branch, safe='')}",
+                         tap=True, allow_missing=True)
+    if current is None:
+        # First publication under the current formula path; the tap has no
+        # formula yet and publication creates it without a previous blob SHA.
+        return {"branch": branch, "sha": None, "formula": None, "tag": None}
     release.require(current.get("type") == "file" and current.get("path") == FORMULA_PATH and
                     current.get("encoding") == "base64" and
                     isinstance(current.get("size"), int) and 0 < current["size"] <= MAX_FORMULA_BYTES and
@@ -101,6 +108,9 @@ def tap_state(tap, source):
 def check_access(tap):
     source = release.repository_name(os.environ["GH_REPO"])
     state = tap_state(tap, source)
+    if state["formula"] is None:
+        print(f"Homebrew tap {tap} is accessible on {state['branch']} and has no formula yet")
+        return
     print(f"Homebrew tap {tap} is accessible on {state['branch']} at {state['tag']}")
 
 
@@ -146,20 +156,23 @@ def publish(args):
     state = tap_state(args.tap, source)
     # Keep the exact blob SHA observed before the version check. A later edit
     # must cause a conflict rather than becoming permission to overwrite it.
-    release.require(formula == state["formula"] or
-                    release.version_key(args.tag) > release.version_key(state["tag"]),
-                    "Refusing to downgrade or replace the tap's existing release")
+    if state["formula"] is not None:
+        release.require(formula == state["formula"] or
+                        release.version_key(args.tag) > release.version_key(state["tag"]),
+                        "Refusing to downgrade or replace the tap's existing release")
     check_published(args.tag, args.revision, args.dist, source)
     if formula == state["formula"]:
         print(f"Homebrew tap {args.tap} already contains the verified {args.tag} formula")
         return
     content = formula.encode("utf-8")
-    updated = github_api(f"repos/{args.tap}/contents/{FORMULA_PATH}", tap=True, payload={
-        "message": f"wafme0w {args.tag}",
+    payload = {
+        "message": f"wafmeow {args.tag}",
         "content": base64.b64encode(content).decode("ascii"),
-        "sha": state["sha"],
         "branch": state["branch"],
-    })
+    }
+    if state["sha"] is not None:
+        payload["sha"] = state["sha"]
+    updated = github_api(f"repos/{args.tap}/contents/{FORMULA_PATH}", tap=True, payload=payload)
     expected_sha = hashlib.sha1(f"blob {len(content)}\0".encode() + content).hexdigest()
     release.require(updated.get("content", {}).get("sha") == expected_sha,
                     "Homebrew update returned an unexpected formula identity; inspect the tap before retrying")

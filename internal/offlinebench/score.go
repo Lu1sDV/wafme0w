@@ -42,7 +42,7 @@ type ToolMetrics struct {
 type Comparison struct {
 	Scope                   string         `json:"scope"`
 	PairedCases             int            `json:"paired_cases"`
-	Wafw00fOverWafme0wRatio float64        `json:"wafw00f_over_wafme0w_latency_ratio"`
+	Wafw00fOverWafme0wRatio float64        `json:"wafw00f_over_wafmeow_latency_ratio"`
 	Bootstrap95Low          float64        `json:"bootstrap_95_low"`
 	Bootstrap95High         float64        `json:"bootstrap_95_high"`
 	OutcomeCases            int            `json:"outcome_cases"`
@@ -51,7 +51,7 @@ type Comparison struct {
 
 type Disagreement struct {
 	CaseID  string      `json:"case_id"`
-	Wafme0w Expectation `json:"wafme0w"`
+	Wafme0w Expectation `json:"wafmeow"`
 	Wafw00f Expectation `json:"wafw00f"`
 }
 
@@ -77,7 +77,7 @@ func Aggregate(corpus Corpus, blocks map[string][]WorkerOutput) ([]Result, Summa
 	for _, fixture := range corpus.Cases {
 		caseIDs[fixture.ID] = true
 	}
-	for _, tool := range []string{"wafme0w", "wafw00f"} {
+	for _, tool := range []string{"wafmeow", "wafw00f"} {
 		outputs := blocks[tool]
 		if len(outputs) == 0 {
 			return nil, Summary{}, fmt.Errorf("no %s worker outputs", tool)
@@ -166,7 +166,7 @@ func Aggregate(corpus Corpus, blocks map[string][]WorkerOutput) ([]Result, Summa
 			summary.EvidenceCoverage["reviewed-real"]++
 		}
 	}
-	for _, tool := range []string{"wafme0w", "wafw00f"} {
+	for _, tool := range []string{"wafmeow", "wafw00f"} {
 		metrics := scoreTool(corpus, results, tool, initSamples[tool])
 		metrics.MedianPreparationNS = percentile(preparationSamples[tool], 0.5)
 		metrics.MedianAdapterWallNS = percentile(wallSamples[tool], 0.5)
@@ -301,7 +301,7 @@ func compareLatency(corpus Corpus, results []Result) Comparison {
 	}
 	ratios := make([]float64, 0, len(corpus.Cases))
 	for _, fixture := range corpus.Cases {
-		a, aOK := byToolCase["wafme0w"][fixture.ID]
+		a, aOK := byToolCase["wafmeow"][fixture.ID]
 		b, bOK := byToolCase["wafw00f"][fixture.ID]
 		if aOK && bOK && a > 0 {
 			ratios = append(ratios, float64(b)/float64(a))

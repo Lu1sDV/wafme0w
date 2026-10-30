@@ -16,27 +16,27 @@ COPY --from=runtime-files /out/rootfs/ /
 ENV HOME=/work TMPDIR=/tmp
 USER 65532:65532
 WORKDIR /work
-ENTRYPOINT ["/usr/local/bin/wafme0w"]
+ENTRYPOINT ["/usr/local/bin/wafmeow"]
 
 # Release jobs provide a minimal context containing only the already-tested
 # native archive binary and its license. No recompilation changes its identity.
 FROM toolchain AS release-binary
-COPY wafme0w /out/wafme0w
-RUN chmod 0555 /out/wafme0w
+COPY wafmeow /out/wafmeow
+RUN chmod 0555 /out/wafmeow
 
 FROM runtime-base AS release
-COPY --from=release-binary --chown=0:0 /out/wafme0w /usr/local/bin/wafme0w
+COPY --from=release-binary --chown=0:0 /out/wafmeow /usr/local/bin/wafmeow
 
 FROM toolchain AS build
 ENV CGO_ENABLED=0 GOTOOLCHAIN=local GOFLAGS=-mod=readonly GOWORK=off
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download && go mod verify
-COPY cmd/wafme0w/ ./cmd/wafme0w/
+COPY cmd/wafmeow/ ./cmd/wafmeow/
 COPY internal/ ./internal/
 COPY pkg/ ./pkg/
-RUN go build -trimpath -buildvcs=false -o /out/wafme0w ./cmd/wafme0w \
-    && chmod 0555 /out/wafme0w
+RUN go build -trimpath -buildvcs=false -o /out/wafmeow ./cmd/wafmeow \
+    && chmod 0555 /out/wafmeow
 
 FROM runtime-base AS runtime
-COPY --from=build --chown=0:0 /out/wafme0w /usr/local/bin/wafme0w
+COPY --from=build --chown=0:0 /out/wafmeow /usr/local/bin/wafmeow

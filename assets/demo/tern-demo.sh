@@ -8,7 +8,7 @@ command -v jq >/dev/null
 captures="$(pwd)/assets/demo/captures.jsonl"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
-go build -o "$work/wafme0w" ./cmd/wafme0w
+go build -o "$work/wafmeow" ./cmd/wafmeow
 export PATH="$work:$PATH"
 cp "$captures" "$work/captures.jsonl"
 cd "$work"
@@ -16,7 +16,7 @@ unset NO_COLOR
 export TERM=xterm-256color
 
 card() {
-  printf '\033[3J\033[2J\033[H\033[1;36m  /\\_/\\   wafme0w\033[0m  /  %s\n' "$1"
+  printf '\033[3J\033[2J\033[H\033[1;36m  /\\_/\\   wafmeow\033[0m  /  %s\n' "$1"
   printf '\033[90m  SYNTHETIC CAPTURES  /  OFFLINE  /  REAL CLI OUTPUT\033[0m\n\n'
 }
 run() {
@@ -49,23 +49,23 @@ fi
 
 if [[ "$mode" != automation ]]; then
   card '01 / Read the evidence'
-  run 'wafme0w --evidence captures.jsonl'
+  run 'wafmeow --evidence captures.jsonl'
   pause 'Next: machine-readable output'
 fi
 [[ "$mode" != evidence ]] || exit 0
 
 card '02 / From terminal to pipeline'
 if [[ "$mode" == automation ]]; then
-  run "wafme0w --evidence captures.jsonl --jsonl --silent |
+  run "wafmeow --evidence captures.jsonl --jsonl --silent |
   jq -C '{target, state: .outcome.state}'"
 else
-  run "wafme0w --evidence captures.jsonl --jsonl --silent |
+  run "wafmeow --evidence captures.jsonl --jsonl --silent |
   jq -C '{target, state: .outcome.state, products: [.outcome.matches[]?.product]}'"
 fi
 pause 'Next: automation with an explicit safety signal'
 
 card '03 / Save the report. Surface uncertainty.'
-run 'wafme0w --evidence captures.jsonl --output results.json --silent --strict' && status=0 || status=$?
+run 'wafmeow --evidence captures.jsonl --output results.json --silent --strict' && status=0 || status=$?
 printf '\n\033[33m  Exit status: %s\033[0m\n\n' "$status"
 test "$status" -eq 2
 run "jq -r '.[] | [.target, .outcome.state] | @tsv' results.json"

@@ -30,7 +30,7 @@ also exist after a failed or cancelled run.
 Enable a body-free result and diagnostics journal when durable records are needed:
 
 ```sh
-./wafme0w --input authorized-targets.txt --baseline --jsonl \
+./wafmeow --input authorized-targets.txt --baseline --jsonl \
   --output results.json --diagnostics-journal results.journal.jsonl --strict
 ```
 
@@ -83,13 +83,13 @@ Run operational checks against the candidate binary, native archive, and image:
 ```sh
 # Linux: owned loopback traffic, mixed failures, and resource accounting.
 # --seconds is the feed duration for each of baseline, fast, and full modes.
-python3 tools/soak.py --binary ./wafme0w --output benchmarks/soak --seconds 60
+python3 tools/soak.py --binary ./wafmeow --output benchmarks/soak --seconds 60
 
 # Extract the native release archive and exercise its binary and fixtures.
 python3 tools/smoke.py archive /path/to/native-release.tar.gz
 
 # Offline, non-root, read-only container checks; --runtime podman is also supported.
-python3 tools/smoke.py docker wafme0w:candidate
+python3 tools/smoke.py docker wafmeow:candidate
 ```
 
 Run from the repository root. The soak output directory must not already exist;

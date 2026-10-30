@@ -30,7 +30,7 @@ class ContainerReleaseTests(unittest.TestCase):
     def test_runtime_metadata_must_match_the_native_candidate(self):
         metadata = {"Id": "sha256:" + "a" * 64, "Os": "linux", "Architecture": "arm64",
                     "Config": {"User": "65532:65532", "WorkingDir": "/work",
-                               "Entrypoint": ["/usr/local/bin/wafme0w"], "Cmd": None,
+                               "Entrypoint": ["/usr/local/bin/wafmeow"], "Cmd": None,
                                "Labels": {"org.opencontainers.image.source": "https://github.com/Owner/repo",
                                           "org.opencontainers.image.revision": "b" * 40,
                                           "org.opencontainers.image.version": "v2.0.0"}}}
@@ -55,7 +55,7 @@ class ContainerReleaseTests(unittest.TestCase):
                 archive = root / f"linux-{arch}.tar"
                 archive.write_bytes(b"native image")
                 native = {"archive_sha256": "c" * 64, "binary_sha256": "d" * 64}
-                manifest["archives"][f"wafme0w_v2.0.0_linux_{arch}.tar.gz"] = native
+                manifest["archives"][f"wafmeow_v2.0.0_linux_{arch}.tar.gz"] = native
                 record = {"schema_version": 1, "tag": args.tag, "revision": args.revision, "arch": arch,
                           "repository": args.repository, **native, "image_archive_sha256": "0" * 64}
                 (root / f"linux-{arch}.json").write_text(json.dumps(record))
@@ -80,8 +80,8 @@ class ContainerReleaseTests(unittest.TestCase):
             self.assertFalse(args.output.exists())
 
     def test_registry_and_local_names_are_validated(self):
-        self.assertEqual(images.image_name("Lu1sDV/wafme0w"), "ghcr.io/lu1sdv/wafme0w")
-        self.assertEqual(images.local_image("v2.0.0-rc.1", "arm64"), "wafme0w-release:v2.0.0-rc.1-arm64")
+        self.assertEqual(images.image_name("Lu1sDV/wafmeow"), "ghcr.io/lu1sdv/wafmeow")
+        self.assertEqual(images.local_image("v2.0.0-rc.1", "arm64"), "wafmeow-release:v2.0.0-rc.1-arm64")
         for repository in ("owner/repo;command", "owner/../repo", "other.registry/owner/repo"):
             with self.subTest(repository=repository), self.assertRaises(ValueError):
                 images.image_name(repository)

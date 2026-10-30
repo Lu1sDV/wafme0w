@@ -26,7 +26,10 @@ TARGETS = (("linux", "amd64", "tar.gz"), ("darwin", "arm64", "tar.gz"),
            ("windows", "amd64", "zip"), ("linux", "arm64", "tar.gz"),
            ("darwin", "amd64", "tar.gz"))
 LEGACY_TARGETS = TARGETS[:3]
-FORMULA = "wafme0w.rb"
+FORMULA = "wafmeow.rb"
+# Published archives are immutable: releases created before the repository
+# rename keep their original prefix and must remain discoverable.
+ARCHIVE_PREFIXES = ("wafmeow", "wafme0w")
 TAG = re.compile(r"v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?")
 
 
@@ -181,9 +184,9 @@ def binary_identity(binary, revision, target_os, arch, go_version=GO_VERSION):
     return {"revision": revision, "go_version": actual_go_version, "os": target_os, "arch": arch, "modified": False}
 
 
-def archive_names(tag, targets=TARGETS):
+def archive_names(tag, targets=TARGETS, prefix=ARCHIVE_PREFIXES[0]):
     version_key(tag)
-    return {f"wafme0w_{tag}_{target_os}_{arch}.{extension}": (target_os, arch)
+    return {f"{prefix}_{tag}_{target_os}_{arch}.{extension}": (target_os, arch)
             for target_os, arch, extension in targets}
 
 
@@ -197,22 +200,22 @@ def homebrew_formula(tag, revision, archives, repository):
     repository_name(repository)
     require(re.fullmatch(r"[0-9a-f]{40}", revision), "Invalid formula source revision")
     lines = [f"# Generated from verified release {tag}, source {revision}.",
-             "class Wafme0w < Formula", '  desc "Identify WAF fingerprints in HTTP responses or saved captures"',
+             "class Wafmeow < Formula", '  desc "Identify WAF fingerprints in HTTP responses or saved captures"',
              f'  homepage "https://github.com/{repository}"',
              '  license "MIT"', ""]
     for target_os, platform in (("darwin", "macos"), ("linux", "linux")):
         lines.append(f"  on_{platform} do")
         for arch, cpu in (("arm64", "arm"), ("amd64", "intel")):
-            name = f"wafme0w_{tag}_{target_os}_{arch}.tar.gz"
+            name = f"wafmeow_{tag}_{target_os}_{arch}.tar.gz"
             checksum = archives[name]["archive_sha256"]
             require(re.fullmatch(r"[0-9a-f]{64}", checksum), f"Invalid formula archive hash: {name}")
             lines.extend([f"    on_{cpu} do", f'      url "https://github.com/{repository}/releases/download/{tag}/{name}"',
                           f'      sha256 "{checksum}"', "    end"])
         lines.extend(["  end", ""])
-    lines.extend(["  def install", '    bin.install "wafme0w"', '    prefix.install "LICENSE.md"',
+    lines.extend(["  def install", '    bin.install "wafmeow"', '    prefix.install "LICENSE.md"',
                   '    pkgshare.install "assets/demo/captures.jsonl"', "  end", "", "  test do",
-                  '    assert_match "wafme0w ", shell_output("#{bin}/wafme0w --version")',
-                  '    output = shell_output("#{bin}/wafme0w --evidence #{pkgshare}/captures.jsonl --jsonl --silent")',
+                  '    assert_match "wafmeow ", shell_output("#{bin}/wafmeow --version")',
+                  '    output = shell_output("#{bin}/wafmeow --evidence #{pkgshare}/captures.jsonl --jsonl --silent")',
                   '    assert_equal 3, output.lines.length', '    assert_match "synthetic-cloudflare", output',
                   "  end", "end", ""])
     return "\n".join(lines)
@@ -228,7 +231,7 @@ def package(args):
     require(len(names) == 1, "Unsupported release target")
     args.dist.mkdir(parents=True, exist_ok=True)
     archive = args.dist / names[0]
-    binary_name = "wafme0w.exe" if args.os == "windows" else "wafme0w"
+    binary_name = "wafmeow.exe" if args.os == "windows" else "wafmeow"
     files = ((args.binary, binary_name), (Path("LICENSE.md"), "LICENSE.md"), (CAPTURE, CAPTURE.as_posix()))
     if archive.suffix == ".zip":
         with zipfile.ZipFile(archive, "x", compression=zipfile.ZIP_DEFLATED) as output:
@@ -275,7 +278,7 @@ def verify(args):
         metadata = json.loads((args.dist / (name + ".metadata.json")).read_text())
         require(metadata["tag"] == args.tag and metadata["archive_sha256"] == digest(archive),
                 f"Archive hash/tag differs from native build metadata: {name}")
-        with tempfile.TemporaryDirectory(prefix="wafme0w-verify-") as temporary:
+        with tempfile.TemporaryDirectory(prefix="wafmeow-verify-") as temporary:
             binary = extract_archive(archive, Path(temporary))
             identity = binary_identity(binary, args.revision, target_os, arch)
             require(all(metadata[key] == value for key, value in identity.items()), f"Identity mismatch: {name}")
@@ -339,7 +342,7 @@ def publish(args):
     prerelease = not version_key(args.tag)[3]
     notes = Path(os.environ["RUNNER_TEMP"]) / "release-notes.txt"
     source_url = f"https://github.com/{os.environ['GH_REPO']}/blob/{args.revision}"
-    notes.write_text(f"## wafme0w {args.tag}\n\n"
+    notes.write_text(f"## wafmeow {args.tag}\n\n"
                      "**wafw00f's fingerprints. Go speed. Pipeline-native.**\n\n"
                      "A Go CLI and library with 172 catalogue identities, saved-evidence matching, "
                      "and structured output for pipelines.\n\n"
@@ -352,7 +355,10 @@ def publish(args):
                      "compiler, binary and archive hashes; SHA256SUMS also covers the manifest and generated "
                      "Homebrew formula. Stable delivery updates "
                      "[Lu1sDV/homebrew-tap](https://github.com/Lu1sDV/homebrew-tap) after its audit and test pass; "
-                     "check the release workflow's Homebrew job before installing this version through the tap. "
+                     "check the release workflow's Homebrew job before installing this version through the tap.\n\n"
+                     "**Homebrew rename:** Existing `Lu1sDV/tap/wafme0w` installations do not migrate through "
+                     "`brew upgrade`. After the new formula is published, "
+                     f"[install and verify `wafmeow` before removing the old package]({source_url}/docs/releases.md#migrate-an-existing-homebrew-installation).\n\n"
                      "Synthetic demo captures are examples, not detection-accuracy evidence. "
                      "Use network scanning only where authorized.\n\n"
                      f"Version-specific changes: https://github.com/{os.environ['GH_REPO']}/releases/tag/{args.tag} "
@@ -360,7 +366,7 @@ def publish(args):
     require(remote_revision("origin", args.tag) == args.revision, "Remote tag moved after validation")
     create = ["gh", "release", "create", args.tag, *map(str, sorted(args.dist.iterdir())),
               "--verify-tag", "--target", args.revision, "--draft", "--latest=false",
-              "--title", f"wafme0w {args.tag}", "--notes-file", str(notes), "--generate-notes"]
+              "--title", f"wafmeow {args.tag}", "--notes-file", str(notes), "--generate-notes"]
     if prerelease:
         create.append("--prerelease")
     command(*create)
@@ -371,15 +377,17 @@ def publish(args):
 
 
 def published_assets(item):
-    expected = archive_names(item["tag_name"])
-    assets = [asset for asset in item["assets"] if asset["name"].startswith("wafme0w_")]
+    tag = item["tag_name"]
+    assets = [asset for asset in item["assets"]
+              if asset["name"].startswith(tuple(prefix + "_" for prefix in ARCHIVE_PREFIXES))]
     names = {asset["name"] for asset in assets}
-    legacy = set(archive_names(item["tag_name"], LEGACY_TARGETS))
-    valid_names = names == set(expected) or (version_key(item["tag_name"])[0] < 2 and names == legacy)
+    expected = [set(archive_names(tag, prefix=prefix)) for prefix in ARCHIVE_PREFIXES]
+    legacy = [set(archive_names(tag, LEGACY_TARGETS, prefix)) for prefix in ARCHIVE_PREFIXES]
+    valid_names = names in expected or (version_key(tag)[0] < 2 and names in legacy)
     require(len(assets) == len(names) and valid_names,
-            f"Missing or unexpected published archives: {item['tag_name']}")
+            f"Missing or unexpected published archives: {tag}")
     require(all(type(asset["size"]) is int and 0 < asset["size"] <= MAX_ARCHIVE_BYTES for asset in assets),
-            f"Published archive size exceeds limit: {item['tag_name']}")
+            f"Published archive size exceeds limit: {tag}")
     return {asset["name"]: asset["size"] for asset in assets}
 
 
@@ -393,16 +401,20 @@ def scan_published(args):
     for item in selected:
         tag = item["tag_name"]
         print(f"Scanning supported published release {tag} independently of current source", flush=True)
-        with tempfile.TemporaryDirectory(prefix="wafme0w-published-") as temporary:
+        with tempfile.TemporaryDirectory(prefix="wafmeow-published-") as temporary:
             dist = Path(temporary)
-            command("gh", "release", "download", tag, "--pattern", "wafme0w_*", "--dir", str(dist))
             expected = assets[tag]
+            binary_stem = next(iter(expected)).split("_", 1)[0]
+            download = ["gh", "release", "download", tag, "--dir", str(dist)]
+            for name in sorted(expected):
+                download.extend(("--pattern", name))
+            command(*download)
             require({path.name for path in dist.iterdir()} == set(expected), f"Missing or unexpected published archives: {tag}")
             require(all((dist / name).stat().st_size == size <= MAX_ARCHIVE_BYTES
                         for name, size in expected.items()), f"Published archive size changed after preflight: {tag}")
             for name in sorted(expected):
-                with tempfile.TemporaryDirectory(prefix="wafme0w-published-binary-") as extracted:
-                    binary = extract_archive(dist / name, Path(extracted))
+                with tempfile.TemporaryDirectory(prefix="wafmeow-published-binary-") as extracted:
+                    binary = extract_archive(dist / name, Path(extracted), binary_stem=binary_stem)
                     safe = scan_binary(binary, args.reports / (name + ".govulncheck.txt")) and safe
     require(safe, "Supported published binaries have vulnerabilities; source fixes do not remediate existing releases")
 

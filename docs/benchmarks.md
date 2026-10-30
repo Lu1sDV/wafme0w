@@ -48,8 +48,8 @@ workers clear inherited environment variables; Go chooses its worker runtime
 parallelism. For controlled comparisons, use the same CPU affinity and resource
 allocation for every candidate and retain repeated alternating blocks.
 
-The reported `wafw00f_over_wafme0w_latency_ratio` is the median of the per-case
-wafw00f/wafme0w ratios, using each case's median **saved-response classification
+The reported `wafw00f_over_wafmeow_latency_ratio` is the median of the per-case
+wafw00f/wafmeow ratios, using each case's median **saved-response classification
 latency** across blocks. Only paired, expected-complete, conformant cases in the
 shared-product profile contribute. The comparison times warm named-product
 classification, excluding generic detection, live DNS/HTTP work, initialization
@@ -71,10 +71,10 @@ reused-connection comparison is below.
 ### Wall-clock results
 
 Times are **medians of three runs**; parentheses show the shortest–longest run.
-Lower is better. Concurrency means target workers for wafme0w and separate CLI
+Lower is better. Concurrency means target workers for wafmeow and separate CLI
 processes for wafw00f.
 
-| Workers / processes | wafw00f 2.4.2 | <img src="../assets/wafme0w.svg" width="20" height="20" alt=""> wafme0w fast | <img src="../assets/wafme0w.svg" width="20" height="20" alt=""> wafme0w full |
+| Workers / processes | wafw00f 2.4.2 | <img src="../assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow fast | <img src="../assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow full |
 | ---: | ---: | ---: | ---: |
 | 1 | 70m 27s (67m 27s–73m 44s) | 29m 29s (28m 54s–30m 15s) | 78m 05s (75m 17s–79m 18s) |
 | 5 | 15m 26s (15m 09s–16m 16s) | 7m 27s (7m 26s–7m 32s) | 14m 30s (14m 21s–14m 40s) |
@@ -84,10 +84,10 @@ processes for wafw00f.
 
 #### Elapsed-time ratios
 
-Each recorded ratio divides wafw00f's median elapsed time by wafme0w's for the
-same concurrency. **Above 1 favors wafme0w; below 1 favors wafw00f.**
+Each recorded ratio divides wafw00f's median elapsed time by wafmeow's for the
+same concurrency. **Above 1 favors wafmeow; below 1 favors wafw00f.**
 
-| Workers / processes | <img src="../assets/wafme0w.svg" width="20" height="20" alt=""> wafme0w fast | <img src="../assets/wafme0w.svg" width="20" height="20" alt=""> wafme0w full |
+| Workers / processes | <img src="../assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow fast | <img src="../assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow full |
 | ---: | ---: | ---: |
 | 1 | 2.39× | 0.90× |
 | 5 | 2.07× | 1.06× |
@@ -110,20 +110,20 @@ blocks differ.
 
 | Workers / processes | Tool and mode | Returned | Named | Generic | Complete | Incomplete |
 | ---: | --- | --- | --- | --- | --- | --- |
-| 1 | wafme0w fast | 2000 | 858–862 | 433–434 | 1390–1415 | 585–610 |
-| 1 | wafme0w full | 2000 | 864–868 | 511–515 | 1442–1452 | 548–558 |
+| 1 | wafmeow fast | 2000 | 858–862 | 433–434 | 1390–1415 | 585–610 |
+| 1 | wafmeow full | 2000 | 864–868 | 511–515 | 1442–1452 | 548–558 |
 | 1 | wafw00f 2.4.2 | 1542–1544 | 855–857 | 426–428 | — | — |
-| 5 | wafme0w fast | 2000 | 856–862 | 409–433 | 1431–1437 | 563–569 |
-| 5 | wafme0w full | 2000 | 863–865 | 477–512 | 1448–1450 | 550–552 |
+| 5 | wafmeow fast | 2000 | 856–862 | 409–433 | 1431–1437 | 563–569 |
+| 5 | wafmeow full | 2000 | 863–865 | 477–512 | 1448–1450 | 550–552 |
 | 5 | wafw00f 2.4.2 | 1539–1541 | 854–856 | 416–424 | — | — |
-| 10 | wafme0w fast | 2000 | 857–860 | 425–431 | 1446–1454 | 546–554 |
-| 10 | wafme0w full | 2000 | 863–864 | 506–513 | 1436–1452 | 548–564 |
+| 10 | wafmeow fast | 2000 | 857–860 | 425–431 | 1446–1454 | 546–554 |
+| 10 | wafmeow full | 2000 | 863–864 | 506–513 | 1436–1452 | 548–564 |
 | 10 | wafw00f 2.4.2 | 1539–1541 | 853–857 | 415–420 | — | — |
-| 50 | wafme0w fast | 2000 | 858–860 | 427–432 | 1449–1455 | 545–551 |
-| 50 | wafme0w full | 2000 | 861–863 | 502–507 | 1433–1446 | 554–567 |
+| 50 | wafmeow fast | 2000 | 858–860 | 427–432 | 1449–1455 | 545–551 |
+| 50 | wafmeow full | 2000 | 861–863 | 502–507 | 1433–1446 | 554–567 |
 | 50 | wafw00f 2.4.2 | 1537–1538 | 851–856 | 414–422 | — | — |
-| 100 | wafme0w fast | 2000 | 853–858 | 424–430 | 1437–1460 | 540–563 |
-| 100 | wafme0w full | 2000 | 845–852 | 492–504 | 1368–1410 | 590–632 |
+| 100 | wafmeow fast | 2000 | 853–858 | 424–430 | 1437–1460 | 540–563 |
+| 100 | wafmeow full | 2000 | 845–852 | 492–504 | 1368–1410 | 590–632 |
 | 100 | wafw00f 2.4.2 | 1534–1545 | 856–858 | 411–423 | — | — |
 
 `complete` describes the evidence supplied to the native classifier, not WAF
@@ -139,7 +139,7 @@ behavior.
 
 | Component | Recorded identity |
 | --- | --- |
-| wafme0w | Commit `836252b`, Go `1.26.10-X:nodwarf5`, `vcs.modified=false` |
+| wafmeow (built as `wafme0w` at that commit) | Commit `836252b`, Go `1.26.10-X:nodwarf5`, `vcs.modified=false` |
 | wafw00f | Unmodified 2.4.2, Python 3.14.8; 189 package files matched the installation manifest |
 | Targets | First 2,000 ranked domains of [Tranco ZJ8PG, 28 October 2026](https://tranco-list.eu/list/ZJ8PG/1000000), as HTTPS root URLs |
 | CPU | Intel Core Ultra 9 275HX, four allowed logical CPUs |
@@ -161,7 +161,7 @@ not permission to scan its entries.
 
 - Both tools used a 3-second request timeout, disabled redirects, and cleared
   inherited proxy settings. Unreachable targets were retained, not replaced.
-- wafme0w used fast mode or default serial-probe full mode. Target workers and the
+- wafmeow used fast mode or default serial-probe full mode. Target workers and the
   global connection cap equalled the table's concurrency, probe concurrency was
   one, and the target deadline was 30 seconds. The target request budget was 54
   and the decoded-body limit 1 MiB. TLS verification remained enabled; browser
@@ -198,7 +198,7 @@ proxy settings and use the same CPU affinity for both tools.
 ```sh
 # Choose 1, 5, 10, 50, or 100; add --fast for the fast-mode configuration.
 N=10
-GOMAXPROCS=4 ./wafme0w --input targets.txt --jsonl --silent --no-colors \
+GOMAXPROCS=4 ./wafmeow --input targets.txt --jsonl --silent --no-colors \
   --concurrency="$N" --max-connections="$N" --probe-concurrency=1 \
   --request-timeout=3s --target-timeout=30s --max-requests=54 \
   --max-body-bytes=1048576 --redirect-policy=none --max-redirects=0
@@ -229,7 +229,7 @@ Hold the build, input, environment, timeouts, limits, TLS policy, block count an
 accounting method fixed, and retain the records described above with the results.
 A replacement run must publish median elapsed time and spread per configuration,
 per-block returned and complete counts with their range, and the ratio of the two
-tools' medians, keeping fast and full separate and including cells where wafme0w
+tools' medians, keeping fast and full separate and including cells where wafmeow
 is slower. A rate or “hosts in under a minute” claim must also say how many
 targets returned usable evidence.
 
@@ -241,7 +241,7 @@ request budget and pacing
 ([ADR 0002](../adrs/0002-http1-connection-reuse-for-probes.md)). The 2,000-target
 run above predates this change. Every cell ran on four allowed logical CPUs with
 `GOMAXPROCS=4`, a 3-second request timeout, redirects disabled and inherited
-proxy settings cleared. wafme0w cells used `--concurrency` equal to the
+proxy settings cleared. wafmeow cells used `--concurrency` equal to the
 configured workers, `--probe-concurrency=1`, a 30-second target deadline, a
 54-request budget and a 1 MiB decoded-body limit, and verified TLS. Stock
 wafw00f 2.4.2 used `--findall`, `-r`, `-T 3` and did not verify certificates.
@@ -251,11 +251,11 @@ paired and scaling runs below state their concurrency explicitly.
 ### 500-target blocks
 
 Input: the first 500 ranked domains of the authorized Tranco sample, as HTTPS
-root URLs. Block A ran wafme0w and then wafw00f; block B reversed the order.
+root URLs. Block A ran wafmeow and then wafw00f; block B reversed the order.
 
 | Configuration | Block A | Block B | Median | Returned | Named | Generic | Complete |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| wafme0w full, reused connections | 587.5 s | 574.3 s | 580.9 s | 500/500 | 156–158 | 102–104 | 317–318 |
+| wafmeow full, reused connections | 587.5 s | 574.3 s | 580.9 s | 500/500 | 156–158 | 102–104 | 317–318 |
 | wafw00f 2.4.2 | 872.8 s | 876.3 s | 874.6 s | 342–343/500 | 152–156 | 88 | Not reported |
 
 wafw00f returned multiple records for some targets; **Returned** counts unique
@@ -268,21 +268,21 @@ consumed 89.0 s (median 0.04 s; a few reached the 3-second request timeout).
 ### One target worker, 100-target alternating blocks
 
 Input: the first 100 entries of the authorized 500-target Tranco sample, as HTTPS
-root URLs. Two observations per wafme0w configuration and three for wafw00f,
+root URLs. Two observations per wafmeow configuration and three for wafw00f,
 collected in alternating blocks.
 
 | Configuration | Observations | Median | Range | Returned | Named | Generic |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| wafme0w full, fresh connections (before) | 2 | 173.4 s | 160.4–186.4 s | 100/100 | 21–22 | 14–15 |
-| wafme0w full, reused connections (after) | 2 | 96.4 s | 95.3–97.4 s | 100/100 | 21 | 15 |
+| wafmeow full, fresh connections (before) | 2 | 173.4 s | 160.4–186.4 s | 100/100 | 21–22 | 14–15 |
+| wafmeow full, reused connections (after) | 2 | 96.4 s | 95.3–97.4 s | 100/100 | 21 | 15 |
 | wafw00f 2.4.2 | 3 | 143.3 s | 130.7–146.6 s | 72–73/100 | 21 | 14–15 |
 
-Reuse reduced the wafme0w median by 44% relative to the fresh-connection cells.
+Reuse reduced the wafmeow median by 44% relative to the fresh-connection cells.
 The wafw00f median was 1.49× the reused-connection median. A paired run on ranks
 101–200 executed both builds simultaneously against the same hosts, isolating
 transport reuse from network drift: **198.1 s fresh versus 119.7 s reused**
 (1.66×), under mutual load. wafw00f emits no record for targets whose initial
-request fails; wafme0w returns every input with an explicit incomplete or failed
+request fails; wafmeow returns every input with an explicit incomplete or failed
 result. Named and generic counts are saved-output tallies on this sample, not
 accuracy measurements.
 
@@ -291,12 +291,12 @@ accuracy measurements.
 Single observations on disjoint 200-target slices (ranks 501–700 and 701–900 of
 the authorized list), with each pair run in parallel on separate CPU sets.
 
-| Workers / processes | Targets | wafme0w full (reuse) | wafw00f 2.4.2 | Ratio |
+| Workers / processes | Targets | wafmeow full (reuse) | wafw00f 2.4.2 | Ratio |
 | ---: | ---: | ---: | ---: | ---: |
 | 10 | 200 | 33.5 s | 102.3 s | 3.05× |
 | 50 | 200 | 17.1 s | 20.0 s | 1.17× |
 
-wafw00f returned 147–149 of 200 targets in these cells; wafme0w returned all 200.
+wafw00f returned 147–149 of 200 targets in these cells; wafmeow returned all 200.
 The two rows use different target slices, so they are not a concurrency-scaling
 curve.
 
@@ -326,7 +326,7 @@ reuses one connection per target sequence.
 - Live timings are single-host observations under shifting network and DNS state.
   The 100-target cells alternated tools; 500-target blocks are reported as
   observed rather than averaged across a single tool order.
-- wafw00f and wafme0w issue different probe sets and body limits, apply different
+- wafw00f and wafmeow issue different probe sets and body limits, apply different
   TLS policies, and do not return equivalent completion states. Counts are target
   outputs, not requests or accuracy.
 - The loopback matrix isolates acquisition and classification on owned fixtures;
@@ -341,7 +341,7 @@ Run from the repository root:
 ```sh
 go test ./internal/offlinebench -run '^$' \
   -bench 'BenchmarkClassify(Evidence|SingleBody|SmallCatalogue|UnguardedContent)$' -benchmem
-go test ./pkg/wafme0w -run '^$' -bench '^BenchmarkAcquisitionPipeline$' -benchmem
+go test ./pkg/wafmeow -run '^$' -bench '^BenchmarkAcquisitionPipeline$' -benchmem
 ```
 
 The acquisition matrix uses owned HTTP/TLS loopback fixtures, four workers, and
@@ -395,6 +395,11 @@ Verify the published generation before consuming it. Cancellation before
 publication removes staging; it cannot roll back an already committed rename.
 Statement coverage, synthetic conformance, cross-detector agreement, and
 real-world accuracy are separate measurements.
+
+Schema 3 generations saved before the project rename remain verifiable with
+their original `wafme0w` source and tool identities. Verification preserves the
+saved manifest and artifact bytes and rejects mixed old/new native identities.
+New runs use `wafmeow` identities.
 
 ## Historical measurements
 
@@ -474,13 +479,13 @@ and generic columns count targets, not distinct products, and may overlap.
 
 | Workers / processes | Tool | Mode | Elapsed | Named | Generic |
 | --- | --- | --- | ---: | ---: | ---: |
-| 1 | wafme0w | Fast | 19m 10.43s | 359 | 180 |
-| 1 | wafme0w | Full | 30m 2.91s | 354 | 206 |
+| 1 | wafmeow | Fast | 19m 10.43s | 359 | 180 |
+| 1 | wafmeow | Full | 30m 2.91s | 354 | 206 |
 | 1 | wafw00f | — | 47m 3.94s | 354 | 166 |
-| 10 | wafme0w | Fast | 3m 39.69s | 358 | 178 |
-| 10 | wafme0w | Full | 2m 49.17s | 355 | 207 |
+| 10 | wafmeow | Fast | 3m 39.69s | 358 | 178 |
+| 10 | wafmeow | Full | 2m 49.17s | 355 | 207 |
 | 10 | wafw00f | — | 9m 31.50s | 353 | 167 |
-| 50 | wafme0w | Fast | 52.33s | 358 | 176 |
-| 50 | wafme0w | Full | 1m 19.59s | 357 | 205 |
+| 50 | wafmeow | Fast | 52.33s | 358 | 176 |
+| 50 | wafmeow | Full | 1m 19.59s | 357 | 205 |
 | 50 | wafw00f | — | 4m 1.22s | 351 | 162 |
 

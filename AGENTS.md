@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-wafme0w is a Go WAF fingerprint detector with a CLI and reusable library. Network acquisition and offline saved-response analysis share one classification engine. Matches are evidence, not proof of enforcement; a no-match is not proof of absence, and incomplete evidence is not a clean negative. Develop against saved captures or owned loopback fixtures; live targets require explicit authorization.
+wafmeow is a Go WAF fingerprint detector with a CLI and reusable library. Network acquisition and offline saved-response analysis share one classification engine. Matches are evidence, not proof of enforcement; a no-match is not proof of absence, and incomplete evidence is not a clean negative. Develop against saved captures or owned loopback fixtures; live targets require explicit authorization.
 
 ## Shared Repository Workflow
 
@@ -14,18 +14,18 @@ wafme0w is a Go WAF fingerprint detector with a CLI and reusable library. Networ
 
 ## Architecture & Data Flow
 
-- `cmd/wafme0w/main.go` loads the embedded catalogue through `ReadCatalogue` and `Compile`, builds `Config`, and dispatches to `Run`, `RunCaptured`, or `RunHTTPXCaptured`.
-- `pkg/wafme0w/runner.go`: target lines → bounded worker pool → acquisition (`request.go`, `http.go`, `acquisition.go`) → `[]Evidence` → `Engine.Classify` and separate generic anomaly detection → `Result`. An optional bounded browser stage adds metadata without changing fingerprint matches. Result callbacks are serial, in completion order—not input order.
-- `pkg/wafme0w/capture.go`: validated native capture JSONL → bounded parallel classification → serial input-order emission, with zero network access. Keep offline classification independent of acquisition.
-- `pkg/wafme0w/capture_httpx.go`: explicit httpx text/base64 import → independent Normal observations → the same classifier, with serial input-order emission. Never fetch upstream URLs, open upstream file paths, infer encoding/completeness, or turn upstream enrichment labels into matches. Native and httpx decoders have different validation contracts; see [import policy](docs/usage.md#httpx-response-import).
-- `pkg/wafme0w/output.go` serializes JSON/JSONL/CSV/TXT. The CLI journals results before fallible report sinks and publishes final reports through `internal/atomicfile`. JSONL stdout must remain machine-readable; human summaries go to stderr.
+- `cmd/wafmeow/main.go` loads the embedded catalogue through `ReadCatalogue` and `Compile`, builds `Config`, and dispatches to `Run`, `RunCaptured`, or `RunHTTPXCaptured`.
+- `pkg/wafmeow/runner.go`: target lines → bounded worker pool → acquisition (`request.go`, `http.go`, `acquisition.go`) → `[]Evidence` → `Engine.Classify` and separate generic anomaly detection → `Result`. An optional bounded browser stage adds metadata without changing fingerprint matches. Result callbacks are serial, in completion order—not input order.
+- `pkg/wafmeow/capture.go`: validated native capture JSONL → bounded parallel classification → serial input-order emission, with zero network access. Keep offline classification independent of acquisition.
+- `pkg/wafmeow/capture_httpx.go`: explicit httpx text/base64 import → independent Normal observations → the same classifier, with serial input-order emission. Never fetch upstream URLs, open upstream file paths, infer encoding/completeness, or turn upstream enrichment labels into matches. Native and httpx decoders have different validation contracts; see [import policy](docs/usage.md#httpx-response-import).
+- `pkg/wafmeow/output.go` serializes JSON/JSONL/CSV/TXT. The CLI journals results before fallible report sinks and publishes final reports through `internal/atomicfile`. JSONL stdout must remain machine-readable; human summaries go to stderr.
 
 ## Key Directories
 
-- `pkg/wafme0w/`: public API, acquisition, matching, evidence states, streaming runners, and output.
-- `cmd/wafme0w/`: CLI orchestration, terminal rendering, journals, and embedded resources.
+- `pkg/wafmeow/`: public API, acquisition, matching, evidence states, streaming runners, and output.
+- `cmd/wafmeow/`: CLI orchestration, terminal rendering, journals, and embedded resources.
 - `pkg/utils/http/`, `internal/httpmeta/`, `internal/atomicfile/`: shared URL/header validation and atomic publication; reuse these boundaries.
-- `internal/browserruntime/`: native executable validation, Chromium process ownership, and private debugging pipes; CLI discovery lives in `cmd/wafme0w/browser.go`.
+- `internal/browserruntime/`: native executable validation, Chromium process ownership, and private debugging pipes; CLI discovery lives in `cmd/wafmeow/browser.go`.
 - `cmd/offlinebench/`, `internal/offlinebench/`, `tools/offlinebench/`: optional isolated detector comparison, fixture review contracts, Python adapter, and source audit—not the normal scan path.
 - `docs/`, `assets/demo/`: behavior explanations and synthetic offline demonstrations. `benchmarks/` holds ignored local scan/measurement artifacts; do not commit them.
 
@@ -34,14 +34,14 @@ wafme0w is a Go WAF fingerprint detector with a CLI and reusable library. Networ
 Run from the repository root in a task-owned checkout. The binary and coverage paths below are disposable outputs; do not overwrite another contributor's artifacts. These local checks do not replace the full CI/release gates.
 
 ```sh
-go build -o wafme0w ./cmd/wafme0w
-go run ./cmd/wafme0w --help
-go run ./cmd/wafme0w --evidence assets/demo/captures.jsonl --jsonl --no-colors
+go build -o wafmeow ./cmd/wafmeow
+go run ./cmd/wafmeow --help
+go run ./cmd/wafmeow --evidence assets/demo/captures.jsonl --jsonl --no-colors
 
 gofmt -l cmd internal pkg        # Expect no output; format only changed files.
 go vet ./...
 go test -count=1 -timeout=5m ./...
-go test -count=1 -timeout=5m ./pkg/wafme0w -run 'Test(Classify|Catalogue|Matcher)'
+go test -count=1 -timeout=5m ./pkg/wafmeow -run 'Test(Classify|Catalogue|Matcher)'
 go test -count=1 -timeout=5m -race -covermode=atomic -coverprofile=coverage.out ./...
 go tool cover -func=coverage.out
 
@@ -53,7 +53,7 @@ The scoped formatting check excludes local skills and archived worktrees; `gofmt
 
 ## Code Conventions & Common Patterns
 
-- The current Go module is `github.com/Lu1sDV/wafme0w/v2`; result JSON remains schema 1. Use keyed public struct literals. Preserve documented Go APIs, CLI flags/exit codes, and JSON/CSV/TXT contracts; incompatible changes require deliberate versioning, not silent drift or compatibility aliases. See [library contracts](docs/library.md#v2-evidence-api).
+- The current Go module is `github.com/Lu1sDV/wafmeow/v2`; result JSON remains schema 1. Use keyed public struct literals. Preserve documented Go APIs, CLI flags/exit codes, and JSON/CSV/TXT contracts; incompatible changes require deliberate versioning, not silent drift or compatibility aliases. See [library contracts](docs/library.md#v2-evidence-api).
 - Follow `gofmt`, existing package-local helpers, and table-driven `TestXxx`/`BenchmarkXxx` naming. Prefer standard-library primitives and existing dependencies over new abstractions.
 - Wrap contextual errors with `%w` and inspect causes with `errors.Is`. Target failures belong in results; configuration, input, context, and sink failures abort the runner.
 - Inject dependencies through `Config.Client`, `io.Reader`/`io.Writer`, and callbacks. Propagate contexts into transports; use `Config.CancelInput` to wake blocking readers. Preserve bounded queues and serial result emission.
@@ -67,8 +67,8 @@ The scoped formatting check excludes local skills and archived worktrees; `gofmt
 
 ## Important Files
 
-- `cmd/wafme0w/resources/waf-fingerprints.json`: embedded runtime catalogue; `--fingerprints` supplies an explicit replacement. Matching logic lives in `pkg/wafme0w/identify.go` and `pkg/wafme0w/matcher.go`.
-- `pkg/wafme0w/options.go`, `pkg/wafme0w/evidence.go`, `pkg/wafme0w/availability.go`: configuration defaults and public evidence/channel-state contracts.
+- `cmd/wafmeow/resources/waf-fingerprints.json`: embedded runtime catalogue; `--fingerprints` supplies an explicit replacement. Matching logic lives in `pkg/wafmeow/identify.go` and `pkg/wafmeow/matcher.go`.
+- `pkg/wafmeow/options.go`, `pkg/wafmeow/evidence.go`, `pkg/wafmeow/availability.go`: configuration defaults and public evidence/channel-state contracts.
 - `tools/offlinebench/testdata/corpus.json`, `tools/offlinebench/testdata/coverage-contract.json`, `tools/offlinebench/testdata/bodies/`: reviewed expectations, rule identities, and SHA256-addressed bodies. Never regenerate expectations from detector output.
 - `go.mod`, `go.sum`, `Dockerfile`, `.github/workflows/ci.yml`, `.github/workflows/release.yml`, `.github/workflows/security.yml`: authoritative dependency, build, QA, security, and packaging configuration. Check these before changing version or release guidance.
 - `README.md`: concise Build → authorized Scan → Automate quickstart. Detailed CLI/import, API, browser, operations, and release contracts belong in `docs/usage.md`, `docs/library.md`, `docs/browser.md`, `docs/operations.md`, and `docs/releases.md`.
@@ -89,7 +89,7 @@ The scoped formatting check excludes local skills and archived worktrees; `gofmt
 - Ordinary `go test ./...` is not the complete CI suite. Select the additional checks below for affected surfaces; `.github/workflows/ci.yml` is authoritative for setup and invocation:
   - Matching: bounded `FuzzMatcherRegexpEquivalence`, alongside deterministic regexp-oracle tests.
   - Evidence/imports: availability/import regressions, `FuzzAvailabilityUnusableBody`, and `FuzzHTTPXImportCannotInventCompleteChannels`; use the pinned real-httpx smoke and usage matrix in [import verification](docs/usage.md#reproduce-the-producer-boundary-check) for importer/pipeline changes. These use owned loopback targets; httpx, `strace`, and GNU `time` are optional development prerequisites, not core runtime dependencies.
-  - Browser: on supported Linux with an absolute native executable in `WAFME0W_TEST_BROWSER`, run `go test -race -tags browser_integration ./pkg/wafme0w -run '^TestBrowser' -count=1 -timeout=3m`. Untagged tests do not exercise Chromium integration.
+  - Browser: on supported Linux with an absolute native executable in `WAFME0W_TEST_BROWSER`, run `go test -race -tags browser_integration ./pkg/wafmeow -run '^TestBrowser' -count=1 -timeout=3m`. Untagged tests do not exercise Chromium integration.
   - Packaging/security: run `python3 -m unittest discover -s tools -p '*_test.py'` and the relevant source/binary vulnerability scans, native archive, and container smoke checks documented in [release gates](docs/releases.md#publication-gates).
 - Final review must cover the completed integrated change, its affected callers/contracts, and verification evidence. Release approval requires CI and artifact checks on the exact candidate; branch protection, tag immutability, and release permissions are administrator-controlled settings, not guarantees made by this guide or workflow YAML.
 - CI records Go statement coverage without a percentage gate. Offline comparison processing/conformance gates are separate from statement coverage, reviewed capture coverage, and real-world accuracy.

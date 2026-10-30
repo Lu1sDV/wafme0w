@@ -16,7 +16,7 @@ import homebrew_release
 import release
 
 
-SOURCE = "example/wafme0w"
+SOURCE = "example/wafmeow"
 TAP = "example/homebrew-tap"
 TAG = "v2.0.1"
 REVISION = "b" * 40
@@ -74,21 +74,22 @@ class HomebrewReleaseTests(unittest.TestCase):
         self.api = patch.object(homebrew_release, "github_api", side_effect=self.fake_api).start()
         self.remote = patch.object(release, "remote_revision", return_value=REVISION).start()
 
-    def fake_api(self, path, *, tap=False, payload=None, paginate=False):
+    def fake_api(self, path, *, tap=False, payload=None, paginate=False, allow_missing=False):
         self.calls.append((path, tap, payload, paginate))
         if payload is not None:
             if self.api_error:
                 raise self.api_error
-            self.assertEqual(path, f"repos/{TAP}/contents/Formula/wafme0w.rb")
+            self.assertEqual(path, f"repos/{TAP}/contents/Formula/wafmeow.rb")
             self.assertTrue(tap)
             content = base64.b64decode(payload["content"], validate=True)
             return {"content": {"sha": blob_sha(content)}}
         if path == f"repos/{TAP}":
             self.assertTrue(tap)
             return copy.deepcopy(self.metadata)
-        if path == f"repos/{TAP}/contents/Formula/wafme0w.rb?ref=main":
+        if path == f"repos/{TAP}/contents/Formula/wafmeow.rb?ref=main":
             self.assertTrue(tap)
-            return copy.deepcopy(self.current)
+            self.assertTrue(allow_missing)
+            return None if self.current is None else copy.deepcopy(self.current)
         self.assertEqual(path, f"repos/{SOURCE}/releases?per_page=100")
         self.assertFalse(tap)
         self.assertTrue(paginate)
@@ -103,9 +104,17 @@ class HomebrewReleaseTests(unittest.TestCase):
         payload = self.writes()[0]
         self.assertEqual(payload["sha"], self.current["sha"])
         self.assertEqual(payload["branch"], "main")
-        self.assertEqual(payload["message"], "wafme0w v2.0.1")
+        self.assertEqual(payload["message"], "wafmeow v2.0.1")
         self.assertEqual(base64.b64decode(payload["content"]).decode(), self.formula)
         self.remote.assert_called_once_with("origin", TAG)
+
+    def test_first_publication_creates_the_formula_without_a_previous_blob(self):
+        self.current = None
+        homebrew_release.publish(self.args)
+        writes = self.writes()
+        self.assertEqual(len(writes), 1)
+        self.assertNotIn("sha", writes[0])
+        self.assertEqual(base64.b64decode(writes[0]["content"]).decode("utf-8"), self.formula)
 
     def test_exact_current_formula_is_an_idempotent_retry(self):
         self.current = tap_file(self.formula)
@@ -222,7 +231,7 @@ class GitHubCredentialTests(unittest.TestCase):
             source_call = run.call_args
             self.assertEqual(source_call.kwargs["env"]["GH_TOKEN"], "source-secret")
             self.assertNotIn("HOMEBREW_TAP_TOKEN", source_call.kwargs["env"])
-            homebrew_release.github_api("repos/example/tap/contents/Formula/wafme0w.rb", tap=True,
+            homebrew_release.github_api("repos/example/tap/contents/Formula/wafmeow.rb", tap=True,
                                         payload={"content": "encoded", "sha": "b" * 40})
             tap_call = run.call_args
             self.assertEqual(tap_call.kwargs["env"]["GH_TOKEN"], "tap-secret")

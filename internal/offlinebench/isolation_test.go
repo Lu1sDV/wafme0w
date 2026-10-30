@@ -23,10 +23,10 @@ func TestNetworkIsolationCanary(t *testing.T) {
 
 func TestWorkerOutputDecoderRejectsTrailingAndUnknownData(t *testing.T) {
 	for _, data := range []string{
-		`{"tool":"wafme0w"} {}`,
-		`{"tool":"wafme0w","unexpected":true}`,
+		`{"tool":"wafmeow"} {}`,
+		`{"tool":"wafmeow","unexpected":true}`,
 	} {
-		if _, err := decodeWorkerOutput([]byte(data), "wafme0w"); err == nil {
+		if _, err := decodeWorkerOutput([]byte(data), "wafmeow"); err == nil {
 			t.Fatalf("accepted untrusted worker output %q", data)
 		}
 	}

@@ -1,5 +1,6 @@
 """Offline release-policy checks: python3 -m unittest discover -s tools -p '*_test.py'."""
 
+import argparse
 import hashlib
 import copy
 import gzip
@@ -225,7 +226,7 @@ class ReleasePolicyTests(unittest.TestCase):
     def test_archive_resource_bounds_on_real_small_archives(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            for extension, binary in (("tar.gz", "wafme0w"), ("zip", "wafme0w.exe")):
+            for extension, binary in (("tar.gz", "wafmeow"), ("zip", "wafmeow.exe")):
                 archive = root / ("archive." + extension)
                 files = [(binary, b"x" * 40), ("LICENSE.md", b"license"),
                          (smoke.CAPTURE.as_posix(), b"capture")]
@@ -249,7 +250,7 @@ class ReleasePolicyTests(unittest.TestCase):
                             smoke.extract_archive(archive, destination)
             fourth = root / "fourth.tar.gz"
             with tarfile.open(fourth, "w:gz") as output:
-                for name in ("wafme0w", "LICENSE.md", smoke.CAPTURE.as_posix(), "unexpected"):
+                for name in ("wafmeow", "LICENSE.md", smoke.CAPTURE.as_posix(), "unexpected"):
                     member = tarfile.TarInfo(name)
                     member.size = 1
                     output.addfile(member, io.BytesIO(b"x"))
@@ -258,7 +259,7 @@ class ReleasePolicyTests(unittest.TestCase):
             # A huge declared payload must be rejected from its header, without
             # allocating or attempting to read the absent payload.
             huge = root / "header.tar.gz"
-            header = tarfile.TarInfo("wafme0w")
+            header = tarfile.TarInfo("wafmeow")
             header.size = 2**40
             huge.write_bytes(gzip.compress(header.tobuf()))
             with self.assertRaisesRegex(RuntimeError, "member size"):
@@ -270,7 +271,7 @@ class ReleasePolicyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             archive = root / "comment.zip"
-            names = ("wafme0w.exe", "LICENSE.md", smoke.CAPTURE.as_posix())
+            names = ("wafmeow.exe", "LICENSE.md", smoke.CAPTURE.as_posix())
             for comment_size in (0, 65516, 65535):
                 with self.subTest(comment_size=comment_size):
                     with zipfile.ZipFile(archive, "w") as output:
@@ -331,10 +332,34 @@ class ReleasePolicyTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Missing"):
             release.published_assets(legacy)
 
+    def test_releases_published_before_the_rename_remain_scannable(self):
+        legacy = {"tag_name": "v2.0.1", "assets": [
+            {"name": name, "size": 1}
+            for name in release.archive_names("v2.0.1", prefix="wafme0w")]}
+        self.assertEqual(set(release.published_assets(legacy)),
+                         set(release.archive_names("v2.0.1", prefix="wafme0w")))
+
+    def test_pre_rename_archive_binary_is_extracted_by_its_historical_name(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "legacy.tar.gz"
+            with tarfile.open(archive, "w:gz") as output:
+                for name, data in (("wafme0w", b"x" * 40), ("LICENSE.md", b"license"),
+                                   (smoke.CAPTURE.as_posix(), b"capture")):
+                    member = tarfile.TarInfo(name)
+                    member.size = len(data)
+                    output.addfile(member, io.BytesIO(data))
+            destination = root / "extracted"
+            destination.mkdir()
+            extracted = smoke.extract_archive(archive, destination, binary_stem="wafme0w")
+            self.assertEqual(extracted.name, "wafme0w")
+
     def test_formula_has_exact_verified_unix_artifacts_and_rejects_interpolation(self):
         archives = {name: {"archive_sha256": hashlib.sha256(name.encode()).hexdigest()}
                     for name in release.archive_names("v2.0.0-rc.1")}
-        formula = release.homebrew_formula("v2.0.0-rc.1", "b" * 40, archives, "Lu1sDV/wafme0w")
+        formula = release.homebrew_formula("v2.0.0-rc.1", "b" * 40, archives, "Lu1sDV/wafmeow")
+        # Homebrew rejects a formula whose class does not match the file name.
+        self.assertIn("class Wafmeow < Formula", formula)
         for name, metadata in archives.items():
             if "windows" in name:
                 self.assertNotIn(name, formula)
@@ -360,6 +385,11 @@ class ReleasePolicyTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "Remote tag moved"):
                     release.publish(args)
                 command.assert_not_called()
+                notes = (dist / "release-notes.txt").read_text()
+                self.assertIn("`Lu1sDV/tap/wafme0w` installations do not migrate through `brew upgrade`", notes)
+                self.assertIn("install and verify `wafmeow` before removing the old package", notes)
+                self.assertIn(f"https://github.com/example/repo/blob/{args.revision}/docs/releases.md"
+                              "#migrate-an-existing-homebrew-installation", notes)
 
     def test_tag_move_after_upload_retains_draft_without_publishing(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -375,6 +405,99 @@ class ReleasePolicyTests(unittest.TestCase):
                     release.publish(args)
                 self.assertEqual(command.call_count, 1)
                 self.assertEqual(command.call_args.args[:3], ("gh", "release", "create"))
+
+
+class PublishedReleaseScanTests(unittest.TestCase):
+    def published_release(self, tag, prefix, targets=release.TARGETS):
+        archives = {}
+        for name, (target_os, _) in release.archive_names(tag, targets, prefix).items():
+            binary = prefix + (".exe" if target_os == "windows" else "")
+            files = ((binary, name.encode()), ("LICENSE.md", b"fixture license"),
+                     (smoke.CAPTURE.as_posix(), b"fixture capture"))
+            buffer = io.BytesIO()
+            if name.endswith(".zip"):
+                with zipfile.ZipFile(buffer, "w") as output:
+                    for member, content in files:
+                        output.writestr(member, content)
+            else:
+                with tarfile.open(fileobj=buffer, mode="w:gz") as output:
+                    for member, content in files:
+                        info = tarfile.TarInfo(member)
+                        info.size = len(content)
+                        output.addfile(info, io.BytesIO(content))
+            archives[name] = buffer.getvalue()
+        item = {"tag_name": tag, "draft": False, "prerelease": "-" in tag,
+                "assets": [{"name": name, "size": len(content)} for name, content in archives.items()]}
+        return item, archives
+
+    def download(self, archives_by_tag, mutate=None):
+        def command(*args):
+            self.assertEqual(args[:3], ("gh", "release", "download"))
+            # gh accepts a single positional tag; each asset selector needs its
+            # own option. Enforce that boundary without requiring gh in CI.
+            parser = argparse.ArgumentParser(add_help=False)
+            parser.add_argument("tag")
+            parser.add_argument("--dir", required=True)
+            parser.add_argument("--pattern", action="append", default=[])
+            options, extra = parser.parse_known_args(args[3:])
+            self.assertEqual(extra, [], "gh release download accepts only one positional tag")
+            archives = archives_by_tag[options.tag]
+            self.assertCountEqual(options.pattern, archives)
+            dist = Path(options.dir)
+            for name in options.pattern:
+                (dist / name).write_bytes(archives[name])
+            if mutate is not None:
+                mutate(dist)
+            return ""
+        return command
+
+    def test_downloads_and_scans_legacy_and_current_releases_even_after_a_finding(self):
+        legacy, legacy_archives = self.published_release("v1.0.0", "wafme0w", release.LEGACY_TARGETS)
+        current, current_archives = self.published_release("v2.0.0-rc.1", "wafmeow")
+        archives = {legacy["tag_name"]: legacy_archives, current["tag_name"]: current_archives}
+        for vulnerable in (False, True):
+            with self.subTest(vulnerable=vulnerable), tempfile.TemporaryDirectory() as temporary:
+                reports = Path(temporary) / "reports"
+                scanned = []
+
+                def scan(binary, report):
+                    name = report.name.removesuffix(".govulncheck.txt")
+                    self.assertEqual(report.parent, reports)
+                    stem = name.split("_", 1)[0]
+                    self.assertEqual(binary.name, stem + (".exe" if name.endswith(".zip") else ""))
+                    self.assertEqual(binary.read_bytes(), name.encode())
+                    scanned.append(name)
+                    return not (vulnerable and len(scanned) == 1)
+
+                with patch.object(release, "repository_releases", return_value=[legacy, current]), \
+                        patch.object(release, "command", side_effect=self.download(archives)) as download, \
+                        patch.object(release, "scan_binary", side_effect=scan):
+                    if vulnerable:
+                        with self.assertRaisesRegex(ValueError, "Supported published binaries have vulnerabilities"):
+                            release.scan_published(SimpleNamespace(reports=reports))
+                    else:
+                        release.scan_published(SimpleNamespace(reports=reports))
+                    self.assertEqual(download.call_count, 2)
+                self.assertCountEqual(scanned, [*legacy_archives, *current_archives])
+
+    def test_downloaded_asset_set_and_sizes_are_checked_before_extraction(self):
+        item, archives = self.published_release("v2.0.0", "wafmeow")
+        first = next(iter(archives))
+        mutations = (
+            ("missing", lambda dist: (dist / first).unlink(), "Missing or unexpected"),
+            ("extra", lambda dist: (dist / "unexpected.zip").write_bytes(b"extra"), "Missing or unexpected"),
+            ("size", lambda dist: (dist / first).write_bytes(archives[first] + b"changed"), "size changed"),
+        )
+        for name, mutate, message in mutations:
+            with self.subTest(name=name), \
+                    patch.object(release, "repository_releases", return_value=[item]), \
+                    patch.object(release, "command", side_effect=self.download({item["tag_name"]: archives}, mutate)), \
+                    patch.object(release, "extract_archive") as extract, \
+                    patch.object(release, "scan_binary") as scan:
+                with self.assertRaisesRegex(ValueError, message):
+                    release.scan_published(SimpleNamespace(reports=Path("unused")))
+                extract.assert_not_called()
+                scan.assert_not_called()
 
 
 if __name__ == "__main__":

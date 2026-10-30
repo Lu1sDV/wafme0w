@@ -4,7 +4,7 @@
 Python 3.12+, standard library only; Linux is required for bounded pipe controls.
 No build, public targets, browser, strace, or volume benchmark is performed.
 
-    python3 tools/httpx_usage_matrix.py --binary /path/to/wafme0w \
+    python3 tools/httpx_usage_matrix.py --binary /path/to/wafmeow \
         --httpx /path/to/httpx --httpx /path/to/another/httpx \
         --output /new/artifact/directory
 
@@ -1037,7 +1037,7 @@ class Matrix:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--binary", required=True, type=Path, help="existing built wafme0w executable")
+    parser.add_argument("--binary", required=True, type=Path, help="existing built wafmeow executable")
     parser.add_argument("--httpx", required=True, action="append", type=Path, help="existing httpx executable; repeat for each actual version")
     parser.add_argument("--output", required=True, type=Path, help="new artifact directory; existing paths are never overwritten")
     args = parser.parse_args()

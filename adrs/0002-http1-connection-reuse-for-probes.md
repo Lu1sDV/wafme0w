@@ -6,7 +6,7 @@
 | --- | --- |
 | Status | **Accepted** |
 | Recorded | 2026-10-30 |
-| Decision owner | wafme0w maintainers |
+| Decision owner | wafmeow maintainers |
 | Implementation | The owned transport keeps verified HTTP/1 connections alive between a target's probes. Transparent transport retries are counted against `--max-requests` and request pacing; a retry that would exceed either limit aborts the probe instead of being sent. |
 | Validation | Package and race tests, the owned loopback acquisition benchmark, and an authorized Tranco sample comparison at one target worker. Measurements are recorded in [benchmarks](../docs/benchmarks.md#connection-reuse-comparison). |
 | Review point | Reviewed captures or live comparisons showing changed evidence completeness or named/generic findings attributable to connection reuse, or unexpected `request_budget` diagnostics under default limits. |

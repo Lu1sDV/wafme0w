@@ -1,8 +1,8 @@
 # Go library
 
-[Quick start](../README.md) · [API reference](https://pkg.go.dev/github.com/Lu1sDV/wafme0w/v2/pkg/wafme0w)
+[Quick start](../README.md) · [API reference](https://pkg.go.dev/github.com/Lu1sDV/wafmeow/v2/pkg/wafmeow)
 
-The module path is `github.com/Lu1sDV/wafme0w/v2`. Use keyed literals for exported
+The module path is `github.com/Lu1sDV/wafmeow/v2`. Use keyed literals for exported
 structs. Go module versions and result JSON schema versions are separate contracts;
 see [versioning](#versioning).
 
@@ -13,15 +13,15 @@ tag or commit:
 
 ```sh
 go mod init example.com/waf-client # Skip if go.mod already exists.
-go get 'github.com/Lu1sDV/wafme0w/v2@<v2-tag-or-commit>'
+go get 'github.com/Lu1sDV/wafmeow/v2@<v2-tag-or-commit>'
 ```
 
 Replace the placeholder with an actual revision; do not use a v1 release with
 the `/v2` import path. To develop against a local source checkout instead:
 
 ```sh
-go mod edit -replace github.com/Lu1sDV/wafme0w/v2=/absolute/path/to/wafme0w
-go get github.com/Lu1sDV/wafme0w/v2
+go mod edit -replace github.com/Lu1sDV/wafmeow/v2=/absolute/path/to/wafmeow
+go get github.com/Lu1sDV/wafmeow/v2
 ```
 
 ## Classify a saved response
@@ -35,23 +35,23 @@ import (
 	"log"
 	"os"
 
-	"github.com/Lu1sDV/wafme0w/v2/pkg/wafme0w"
+	"github.com/Lu1sDV/wafmeow/v2/pkg/wafmeow"
 )
 
 func main() {
-	responses := []wafme0w.Evidence{{
+	responses := []wafmeow.Evidence{{
 		Role: "Normal", StatusCode: 403, Reason: "Forbidden",
 		Body: []byte("Blocked by Example WAF"),
 	}}
-	wafs := []wafme0w.WAF{{
+	wafs := []wafmeow.WAF{{
 		Name: "Example WAF",
-		Schemas: []wafme0w.Scheme{{
-			FingerPrints: []wafme0w.FingerPrint{{
+		Schemas: []wafmeow.Scheme{{
+			FingerPrints: []wafmeow.FingerPrint{{
 				Type: "Content", Pattern: "(?i)blocked by example waf",
 			}},
 		}},
 	}}
-	engine, err := wafme0w.Compile(wafs)
+	engine, err := wafmeow.Compile(wafs)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func main() {
 
 The library does not automatically load the CLI's embedded catalogue. Supply
 your own rules or load the JSON catalogue from
-[`cmd/wafme0w/resources/waf-fingerprints.json`](../cmd/wafme0w/resources/waf-fingerprints.json)
+[`cmd/wafmeow/resources/waf-fingerprints.json`](../cmd/wafmeow/resources/waf-fingerprints.json)
 with `ReadCatalogue`, then compile it once and reuse the engine.
 
 Save this as `main.go`. It accepts a catalogue path and one authorized URL and
@@ -85,7 +85,7 @@ import (
 	"os/signal"
 	"strings"
 
-	"github.com/Lu1sDV/wafme0w/v2/pkg/wafme0w"
+	"github.com/Lu1sDV/wafmeow/v2/pkg/wafmeow"
 )
 
 func main() {
@@ -103,11 +103,11 @@ func scan(cataloguePath, target string) error {
 		return err
 	}
 	defer catalogue.Close()
-	rules, err := wafme0w.ReadCatalogue(catalogue)
+	rules, err := wafmeow.ReadCatalogue(catalogue)
 	if err != nil {
 		return err
 	}
-	engine, err := wafme0w.Compile(rules)
+	engine, err := wafmeow.Compile(rules)
 	if err != nil {
 		return err
 	}
@@ -122,12 +122,12 @@ func scan(cataloguePath, target string) error {
 		stop()
 		<-interruptsDone
 	}()
-	config := wafme0w.DefaultConfig()
+	config := wafmeow.DefaultConfig()
 	config.BaselineOnly = true
 	config.RequestsPerSecond = 5
 	encoder := json.NewEncoder(os.Stdout)
-	return wafme0w.Run(ctx, engine, strings.NewReader(target+"\n"), config,
-		func(result wafme0w.Result) error {
+	return wafmeow.Run(ctx, engine, strings.NewReader(target+"\n"), config,
+		func(result wafmeow.Result) error {
 			if err := encoder.Encode(result); err != nil {
 				return fmt.Errorf("write result: %w", err)
 			}
@@ -187,7 +187,7 @@ validation, cancellation invokes `CancelInput` once, including when the supplied
 context is already cancelled.
 
 `Config.Concurrency` defaults to 20 and must be between 1 and
-`wafme0w.MaxConcurrency` (65,536). Values outside that supported range fail
+`wafmeow.MaxConcurrency` (65,536). Values outside that supported range fail
 configuration validation before reading inputs or allocating workers. The upper
 bound prevents excessive worker fan-out and counter overflow; it is not a
 recommended setting or a process memory limit.
@@ -233,8 +233,8 @@ the catalogue, not an assertion that all channels were acquired.
 For ProjectDiscovery httpx exports:
 
 ```go
-err := wafme0w.RunHTTPXCaptured(ctx, engine, reader, config,
-    wafme0w.HTTPXImportOptions{ResponseEncoding: wafme0w.HTTPXBase64}, emit)
+err := wafmeow.RunHTTPXCaptured(ctx, engine, reader, config,
+    wafmeow.HTTPXImportOptions{ResponseEncoding: wafmeow.HTTPXBase64}, emit)
 ```
 
 The zero-value options select text; `HTTPXText` and `HTTPXBase64` are explicit
@@ -252,6 +252,26 @@ Result JSON uses schema 1 with optional nested import/availability metadata.
 Native/live output omits that metadata when unused. CSV columns and TXT keys do
 not depend on whether import metadata is present. Incompatible documented Go API
 or report-schema changes require appropriate versioning.
+
+### Module path
+
+Earlier releases were published from the `github.com/Lu1sDV/wafme0w` repository
+path, including `github.com/Lu1sDV/wafme0w/v2` for the v2 line. The repository
+and module path are now `github.com/Lu1sDV/wafmeow`, so update imports, `go.mod`
+requirements and `replace` directives to `github.com/Lu1sDV/wafmeow/v2`:
+
+```sh
+go get 'github.com/Lu1sDV/wafmeow/v2@<v2-tag-or-commit>'
+```
+
+The documented Go API and result schema 1 are unchanged by the move; only the
+module identity changed. Module resolution compares the path declared in
+`go.mod`, so the new path resolves by version only after the first release is
+tagged from it; until then `@latest` selects the last old-path tag and fails
+with a module path mismatch. Conversely, a requirement that still names
+`wafme0w` keeps resolving to the last release published under that path and
+never observes later versions, even though GitHub redirects the old repository
+URL. The CLI binary and container entrypoint are named `wafmeow`.
 
 See [CLI limits](usage.md#inputs-and-limits), [browser capture](browser.md), and
 [deployment boundaries](operations.md#deployment-boundaries) for the remaining

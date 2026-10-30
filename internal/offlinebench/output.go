@@ -14,7 +14,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/Lu1sDV/wafme0w/v2/internal/atomicfile"
+	"github.com/Lu1sDV/wafmeow/v2/internal/atomicfile"
 )
 
 type ArtifactIdentity struct {
@@ -214,12 +214,28 @@ func VerifyArtifacts(directory string) (RunManifest, error) {
 	if err := validatePythonProvenance(manifest.Python); err != nil {
 		return RunManifest{}, err
 	}
-	for _, name := range []string{"corpus", "coverage_contract", "wafme0w_executable", "wafme0w_catalogue", "wafw00f_adapter"} {
+	// Schema 3 generations saved before the rename retain their original
+	// identity keys. Select one complete naming family without rewriting any
+	// saved bytes or accepting a mixture of old and new source identities.
+	nativeTool := "wafmeow"
+	hasNativeIdentity := func(tool string) bool {
+		_, executable := manifest.Digests[tool+"_executable"]
+		_, catalogue := manifest.Digests[tool+"_catalogue"]
+		_, version := manifest.Tools[tool]
+		return executable || catalogue || version
+	}
+	if hasNativeIdentity("wafme0w") {
+		if hasNativeIdentity(nativeTool) {
+			return RunManifest{}, errors.New("completion manifest mixes native tool identities")
+		}
+		nativeTool = "wafme0w"
+	}
+	for _, name := range []string{"corpus", "coverage_contract", nativeTool + "_executable", nativeTool + "_catalogue", "wafw00f_adapter"} {
 		if !validDigest(manifest.Digests[name]) {
 			return RunManifest{}, fmt.Errorf("missing source identity: %s", name)
 		}
 	}
-	if manifest.Python.RequestedExecutable == "" || manifest.Python.WorkerSHA256 != manifest.Digests["wafw00f_adapter"] || manifest.Tools["wafw00f"] != manifest.Python.Packages["wafw00f"] || manifest.Tools["wafme0w"] == "" {
+	if manifest.Python.RequestedExecutable == "" || manifest.Python.WorkerSHA256 != manifest.Digests["wafw00f_adapter"] || manifest.Tools["wafw00f"] != manifest.Python.Packages["wafw00f"] || manifest.Tools[nativeTool] == "" {
 		return RunManifest{}, errors.New("completion manifest sources disagree with observed workers")
 	}
 	entries, err := os.ReadDir(directory)
@@ -277,11 +293,11 @@ func renderReport(summary Summary) string {
 	}
 	fmt.Fprintf(&report, "Observed cross-detector disagreements: %d/%d cases (state, canonical products and incomplete products; independent of expected conformance).\n", len(summary.Comparison.Disagreements), summary.Comparison.OutcomeCases)
 	for _, difference := range summary.Comparison.Disagreements {
-		fmt.Fprintf(&report, "  %s: wafme0w=%s products=%v incomplete=%v; wafw00f=%s products=%v incomplete=%v\n", difference.CaseID,
+		fmt.Fprintf(&report, "  %s: wafmeow=%s products=%v incomplete=%v; wafw00f=%s products=%v incomplete=%v\n", difference.CaseID,
 			difference.Wafme0w.State, difference.Wafme0w.Products, difference.Wafme0w.IncompleteProducts,
 			difference.Wafw00f.State, difference.Wafw00f.Products, difference.Wafw00f.IncompleteProducts)
 	}
-	fmt.Fprintf(&report, "wafw00f / wafme0w median latency ratio: %.3fx (bootstrap 95%% %.3f-%.3f), %d paired cases. %s\n\n", summary.Comparison.Wafw00fOverWafme0wRatio, summary.Comparison.Bootstrap95Low, summary.Comparison.Bootstrap95High, summary.Comparison.PairedCases, summary.Comparison.Scope)
+	fmt.Fprintf(&report, "wafw00f / wafmeow median latency ratio: %.3fx (bootstrap 95%% %.3f-%.3f), %d paired cases. %s\n\n", summary.Comparison.Wafw00fOverWafme0wRatio, summary.Comparison.Bootstrap95Low, summary.Comparison.Bootstrap95High, summary.Comparison.PairedCases, summary.Comparison.Scope)
 	full := summary.FullNative
 	fmt.Fprintf(&report, "Separate full-native profile: %d products; preparation %s, compile initialization %s (%d bytes / %d allocations), adapter wall %s.\n", full.CatalogueSize, formatDuration(full.PreparationNS), formatDuration(full.InitNS), full.InitBytes, full.InitAllocs, formatDuration(full.AdapterWallNS))
 	for _, result := range full.Results {

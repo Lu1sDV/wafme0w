@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/wafme0w.webp" width="160" height="160" alt="The Wafme0w cat peeking over a brick firewall">
+  <img src="assets/wafmeow.webp" width="160" height="160" alt="The Wafme0w cat peeking over a brick firewall">
 </p>
 
 <h1 align="center">Wafme0w</h1>
@@ -9,7 +9,7 @@
 <p align="center"><strong>172 WAF product identities</strong>, built on wafw00f's fingerprints.<br>A Go CLI and library for live HTTP and offline saved-response analysis.</p>
 
 <p align="center">
-  <a href="https://github.com/Lu1sDV/wafme0w/actions/workflows/ci.yml"><img src="https://github.com/Lu1sDV/wafme0w/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI workflow status on main" height="26"></a>
+  <a href="https://github.com/Lu1sDV/wafmeow/actions/workflows/ci.yml"><img src="https://github.com/Lu1sDV/wafmeow/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI workflow status on main" height="26"></a>
   <a href="go.mod"><img src="assets/badges/go.svg" alt="Go: 1.26+" height="26"></a>
   <a href="docs/usage.md"><img src="assets/badges/catalogue.svg" alt="Catalogue: 172 products" height="26"></a>
   <a href="LICENSE.md"><img src="assets/badges/license.svg" alt="License: MIT" height="26"></a>
@@ -27,7 +27,7 @@
   <a href="assets/demo/tern-demo-split.gif">
     <picture>
       <source media="(prefers-reduced-motion: reduce)" srcset="assets/demo/tern-demo-split.png">
-      <img src="assets/demo/tern-demo-split.gif" width="960" height="507" alt="Two wafme0w workflows: Cyberpunk terminal shows WAF matches and incomplete evidence; Gruvbox terminal streams JSONL, then saves a report with strict-mode exit status 2.">
+      <img src="assets/demo/tern-demo-split.gif" width="960" height="507" alt="Two wafmeow workflows: Cyberpunk terminal shows WAF matches and incomplete evidence; Gruvbox terminal streams JSONL, then saves a report with strict-mode exit status 2.">
     </picture>
   </a>
 </p>
@@ -36,9 +36,9 @@
   <a href="assets/demo/tern-demo-split.gif">Open full-size split demo</a>
 </p>
 
-## Why wafme0w?
+## Why wafmeow?
 
-wafme0w is a **wafw00f alternative** for WAF detection in Go, built on the upstream
+wafmeow is a **wafw00f alternative** for WAF detection in Go, built on the upstream
 project's fingerprint work. It brings fast WAF fingerprinting into concurrent,
 structured pipelines for teams that need to detect WAF at scale.
 
@@ -64,7 +64,7 @@ structured pipelines for teams that need to detect WAF at scale.
 set -o pipefail
 subfinder -d "${AUTHORIZED_DOMAIN:?set an authorized domain}" -silent |
   httpx -silent |
-  wafme0w --target-file - --baseline --jsonl --silent
+  wafmeow --target-file - --baseline --jsonl --silent
 ```
 
 This pipeline sends normal HTTP requests with `--baseline`. Remove that flag
@@ -77,10 +77,10 @@ Build with **Go 1.26 or newer**, using a security-patched toolchain. Release bui
 use Go 1.27.3.
 
 ```sh
-git clone https://github.com/Lu1sDV/wafme0w.git
-cd wafme0w
-go build -o wafme0w ./cmd/wafme0w
-./wafme0w --help
+git clone https://github.com/Lu1sDV/wafmeow.git
+cd wafmeow
+go build -o wafmeow ./cmd/wafmeow
+./wafmeow --help
 ```
 
 For production, use a release that passes the [release validation gates](docs/releases.md#publication-gates).
@@ -90,15 +90,15 @@ Prebuilt binaries, the Go module and Homebrew install are in
 [Releases and installation](docs/releases.md#build-and-install):
 
 ```sh
-go install github.com/Lu1sDV/wafme0w/v2/cmd/wafme0w@latest
-brew install Lu1sDV/tap/wafme0w
+go install github.com/Lu1sDV/wafmeow/v2/cmd/wafmeow@latest
+brew install Lu1sDV/tap/wafmeow
 ```
 
 ## 2. Scan an authorized target
 
 ```sh
 # Use your own local HTTP server on port 8080.
-./wafme0w --target http://127.0.0.1:8080 --baseline --jsonl
+./wafmeow --target http://127.0.0.1:8080 --baseline --jsonl
 ```
 
 Use `--target` / `-t` for a URL and repeat it for several URLs. Use
@@ -112,13 +112,13 @@ and `--fast` selects three. Redirects remain subject to scope and request budget
 ### ProjectDiscovery httpx pipelines
 
 ```sh
-# Discover URLs, then send new wafme0w requests:
+# Discover URLs, then send new wafmeow requests:
 httpx -l authorized-hosts.txt -silent |
-  ./wafme0w --target-file - --baseline --jsonl --silent
+  ./wafmeow --target-file - --baseline --jsonl --silent
 
 # Classify exported responses without additional requests:
 httpx -l authorized-hosts.txt -silent -json -irr -probe -rstr 1048576 -rsts 1048576 |
-  ./wafme0w --evidence - --evidence-format httpx --jsonl --silent
+  ./wafmeow --evidence - --evidence-format httpx --jsonl --silent
 ```
 
 The importer targets **httpx v1.12.0**. Exported bodies lack completeness proof:
@@ -127,14 +127,14 @@ match. This is not equivalent to active acquisition or proof of WAF absence.
 Use `set -o pipefail` when upstream process failures must fail the shell pipeline.
 [Encoding, limitations, limits and downstream recipes](docs/usage.md#httpx-response-import).
 
-The Go library uses module **`github.com/Lu1sDV/wafme0w/v2`**. Result JSON uses
+The Go library uses module **`github.com/Lu1sDV/wafmeow/v2`**. Result JSON uses
 schema 1; module and report versions are separate contracts.
 
 ## 3. Automate and save results
 
 ```sh
 # targets.txt: one authorized URL per line.
-./wafme0w --target-file targets.txt --jsonl --output results.json --strict --rate 5
+./wafmeow --target-file targets.txt --jsonl --output results.json --strict --rate 5
 ```
 
 `--jsonl` streams results on stdout; `--output` / `-O` writes an atomic report
@@ -152,7 +152,7 @@ configuration**, completed on 30 October 2026. Lower is better.
 
 **CPU:** Intel Core Ultra 9 275HX (4 logical CPUs allowed) · **RAM:** 32 GB.
 
-| Workers / processes | wafw00f 2.4.2 | <img src="assets/wafme0w.svg" width="20" height="20" alt=""> wafme0w fast | <img src="assets/wafme0w.svg" width="20" height="20" alt=""> wafme0w full | Speedup fast | Speedup full |
+| Workers / processes | wafw00f 2.4.2 | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow fast | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow full | Speedup fast | Speedup full |
 | ---: | ---: | ---: | ---: | ---: | ---: |
 | 1 | 70m 27s | 29m 29s | 78m 05s | **2.39×** | 0.90× |
 | 5 | 15m 26s | 7m 27s | 14m 30s | **2.07×** | **1.06×** |
@@ -163,7 +163,7 @@ configuration**, completed on 30 October 2026. Lower is better.
 **Detection results at 100 workers/processes** — targets out of 2,000, shown as
 the range across three runs.
 
-| Targets with… | wafw00f 2.4.2 | <img src="assets/wafme0w.svg" width="20" height="20" alt=""> wafme0w fast | <img src="assets/wafme0w.svg" width="20" height="20" alt=""> wafme0w full |
+| Targets with… | wafw00f 2.4.2 | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow fast | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow full |
 | --- | ---: | ---: | ---: |
 | Named WAF match | 856–858 | 853–858 | 845–852 |
 | Generic WAF signal | 411–423 | 424–430 | 492–504 |

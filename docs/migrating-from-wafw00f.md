@@ -2,15 +2,15 @@
 
 [Quick start](../README.md) · [CLI usage](usage.md) · [Result semantics](operations.md)
 
-This guide compares **wafw00f 2.4.2** with the wafme0w v2 CLI. Flag spellings and
-input/output schemas differ; wafme0w is not a drop-in replacement. The upstream
+This guide compares **wafw00f 2.4.2** with the wafmeow v2 CLI. Flag spellings and
+input/output schemas differ; wafmeow is not a drop-in replacement. The upstream
 reference is the [2.4.2 CLI source](https://github.com/EnableSecurity/wafw00f/blob/v2.4.2/wafw00f/main.py).
 
 ## Common commands
 
-| Intent | wafw00f 2.4.2 | wafme0w v2 |
+| Intent | wafw00f 2.4.2 | wafmeow v2 |
 | --- | --- | --- |
-| Scan one URL | `wafw00f URL` | `wafme0w --target URL` or `wafme0w -t URL` |
+| Scan one URL | `wafw00f URL` | `wafmeow --target URL` or `wafmeow -t URL` |
 | Scan several direct URLs | `wafw00f URL1 URL2` | Repeat `--target URL`; one URL per flag occurrence |
 | Read a target list | `-i targets.txt` | `--target-file targets.txt`; `--input targets.txt` and `-I targets.txt` are equivalent spellings |
 | Read URLs from stdin | Supply an input file | `--target-file -`, or pipe URL lines without an explicit source; `./-` is a literal filename |
@@ -29,10 +29,10 @@ reference is the [2.4.2 CLI source](https://github.com/EnableSecurity/wafw00f/bl
 | Print version | `-V` / `--version` | `--version` |
 
 When migrating scripts, check `-t` explicitly: wafw00f uses it to select a product,
-while wafme0w uses it for a target URL. The long `--target` spelling makes that
+while wafmeow uses it for a target URL. The long `--target` spelling makes that
 intent clear. The file flags `-I` and `-O` are uppercase and case-sensitive.
 
-wafw00f accepts additional CSV/JSON target-list formats. wafme0w's `--target-file`
+wafw00f accepts additional CSV/JSON target-list formats. wafmeow's `--target-file`
 expects plain URL lines. For ProjectDiscovery httpx JSONL, use
 `--evidence - --evidence-format httpx`; see the
 [producer/import contract](usage.md#httpx-response-import). A wafw00f result
@@ -44,13 +44,13 @@ the file flag. Direct `--target` occurrences, a target file, and `--evidence` ar
 mutually exclusive. Each direct target must be nonblank and single-line. See
 [input selection](usage.md#choose-input) for precedence and stdin examples.
 
-For output, use `--jsonl` to stream to stdout. wafme0w's `--output -` names a
+For output, use `--jsonl` to stream to stdout. wafmeow's `--output -` names a
 literal TXT file; it does not have wafw00f's stdout meaning. `--output` / `-O`
 selects an atomic report file and can be combined with JSONL stdout.
 
 ## Choose collection intentionally
 
-wafme0w's default active mode selects up to nine requests; `--fast` selects three.
+wafmeow's default active mode selects up to nine requests; `--fast` selects three.
 `--baseline` sends the normal request only. Redirects and budgets can change the
 actual request count. None of these modes is equivalent to every wafw00f run.
 
@@ -63,7 +63,7 @@ not become complete merely because it contains a marker.
 A useful starting point for an authorized URL list is:
 
 ```sh
-wafme0w --target-file authorized-urls.txt --baseline --jsonl --silent \
+wafmeow --target-file authorized-urls.txt --baseline --jsonl --silent \
   --output results.json --strict --rate 5
 ```
 
@@ -82,6 +82,6 @@ matches can coexist with incomplete evidence, and generic anomalies are separate
 machine-readable; human summaries and debug messages go to stderr. See
 [operations](operations.md) for publication and journal recovery details.
 
-For Go integrations, import `github.com/Lu1sDV/wafme0w/v2/pkg/wafme0w` and use
+For Go integrations, import `github.com/Lu1sDV/wafmeow/v2/pkg/wafmeow` and use
 keyed public struct literals. The module major and result JSON schema 1 are
 separate contracts.

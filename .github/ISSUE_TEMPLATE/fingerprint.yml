@@ -6,11 +6,11 @@ body:
     attributes:
       value: |
         This is a public issue. Read the fingerprint workflow in
-        [CONTRIBUTING.md](https://github.com/Lu1sDV/wafme0w/blob/main/CONTRIBUTING.md#add-or-change-a-fingerprint).
+        [CONTRIBUTING.md](https://github.com/Lu1sDV/wafmeow/blob/main/CONTRIBUTING.md#add-or-change-a-fingerprint).
         Share sanitized synthetic or authorized evidence only. Do not attach private
         target lists, session cookies, credentials, or customer content. If the problem
-        is a vulnerability in wafme0w, follow
-        [SECURITY.md](https://github.com/Lu1sDV/wafme0w/blob/main/SECURITY.md) instead.
+        is a vulnerability in wafmeow, follow
+        [SECURITY.md](https://github.com/Lu1sDV/wafmeow/blob/main/SECURITY.md) instead.
   - type: dropdown
     id: kind
     attributes:
@@ -63,7 +63,7 @@ body:
     id: observed
     attributes:
       label: Current behavior and proposed rule
-      description: Include wafme0w --version, relevant sanitized output/diagnostics, the proposed schema or predicate, and any known incomplete-evidence behavior.
+      description: Include wafmeow --version, relevant sanitized output/diagnostics, the proposed schema or predicate, and any known incomplete-evidence behavior.
       render: text
     validations:
       required: true

@@ -146,7 +146,7 @@ def main():
     corpus = json.loads((ROOT / CORPUS).read_text())
     metadata = {"schema_version": 1, "complete": False,
                 "started_at": datetime.now(timezone.utc).isoformat(),
-                "repository": "https://github.com/Lu1sDV/wafme0w", "revision": revision,
+                "repository": "https://github.com/Lu1sDV/wafmeow", "revision": revision,
                 "source_clean_at_start": True, "host": host_identity(), "go": go_environment,
                 "python": observed_python,
                 "input": {"path": CORPUS.as_posix(), "sha256": digest(ROOT / CORPUS),

@@ -17,10 +17,10 @@ certificate checks remain enabled.
 
 ```sh
 # Metadata and rendered DOM acquisition, without an image or saved files
-./wafme0w --target http://127.0.0.1:8080 --baseline --browser=navigate
+./wafmeow --target http://127.0.0.1:8080 --baseline --browser=navigate
 
 # One viewport PNG, with explicit local saving
-./wafme0w --target http://127.0.0.1:8080 --baseline \
+./wafmeow --target http://127.0.0.1:8080 --baseline \
   --browser=screenshot --save-screenshots ./screenshots --jsonl
 ```
 

@@ -1,5 +1,5 @@
 # Two real recordings, composed side by side; themes are window-wide in Tern.
-# tern shot assets/demo/tern-split.txt --theme dark --scale 1 --out /tmp/wafme0w-split --flat
+# tern shot assets/demo/tern-split.txt --theme dark --scale 1 --out /tmp/wafmeow-split --flat
 size 720 760 1
 theme dark dark-cyberpunk
 theme light light-gruvbox

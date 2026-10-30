@@ -102,7 +102,7 @@ and retain its source, hardware, dependency and corpus identities. Publish the
 verified artifacts with a benchmark claim. Do not rerun the unpatched v1.0.0
 binary to market the current v2 candidate.
 
-A ratio can be reported as “wafw00f/wafme0w median classification latency on this
+A ratio can be reported as “wafw00f/wafmeow median classification latency on this
 saved synthetic corpus,” with the exact workload and environment. The live table
 completes different amounts of work and does not support an unqualified “× faster”
 headline. The README carries the recorded live comparison with explicit mode,
@@ -146,8 +146,8 @@ qualifications close to the claims:
   arbitrary target lists are authorized or a hosted-service SSRF sandbox.
 
 For a fresh **live** comparison, use one row per mode and parallelism. The table
-should include **parallelism, mode, wafw00f elapsed, wafme0w elapsed, returned and
-complete target counts, and wafw00f/wafme0w elapsed ratio**. Name the ratio
+should include **parallelism, mode, wafw00f elapsed, wafmeow elapsed, returned and
+complete target counts, and wafw00f/wafmeow elapsed ratio**. Name the ratio
 “× faster than wafw00f” only when the workload and completed work are comparable;
 otherwise call it an observed elapsed-time ratio and explain the difference.
 Use medians of repeated alternating runs and publish the versions, source SHA,

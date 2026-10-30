@@ -1,5 +1,5 @@
 # Run from the repository root; requires Go, Bash, jq and ffmpeg.
-# tern shot assets/demo/tern-demo.txt --theme both --scale 1 --out /tmp/wafme0w-demo --flat
+# tern shot assets/demo/tern-demo.txt --theme both --scale 1 --out /tmp/wafmeow-demo --flat
 size 1440 1080 1
 theme light light-gruvbox
 theme dark dark-cyberpunk
@@ -8,11 +8,11 @@ padding 24
 pane-headers never
 status-bar off
 tabs horizontal
-rename "wafme0w / evidence, not guesswork"
+rename "wafmeow / evidence, not guesswork"
 ready
 run "bash assets/demo/tern-demo.sh"
 expect "Start demo"
-record start wafme0w-tern fps 15
+record start wafmeow-tern fps 15
 wait 2500
 key Enter
 expect "Next: machine-readable output"
