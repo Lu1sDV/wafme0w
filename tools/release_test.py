@@ -323,6 +323,7 @@ class ReleasePolicyTests(unittest.TestCase):
                 self.assertIn(name, formula)
                 self.assertIn(metadata["archive_sha256"], formula)
         self.assertEqual(formula.count('      url "'), 4)
+        self.assertNotIn('\n  version "', formula)
         self.assertIn('prefix.install "LICENSE.md"', formula)
         with self.assertRaisesRegex(ValueError, "repository"):
             release.homebrew_formula("v2.0.0-rc.1", "b" * 40, archives, 'owner/#{system("false")}')
