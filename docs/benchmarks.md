@@ -59,92 +59,117 @@ paired-case count. Do not substitute this ratio for a live CLI speedup.
 
 ## Live CLI comparison
 
-The following measurements were collected on **29 October 2026**, using 500
-targets and wafw00f 2.4.2. Each configuration has one completed observation, not
-repeated statistical samples. The saved wafme0w build predates the v2 evidence
-API and httpx importer; these timings do not measure those features.
+The **2,000-target run completed on 30 October 2026** measured every configuration
+in three complete blocks and reports median elapsed time with its observed
+per-block range. It used the first 2,000 ranked domains of
+[Tranco ZJ8PG, 28 October 2026](https://tranco-list.eu/list/ZJ8PG/1000000) as HTTPS
+root URLs, scanned under explicit authorization, and stock wafw00f 2.4.2.
 
 ### Wall-clock results
 
-| Workers / processes | wafme0w mode | wafw00f 2.4.2 elapsed | wafme0w elapsed | Elapsed ratio, wafw00f / wafme0w |
-| ---: | --- | ---: | ---: | ---: |
-| 1 | Fast | 14m 38.21s | 6m 49.44s | 2.14× |
-| 1 | Full | 14m 38.21s | 15m 51.93s | 0.92× |
-| 10 | Fast | 2m 53.39s | 52.89s | 3.28× |
-| 10 | Full | 2m 53.39s | 1m 45.62s | 1.64× |
-| 50 | Fast | 1m 50.93s | 24.06s | 4.61× |
-| 50 | Full | 1m 50.93s | 44.26s | 2.51× |
+| Workers / processes | Mode | wafw00f 2.4.2 median elapsed | wafme0w median elapsed | wafw00f returned / attempted | wafme0w returned / complete / attempted | Median elapsed ratio |
+| ---: | --- | --- | --- | --- | --- | --- |
+| 1 | Fast | 70m 27s (67m 27s–73m 44s) | 29m 29s (28m 54s–30m 15s) | 1542–1544 / 2000 | 2000 / 1390–1415 / 2000 | 2.39× |
+| 1 | Full | 70m 27s (67m 27s–73m 44s) | 78m 05s (75m 17s–79m 18s) | 1542–1544 / 2000 | 2000 / 1442–1452 / 2000 | 0.90× |
+| 5 | Fast | 15m 26s (15m 09s–16m 16s) | 7m 27s (7m 26s–7m 32s) | 1539–1541 / 2000 | 2000 / 1431–1437 / 2000 | 2.07× |
+| 5 | Full | 15m 26s (15m 09s–16m 16s) | 14m 30s (14m 21s–14m 40s) | 1539–1541 / 2000 | 2000 / 1448–1450 / 2000 | 1.06× |
+| 10 | Fast | 7m 46s (6m 52s–8m 14s) | 3m 48s (3m 46s–3m 51s) | 1539–1541 / 2000 | 2000 / 1446–1454 / 2000 | 2.04× |
+| 10 | Full | 7m 46s (6m 52s–8m 14s) | 7m 18s (7m 10s–7m 28s) | 1539–1541 / 2000 | 2000 / 1436–1452 / 2000 | 1.07× |
+| 50 | Fast | 3m 45s (3m 43s–3m 51s) | 49s (49s–50s) | 1537–1538 / 2000 | 2000 / 1449–1455 / 2000 | 4.55× |
+| 50 | Full | 3m 45s (3m 43s–3m 51s) | 1m 40s (1m 39s–1m 46s) | 1537–1538 / 2000 | 2000 / 1433–1446 / 2000 | 2.24× |
+| 100 | Fast | 2m 45s (1m 40s–2m 50s) | 28s (27s–28s) | 1534–1545 / 2000 | 2000 / 1437–1460 / 2000 | 5.90× |
+| 100 | Full | 2m 45s (1m 40s–2m 50s) | 1m 02s (54s–1m 05s) | 1534–1545 / 2000 | 2000 / 1368–1410 / 2000 | 2.66× |
 
-Each ratio is wafw00f's observed elapsed time divided by wafme0w's elapsed time
-for that mode and concurrency. Values above 1 mean less elapsed time for
-wafme0w; the one-worker full-mode ratio below 1 preserves the slower result.
+Each ratio divides wafw00f's median elapsed time by wafme0w's for that mode and
+concurrency. Values above 1 mean less elapsed time for wafme0w. The one-worker
+full-mode ratio below 1 preserves that slower result.
 
-All nine configurations attempted the same targets and exited 0 without a
-watchdog timeout. Different probe sets, TLS policies, evidence completeness, and
-network state prevent interpreting elapsed-time ratios as equivalent-work
-speedups.
+All 45 cells exited 0 without a watchdog kill, and no completed cell was repeated
+to replace an inconvenient value. Fast mode's advantage widens with concurrency,
+from 2.39× at one worker to 5.90× at 100; full mode gains more slowly. Different
+probe sets, TLS policies, evidence completeness and network state prevent reading
+these ratios as equivalent-work speedups.
 
 ### Result accounting
 
 Counts are **targets**, not fingerprint matches, distinct products, or HTTP
-requests. Named and generic detections may overlap and may coexist with
-incomplete evidence.
+requests. Native named and generic detections may overlap and may coexist with
+incomplete evidence. Each figure is the range across the three blocks when the
+blocks differ.
 
-| Workers | Mode | Returned | Missing | Complete | Incomplete | Named | Generic |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | wafme0w fast | 500 | 0 | 306 | 194 | 156 | 84 |
-| 1 | wafme0w full | 500 | 0 | 316 | 184 | 157 | 108 |
-| 1 | wafw00f | 342 | 158 | — | — | 153 | 91 |
-| 10 | wafme0w fast | 500 | 0 | 318 | 182 | 156 | 83 |
-| 10 | wafme0w full | 500 | 0 | 317 | 183 | 158 | 105 |
-| 10 | wafw00f | 343 | 157 | — | — | 153 | 87 |
-| 50 | wafme0w fast | 500 | 0 | 206 | 294 | 131 | 62 |
-| 50 | wafme0w full | 500 | 0 | 280 | 220 | 139 | 90 |
-| 50 | wafw00f | 341 | 159 | — | — | 155 | 87 |
+| Workers / processes | Tool and mode | Returned | Named | Generic | Complete | Incomplete |
+| ---: | --- | --- | --- | --- | --- | --- |
+| 1 | wafme0w fast | 2000 | 858–862 | 433–434 | 1390–1415 | 585–610 |
+| 1 | wafme0w full | 2000 | 864–868 | 511–515 | 1442–1452 | 548–558 |
+| 1 | wafw00f 2.4.2 | 1542–1544 | 855–857 | 426–428 | — | — |
+| 5 | wafme0w fast | 2000 | 856–862 | 409–433 | 1431–1437 | 563–569 |
+| 5 | wafme0w full | 2000 | 863–865 | 477–512 | 1448–1450 | 550–552 |
+| 5 | wafw00f 2.4.2 | 1539–1541 | 854–856 | 416–424 | — | — |
+| 10 | wafme0w fast | 2000 | 857–860 | 425–431 | 1446–1454 | 546–554 |
+| 10 | wafme0w full | 2000 | 863–864 | 506–513 | 1436–1452 | 548–564 |
+| 10 | wafw00f 2.4.2 | 1539–1541 | 853–857 | 415–420 | — | — |
+| 50 | wafme0w fast | 2000 | 858–860 | 427–432 | 1449–1455 | 545–551 |
+| 50 | wafme0w full | 2000 | 861–863 | 502–507 | 1433–1446 | 554–567 |
+| 50 | wafw00f 2.4.2 | 1537–1538 | 851–856 | 414–422 | — | — |
+| 100 | wafme0w fast | 2000 | 853–858 | 424–430 | 1437–1460 | 540–563 |
+| 100 | wafme0w full | 2000 | 845–852 | 492–504 | 1368–1410 | 590–632 |
+| 100 | wafw00f 2.4.2 | 1534–1545 | 856–858 | 411–423 | — | — |
 
 `complete` describes the evidence supplied to the native classifier, not WAF
 absence or active enforcement. wafw00f does not report equivalent completion
-states; its missing records remain unknown despite successful process exits.
-Higher concurrency changed evidence completeness, so shorter wall time alone
-does not establish equal completed work or unchanged detection behavior.
+states; its unreturned targets remain unknown despite successful process exits.
+Fast mode's completeness stayed near 1,440 targets at every concurrency, while
+full mode at 100 workers fell to 1,368–1,410 complete with 590–632 incomplete.
+Higher concurrency can therefore change evidence completeness, so shorter wall
+time alone does not establish equal completed work or unchanged detection
+behavior.
 
 ### Build and input identity
 
 | Component | Recorded identity |
 | --- | --- |
-| wafme0w | Source identifier `347f547`, Go `1.26.10-X:nodwarf5`, `vcs.modified=true` |
-| wafw00f | Unmodified 2.4.2, Python 3.14.8; package files checked against the installation manifest |
-| Targets | First 500 domains of [Tranco ZJ8PG, 28 October 2026](https://tranco-list.eu/list/ZJ8PG/1000000), as HTTPS root URLs |
+| wafme0w | Commit `836252b`, Go `1.26.10-X:nodwarf5`, `vcs.modified=false` |
+| wafw00f | Unmodified 2.4.2, Python 3.14.8; 189 package files matched the installation manifest |
+| Targets | First 2,000 ranked domains of [Tranco ZJ8PG, 28 October 2026](https://tranco-list.eu/list/ZJ8PG/1000000), as HTTPS root URLs |
+| Host | Linux `7.2.13-100.fc43.x86_64`, x86_64, glibc 2.42, Intel Core Ultra 9 275HX, four allowed logical CPUs, 32 GB RAM |
 
-The modified-tree build flag means the commit identifier alone cannot reproduce
+The clean-build flag means the commit identifier plus the toolchain reproduces
 the measured binary. Recorded SHA-256 identities:
 
-- Binary: `442595cffd0801d38c5849c855ee8daa33e1120a88168022f137e8c34b83ec5f`
-- Target file: `e74e8e65fffc1d18f5ddd82b7165641e0ad6e68f3553bcdb26df1d4f0f2a14f2`
+- Binary: `3278f85f1a8134ef75d6181846f0841d0f8402008f90ad8a39ffab446f844319`
+- Target file: `6f0633e401040fb2a5d76608952a6be8a81327c572bcafe5865f3421c09e29c6`
+- Tranco list download: `c13d972cb8deb00bcada3d2087c283a067e7235e7acebd596ab21c0126cd95c5`
 
-The active comparison was explicitly authorized for that run. A public target
-list is not permission to scan its entries.
+The comparison was explicitly authorized for this run. A public target list is
+not permission to scan its entries.
 
 ### Method and limitations
 
 - Both tools used a 3-second request timeout, disabled redirects, and cleared
   inherited proxy settings. Unreachable targets were retained, not replaced.
 - wafme0w used fast mode or default serial-probe full mode. Target workers and the
-  global connection cap equalled the table's concurrency. The target deadline was
-  30 seconds, the target request budget 54, and the decoded-body limit 1 MiB.
-  TLS verification remained enabled; browser capture and journaling were off.
+  global connection cap equalled the table's concurrency, probe concurrency was
+  one, and the target deadline was 30 seconds. The target request budget was 54
+  and the decoded-body limit 1 MiB. TLS verification remained enabled; browser
+  capture and journaling were off.
 - wafw00f used `--findall`. At concurrency N, N stock CLI processes consumed
   round-robin static shards, rather than starting a new process per target. Its
   connect/read timeout semantics differ; it uses a 100 KiB body-read threshold
   and disables certificate verification. Probe sets and headers also differ.
-- Configurations ran separately on the same four allowed logical CPUs, with
-  native `GOMAXPROCS=4`. Tool order was fast/full/wafw00f at 50 workers,
-  wafw00f/fast/full at 10, and full/wafw00f/fast at 1.
-- Timing included CLI startup and output writes, but excluded compilation and
-  target partitioning. An interrupted one-worker full scan was excluded; its
-  replacement completed. No completed configuration was repeated.
-- Network/DNS state, load, and responses can change between configurations.
-  Differences in named matches are not detection-accuracy evidence.
+- Cells ran sequentially and never overlapped, on the same four allowed logical
+  CPUs with native `GOMAXPROCS=4`. Three blocks rotated tool order as
+  fast/full/wafw00f, then wafw00f/fast/full, then full/wafw00f/fast; within each
+  block the concurrency order was 100, 50, 10, 5, and 1.
+- Timing covered process start through final output flush, excluding compilation
+  and shard partitioning. Each cell had a 7,200-second watchdog. One one-worker
+  full attempt was interrupted after 96 records by a harness session loss; its
+  partial output was excluded and the cell re-ran to completion. No cell was
+  killed by the watchdog, and no completed cell was retried or re-rolled.
+- One one-worker upstream cell exited 0 after attempting 1,998 of 2,000 inputs:
+  `karnataka.gov.in` and `pinimg.com` were never attempted. Its median timing is
+  published with that skip recorded, not read as a clean negative.
+- Network/DNS state, load, and responses changed between cells. Differences in
+  named matches are not detection-accuracy evidence.
 
 Raw captures, build manifests, process logs, and verification artifacts are not
 distributed with the repository. The tables and recorded identities above are
@@ -157,7 +182,7 @@ process exit status, command, build identity, and raw output. Clear inherited
 proxy settings and use the same CPU affinity for both tools.
 
 ```sh
-# Choose 1, 10, or 50; add --fast for the fast-mode configuration.
+# Choose 1, 5, 10, 50, or 100; add --fast for the fast-mode configuration.
 N=10
 GOMAXPROCS=4 ./wafme0w --input targets.txt --jsonl --silent --no-colors \
   --concurrency="$N" --max-connections="$N" --probe-concurrency=1 \
@@ -180,55 +205,19 @@ upstream records as unknown, never negative.
 
 ### A new 2,000-target run
 
-A Tranco top-2,000 comparison can extend the live evidence above. Freeze the
-Tranco list ID/date and its first 2,000 ranked rows, then restrict the actual scan
-input to authorized hosts. Retain the original selection, exclusions and final
-target-file hash. Tranco ranks sites; it does not grant testing permission. If
-the admitted input has fewer than 2,000 targets, report that actual count.
+Freeze the Tranco list ID/date and its first 2,000 ranked rows, then restrict the
+actual scan input to authorized hosts. Retain the original selection, exclusions
+and final target-file hash; if the admitted input has fewer than 2,000 targets,
+report that actual count. Tranco ranks sites; it does not grant testing
+permission.
 
-Keep the following fixed and retain the records with the results:
-
-1. **Build identity.** Select a clean committed v2 candidate, record its full
-   SHA, `go version`, `go version -m` output and binary SHA256. The run should
-   identify the binary actually executed, including its `vcs.modified` value.
-   Pin wafw00f 2.4.2 and retain the Python version and package inventory. If an
-   upstream release is newer when testing begins, explicitly select and record
-   it rather than silently comparing different versions across cells.
-2. **Input and environment.** Use the same exact URL file, scheme, order, CPU
-   affinity, host, proxy policy and DNS configuration throughout. Retain
-   unreachable/error targets; do not replace them with more responsive sites.
-   Record CPU model, allocated CPUs, RAM, OS/kernel and the network environment.
-3. **Configurations.** Measure workers/processes 1, 10 and 50; use wafme0w fast
-   and full modes and stock wafw00f `--findall`. For upstream concurrency, use
-   N long-lived CLI processes over fixed round-robin shards, as above. Record
-   request/target timeouts, redirects, rate/connection/request/body limits,
-   retries and TLS behavior. Keep browser capture and journaling off for this
-   comparison. Equal target counts do not make the tools' probe sets identical.
-4. **Repeated timing.** Run at least three complete blocks, rotating the order
-   of wafw00f, fast and full within each concurrency. Time process startup
-   through the final exit/output flush; exclude compilation and partitioning.
-   Keep stdout/stderr out of the terminal. Record all timings and exits, and
-   choose the watchdog policy before the run. A killed or timed-out cell remains
-   an incomplete observation; preserve it alongside any retry.
-5. **Accounting.** Retain wafme0w JSONL, each wafw00f shard's JSON, stderr, exact
-   commands and exit statuses. Join every attempted target back to the original
-   input. Report attempted, returned, missing, complete, incomplete, failed,
-   named and generic counts separately where the tool supplies them. Do not
-   infer an upstream completeness value that its output does not provide.
-
-Publish the median elapsed time and spread for each configuration, alongside
-per-block returned/complete counts (and their range) and the ratio of the two
-tools' median elapsed times. Keep fast and full separate, including cells where
-wafme0w is slower.
-Use a table with these columns:
-
-| Workers / processes | Mode | wafw00f median elapsed | wafme0w median elapsed | wafw00f returned / attempted | wafme0w returned / complete / attempted | Median elapsed ratio |
-| --- | --- | --- | --- | --- | --- | --- |
-| One row per measured configuration | Fast or Full | Measured value and spread | Measured value and spread | Observed counts | Observed counts | wafw00f median / wafme0w median |
-
-No 2,000-target results are claimed here yet. Use the completed run's measured
-values and immutable identities when updating the README. A rate or “hosts in
-under a minute” claim must also say how many targets returned usable evidence.
+Hold the build, input, environment, timeouts, limits, TLS policy, block count and
+accounting method fixed, and retain the records described above with the results.
+A replacement run must publish median elapsed time and spread per configuration,
+per-block returned and complete counts with their range, and the ratio of the two
+tools' medians, keeping fast and full separate and including cells where wafme0w
+is slower. A rate or “hosts in under a minute” claim must also say how many
+targets returned usable evidence.
 
 ## Local performance benchmarks
 
