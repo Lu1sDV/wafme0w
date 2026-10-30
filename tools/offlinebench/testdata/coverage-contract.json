@@ -115,10 +115,14 @@
     "status-opens-unknown-aliyundun-conjunction": "4350db4d8d8bdd220113d69fd32c75a3899d596a5707dc9c726b92d2088790e9",
     "anubis-cookie-survives-unavailable-body": "40d4245cbf7798263e4d62735c10970fa8fda95e793cb22f96e2ad65615a4eab",
     "unavailable-normal-body-complete-attack-negative": "e4b85b73a34c73060950c428ab743ff962a9ae684f7220475e745a7ada7c3812",
-    "pksecurity-schema1-single-marker": "b01e07d77f63bb038e99b8956d829bfda810b9f1a051a77ee3bc3906004ec4de",
-    "pksecurity-schema1-both-markers": "ecd8892d0dc1cbdecb4efca19d6413bff6929d135f4b43e77256e5bac126c701",
-    "pksecurity-schema2-single-marker": "990df471993384f8d96f285444546268a86400967fae191c7e9086cd66acd9a4",
-    "pksecurity-schema2-all-markers": "33ebc990e778f3f65c8463383c38f91491d3c49e6b43a7ddb8987c1c90475451"
+    "pksecurity-schema1-single-marker": "6a43d665dac274efb4bf21c156cfe21f7191c8bace1d953c3aca243847a2694f",
+    "pksecurity-schema1-both-markers": "9dc77d52f038fec3acbb1788dca1208767964b42bbe089796e3f30cd62491351",
+    "pksecurity-schema2-single-marker": "6932ab54248fc38b4b9696c0a94b8155f88e53ec7a1f4397eb24dc871304cdca",
+    "pksecurity-schema2-all-markers": "bfde91087a424a47cf0c577243fd07d5bcb50e671d8f45f4df0d0b652a6b4e0a",
+    "pksecurity-schema1-alert-only": "03f8e31400248913becf5cd8d3bcee677e82195ab9afeddbf342092d502c981a",
+    "pksecurity-schema2-missing-attack": "a2b0bf70102c36ddaa0a231dd22dc964befad576ccf370b5d7c680026d2d9f7f",
+    "pksecurity-schema2-missing-blocked": "45671be7f34319a187f5557facc043ef4ce350436e56d00d480897f84859aa7f",
+    "pksecurity-schema2-missing-reload": "39c5ce81f2b722016c10fa9255cc83f1e6955b6ff272cb95f206cbf494303abb"
   },
   "rules": [
     {
@@ -1319,25 +1323,45 @@
     {
       "product": "pkSecurity IDS (pkSec)",
       "schema": 1,
-      "sha256": "b1a8ac2e774a1bcc5a19dff54eac00e59160767b96a853b6c26162dbd4941cb8",
-      "status": "baseline-untested",
+      "sha256": "5de5ee876882f8462e0bf262a5e093e2b3bf818b4e782f04b4aa2396472ee11a",
+      "status": "reviewed",
+      "review": "Candidate synthetic source-conformance review: schema 1 is OR and schema 2 is AND, following WAFW00F 2.4.2 and the identical immutable source at https://github.com/EnableSecurity/wafw00f/blob/69fbe3956bba47a172cf87e40e9037535d32a130/wafw00f/plugins/pksec.py. Literal fixture expectations were authored independently of detector output. OpenAI assistant source inspection only; maintainer human review of the linked positive and negative fixtures is required before accepting this change. Product truth remains unknown; no real-capture or accuracy claim.",
+      "positive": [
+        "pksecurity-schema1-single-marker",
+        "pksecurity-schema1-alert-only",
+        "pksecurity-schema1-both-markers"
+      ],
+      "negative": [
+        "pksecurity-schema2-single-marker",
+        "pksecurity-schema2-all-markers"
+      ],
       "provenance": {
-        "scope": "unreviewed",
-        "source_id": "wafmeow:catalogue-rule/sha256:b1a8ac2e774a1bcc5a19dff54eac00e59160767b96a853b6c26162dbd4941cb8",
-        "reviewed_on": "unknown",
-        "reviewer": "unknown"
+        "scope": "synthetic-conformance",
+        "source_id": "https://github.com/EnableSecurity/wafw00f/blob/69fbe3956bba47a172cf87e40e9037535d32a130/wafw00f/plugins/pksec.py",
+        "reviewed_on": "2026-10-30",
+        "reviewer": "OpenAI assistant (source inspection only; maintainer review pending)"
       }
     },
     {
       "product": "pkSecurity IDS (pkSec)",
       "schema": 2,
-      "sha256": "364c95cf13b508943046253074ee2790a055f4ff9ace911f1743117818c15c86",
-      "status": "baseline-untested",
+      "sha256": "b4b70f80e4531dbad33027af3ef3e021fab89732270e8a827f397d628c007cb3",
+      "status": "reviewed",
+      "review": "Candidate synthetic source-conformance review: schema 1 is OR and schema 2 is AND, following WAFW00F 2.4.2 and the identical immutable source at https://github.com/EnableSecurity/wafw00f/blob/69fbe3956bba47a172cf87e40e9037535d32a130/wafw00f/plugins/pksec.py. Literal fixture expectations were authored independently of detector output. OpenAI assistant source inspection only; maintainer human review of the linked positive and negative fixtures is required before accepting this change. Product truth remains unknown; no real-capture or accuracy claim.",
+      "positive": [
+        "pksecurity-schema2-all-markers"
+      ],
+      "negative": [
+        "pksecurity-schema2-single-marker",
+        "pksecurity-schema2-missing-attack",
+        "pksecurity-schema2-missing-blocked",
+        "pksecurity-schema2-missing-reload"
+      ],
       "provenance": {
-        "scope": "unreviewed",
-        "source_id": "wafmeow:catalogue-rule/sha256:364c95cf13b508943046253074ee2790a055f4ff9ace911f1743117818c15c86",
-        "reviewed_on": "unknown",
-        "reviewer": "unknown"
+        "scope": "synthetic-conformance",
+        "source_id": "https://github.com/EnableSecurity/wafw00f/blob/69fbe3956bba47a172cf87e40e9037535d32a130/wafw00f/plugins/pksec.py",
+        "reviewed_on": "2026-10-30",
+        "reviewer": "OpenAI assistant (source inspection only; maintainer review pending)"
       }
     },
     {

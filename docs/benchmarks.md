@@ -357,10 +357,17 @@ are not Internet-throughput estimates or deployment-accuracy measurements.
 ## Offline comparison
 
 The optional comparison uses pinned wafw00f 2.4.2 and Linux bubblewrap network
-isolation. The corpus contains 117 synthetic cases; reviewed fixture links cover
-28/172 native products and 36/195 schemas. It contains no independently reviewed
-real captures. These figures describe synthetic conformance, not real-world
-accuracy. Never derive expected labels from either detector's output.
+isolation. The current corpus contains 121 synthetic cases; synthetic-conformance
+fixture links cover 29/172 native products and 38/195 schemas. It contains no
+independently reviewed real captures. These figures describe synthetic
+conformance, not real-world accuracy. Never derive expected labels from either
+detector's output.
+
+The pkSecurity cases pin the upstream Boolean structure: schema 1 accepts either
+marker, while schema 2 requires all three warning terms. Their product truth is
+unknown, and their provenance identifies assistant source inspection with
+maintainer fixture review required before accepting the catalogue correction.
+This corpus update does not revise any historical timings or detection counts.
 
 ```sh
 python3 -m venv .offlinebench-venv

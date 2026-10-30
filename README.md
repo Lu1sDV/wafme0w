@@ -191,7 +191,7 @@ and binary hashes, compiler and Python package versions, CPU details, the exact
 synthetic corpus, repeated blocks and a verified result manifest. Workers replay
 saved responses with network access isolated by bubblewrap.
 
-The shipped synthetic fixtures have reviewed links for **28 of 172 products**;
+The shipped synthetic-conformance fixture links cover **29 of 172 products**;
 this checks conformance to fixture expectations. The live table measures
 end-to-end CLI elapsed time, while the offline comparison isolates saved-response
 classification. Keep each result attached to its workload and measured build.
