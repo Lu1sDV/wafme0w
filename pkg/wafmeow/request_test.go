@@ -26,7 +26,9 @@ const (
 	wantCentralToken = "c=%3Bwafmeow-canary&d=%22%3E%3Cscript%3Ealert%28%22XSS%22%29%3C%2Fscript%3E&h=%28%29+%7B+%3A%3B%7D%3B&l=..%2F..%2F..%2F..%2Fetc%2Fpasswd&l2=..%5C..%5C..%5C..%5Cetc%5Cpasswd&r=%0D%0AX-Wafmeow%3A+canary&v=%27+OR+1%3D1+UNION+SELECT+ALL+FROM+information_schema+AND+%27+or+SLEEP%285%29+or+%27--+-%22%3E%3Cscript%3Ealert%28%22XSS%22%29%3C%2Fscript%3E"
 )
 
-var randomPathExpr = regexp.MustCompile(`^/[1-9][0-9]{5}\.html$`)
+// newTypeOptions draws rand.Intn(900001)+100000, so the random-path probe
+// spans 100000.html through the valid seven-digit 1000000.html.
+var randomPathExpr = regexp.MustCompile(`^/(?:[1-9][0-9]{5}|1000000)\.html$`)
 
 // activeProbes is the full-mode probe set after removing the standalone
 // SqliAttack and RceAttack requests. Order follows the catalogue.
@@ -298,5 +300,20 @@ func TestBlockedCombinedProbeKeepsAttributionCoarse(t *testing.T) {
 				t.Fatalf("blocked evidence roles = %q, want only CentralAttack", blocked)
 			}
 		})
+	}
+}
+
+// TestRandomPathOracleCoversGeneratorRange pins the boundary that made the
+// earlier six-digit-only oracle rare-flaky: the generator can draw 1000000.
+func TestRandomPathOracleCoversGeneratorRange(t *testing.T) {
+	for _, path := range []string{"/100000.html", "/999999.html", "/1000000.html"} {
+		if !randomPathExpr.MatchString(path) {
+			t.Fatalf("random-path oracle rejects reachable generator value %q", path)
+		}
+	}
+	for _, path := range []string{"/99999.html", "/1000001.html", "/100000.htm"} {
+		if randomPathExpr.MatchString(path) {
+			t.Fatalf("random-path oracle accepts out-of-range value %q", path)
+		}
 	}
 }

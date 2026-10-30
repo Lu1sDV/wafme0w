@@ -284,8 +284,14 @@ func probeTag(role string, au *aurora.Aurora) aurora.Value {
 		return au.BrightYellow(tag)
 	case "CentralAttack":
 		return au.Yellow(tag)
+	// Removed probe roles can still appear in saved captures recorded before
+	// the probe consolidation, so their colours stay stable.
+	case "SqliAttack":
+		return au.BrightRed(tag)
 	case "RceAttack":
 		return au.Red(tag)
+	case "JndiAttack":
+		return au.BrightRed(tag)
 	}
 	return au.Bold(tag)
 }

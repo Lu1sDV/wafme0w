@@ -82,8 +82,10 @@ the default value of 1. Explicit `--probe-concurrency 1` is also valid.
 Full mode sends one normal request, one no-user-agent request, one random-path
 request, and five active probes: separate XSS, XXE and LFI probes (`p`), one
 combined probe (`l`, `l2`, `d`, `v`, `c`, `r`, `h`), and a JNDI canary (`p`).
-`--fast` sends the normal, no-user-agent and combined probes only, so the JNDI
-canary and the separate XSS/XXE/LFI probe values never leave the client.
+`--fast` sends only the normal, no-user-agent and combined requests. The JNDI
+canary and the standalone XSS, XXE and LFI requests are never sent in fast mode,
+but the combined request still carries XSS, LFI and the SQLi/XSS polyglot in its
+query: fast mode omits separate probe requests, not those payload values.
 `--baseline` sends no probes at all.
 
 SQL-injection and command-injection payloads travel inside the combined probe,
