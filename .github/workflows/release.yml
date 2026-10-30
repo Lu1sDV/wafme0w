@@ -265,8 +265,9 @@ jobs:
           merge-multiple: true
       - name: Authenticate only the publication job
         run: |
-          export DOCKER_CONFIG="$RUNNER_TEMP/docker-auth"
-          printf 'DOCKER_CONFIG=%s\n' "$DOCKER_CONFIG" >> "$GITHUB_ENV"
+          # actions/attest reads $HOME/.docker/config.json and ignores
+          # DOCKER_CONFIG, so the registry attestation needs the default
+          # credential file; the logout step below removes it again.
           printf '%s' "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
       - name: Verify loaded binaries and publish versioned multi-platform image
         id: container
