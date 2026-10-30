@@ -131,7 +131,7 @@ func supportingEvidence(match wafme0w.Match, evidenceCount int) []int {
 	return unique
 }
 
-func printResult(stdout, stderr io.Writer, result wafme0w.Result, suppressWarnings bool, au *aurora.Aurora) error {
+func printResult(stdout, stderr io.Writer, result wafme0w.Result, suppressWarnings bool, au, diagnostics *aurora.Aurora) error {
 	outcome := humanOutcome(result)
 	label := au.Yellow("[ " + outcome + " ]")
 	switch outcome {
@@ -154,7 +154,7 @@ func printResult(stdout, stderr io.Writer, result wafme0w.Result, suppressWarnin
 				group.WriteString("; ")
 			}
 			observation := result.Evidence[index]
-			fmt.Fprintf(&group, "#%d [%s] HTTP ", index+1, terminalText(observation.Role))
+			fmt.Fprintf(&group, "#%d %s HTTP ", index+1, probeTag(observation.Role, au))
 			if observation.StatusCode >= 100 && observation.StatusCode <= 999 {
 				fmt.Fprint(&group, observation.StatusCode)
 			} else {
@@ -259,66 +259,108 @@ func printResult(stdout, stderr io.Writer, result wafme0w.Result, suppressWarnin
 	if suppressWarnings {
 		return nil
 	}
-	return printResultDiagnostics(stderr, result)
+	return printResultDiagnostics(stderr, result, diagnostics)
 }
 
-func printResultDiagnostics(writer io.Writer, result wafme0w.Result) error {
+// probeTag colors a probe role. Roles are presentation labels, not machine
+// data; one stable color per role keeps a repeated probe list scannable.
+func probeTag(role string, au *aurora.Aurora) aurora.Value {
+	tag := "[" + terminalText(role) + "]"
+	switch role {
+	case "Normal":
+		return au.Cyan(tag)
+	case "Saved":
+		return au.BrightCyan(tag)
+	case "NoUserAgent":
+		return au.BrightBlack(tag)
+	case "NonExistent":
+		return au.Blue(tag)
+	case "XssAttack":
+		return au.BrightMagenta(tag)
+	case "XxeAttack":
+		return au.Magenta(tag)
+	case "LfiAttack":
+		return au.BrightYellow(tag)
+	case "CentralAttack":
+		return au.Yellow(tag)
+	case "SqliAttack":
+		return au.BrightRed(tag)
+	case "RceAttack":
+		return au.Red(tag)
+	}
+	return au.Bold(tag)
+}
+
+// diagnosticText renders one recorded diagnostic explanation.
+func diagnosticText(result wafme0w.Result, diagnostic wafme0w.Diagnostic) string {
+	description := diagnostic.Message
+	if description == "" || description == diagnostic.Code {
+		description = strings.ReplaceAll(diagnostic.Code, "_", " ")
+	}
+	if diagnostic.Code == "redirect_scope" {
+		description = "redirect outside allowed scope"
+		if diagnostic.Evidence >= 0 && diagnostic.Evidence < len(result.Evidence) {
+			if status := result.Evidence[diagnostic.Evidence].StatusCode; status >= 300 && status < 400 {
+				description = fmt.Sprintf("Got Redirect %d", status)
+			}
+		}
+	}
+	var text strings.Builder
+	text.WriteString(terminalText(description))
+	if diagnostic.Code == "redirect_scope" && diagnostic.Evidence >= 0 && diagnostic.Evidence < len(result.Evidence) {
+		if destination := result.Evidence[diagnostic.Evidence].BlockedRedirectURL; destination != "" {
+			fmt.Fprintf(&text, ": %s", terminalText(destination))
+		}
+	}
+	if guidance := certificateGuidance(diagnostic.Message); guidance != "" {
+		fmt.Fprintf(&text, " (%s)", guidance)
+	}
+	return text.String()
+}
+
+// Diagnostics go to stderr and follow stderr's own TTY status: the caller builds
+// the colorizer from this writer, so a redirected log stays free of escapes.
+func printResultDiagnostics(writer io.Writer, result wafme0w.Result, au *aurora.Aurora) error {
 	var group strings.Builder
 	if len(result.Outcome.Diagnostics) != 0 {
+		type row struct{ role, text string }
+		rows := make([]row, 0, len(result.Outcome.Diagnostics))
 		seen := make(map[wafme0w.Diagnostic]bool, len(result.Outcome.Diagnostics))
-		fmt.Fprintf(&group, "WARN  %s | ", terminalText(result.Target))
-		first := true
+		width := 0
 		for _, diagnostic := range result.Outcome.Diagnostics {
 			if seen[diagnostic] {
 				continue
 			}
 			seen[diagnostic] = true
-			if !first {
-				group.WriteString("; ")
-			}
-			first = false
+			role := ""
 			if diagnostic.Evidence >= 0 && diagnostic.Evidence < len(result.Evidence) {
-				if role := result.Evidence[diagnostic.Evidence].Role; role != "" {
-					fmt.Fprintf(&group, "[%s] ", terminalText(role))
-				}
+				role = result.Evidence[diagnostic.Evidence].Role
 			}
-			description := diagnostic.Message
-			if description == "" || description == diagnostic.Code {
-				description = strings.ReplaceAll(diagnostic.Code, "_", " ")
-			}
-			if diagnostic.Code == "redirect_scope" {
-				description = "redirect outside allowed scope"
-				if diagnostic.Evidence >= 0 && diagnostic.Evidence < len(result.Evidence) {
-					if status := result.Evidence[diagnostic.Evidence].StatusCode; status >= 300 && status < 400 {
-						description = fmt.Sprintf("Got Redirect %d", status)
-					}
-				}
-			}
-			group.WriteString(terminalText(description))
-			if diagnostic.Code == "redirect_scope" && diagnostic.Evidence >= 0 && diagnostic.Evidence < len(result.Evidence) {
-				if destination := result.Evidence[diagnostic.Evidence].BlockedRedirectURL; destination != "" {
-					fmt.Fprintf(&group, ": %s", terminalText(destination))
-				}
-			}
-			if guidance := certificateGuidance(diagnostic.Message); guidance != "" {
-				fmt.Fprintf(&group, " (%s)", guidance)
+			rows = append(rows, row{role: role, text: diagnosticText(result, diagnostic)})
+			if len(role)+2 > width {
+				width = len(role) + 2
 			}
 		}
-		group.WriteByte('\n')
+		fmt.Fprintf(&group, "%s  %s | %d diagnostics\n", au.Bold(au.Yellow("WARN")), terminalText(result.Target), len(rows))
+		for _, row := range rows {
+			if row.role == "" {
+				fmt.Fprintf(&group, "  %s %s\n", strings.Repeat(" ", width), row.text)
+				continue
+			}
+			fmt.Fprintf(&group, "  %s%s %s\n", probeTag(row.role, au), strings.Repeat(" ", width-len(row.role)-2), row.text)
+		}
 	}
 	if browser := result.Browser; browser != nil {
 		if browser.Reason != "" || browser.Error != "" {
-			fmt.Fprintf(&group, "WARN  %s | browser %s: %s\n", terminalText(result.Target), terminalText(browser.Reason), terminalText(browser.Error))
+			fmt.Fprintf(&group, "%s  %s | browser %s: %s\n", au.Bold(au.Yellow("WARN")), terminalText(result.Target), terminalText(browser.Reason), terminalText(browser.Error))
 		}
 		for _, limitation := range browser.Limitations {
-			fmt.Fprintf(&group, "WARN  %s | browser limitation: %s\n", terminalText(result.Target), terminalText(limitation))
+			fmt.Fprintf(&group, "%s  %s | browser limitation: %s\n", au.Bold(au.Yellow("WARN")), terminalText(result.Target), terminalText(limitation))
 		}
 	}
 	if group.Len() == 0 {
 		return nil
 	}
-	// Diagnostics are deliberately unstyled: stdout's TTY status says nothing
-	// about stderr, which may be a redirected log.
 	_, err := io.WriteString(writer, group.String())
 	return err
 }

@@ -250,7 +250,7 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 					return err
 				}
 			} else if !opts.Silent {
-				return printResult(stdout, stderr, result, opts.SuppressWarnings, console)
+				return printResult(stdout, stderr, result, opts.SuppressWarnings, console, diagnostics)
 			}
 			return nil
 		}, func() {
