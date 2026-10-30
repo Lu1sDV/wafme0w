@@ -1,6 +1,7 @@
 package offlinebench
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,18 +16,21 @@ import (
 )
 
 func RunWafme0wWorker(input io.Reader, output io.Writer, cataloguePath string) error {
+	data, err := io.ReadAll(io.LimitReader(input, maxWorkerInputSize+1))
+	if err != nil {
+		return fmt.Errorf("read worker input: %w", err)
+	}
+	if len(data) > maxWorkerInputSize {
+		return fmt.Errorf("worker input exceeds %d bytes", maxWorkerInputSize)
+	}
 	var request WorkerInput
-	limited := &io.LimitedReader{R: input, N: maxCorpusSize + 1}
-	decoder := json.NewDecoder(limited)
+	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&request); err != nil {
 		return fmt.Errorf("decode worker input: %w", err)
 	}
 	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
 		return errors.New("decode worker input: trailing JSON value")
-	}
-	if limited.N == 0 {
-		return fmt.Errorf("worker input exceeds %d bytes", maxCorpusSize)
 	}
 	if request.SchemaVersion != SchemaVersion || request.Iterations < 1 || (request.Profile != "shared-products" && request.Profile != "full-native") {
 		return errors.New("invalid worker schema, profile, or iteration count")
