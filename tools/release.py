@@ -196,7 +196,7 @@ def homebrew_formula(tag, revision, archives, repository):
     require(re.fullmatch(r"[0-9a-f]{40}", revision), "Invalid formula source revision")
     lines = [f"# Generated from verified release {tag}, source {revision}.",
              "class Wafme0w < Formula", '  desc "Identify WAF fingerprints in HTTP responses or saved captures"',
-             f'  homepage "https://github.com/{repository}"', f'  version "{tag[1:]}"',
+             f'  homepage "https://github.com/{repository}"',
              '  license "MIT"', ""]
     for target_os, platform in (("darwin", "macos"), ("linux", "linux")):
         lines.append(f"  on_{platform} do")

@@ -86,6 +86,14 @@ go build -o wafme0w ./cmd/wafme0w
 For production, use a release that passes the [release validation gates](docs/releases.md#publication-gates).
 The v1.0.0 downloads predate the security hardening in this source tree.
 
+Prebuilt binaries, the Go module and Homebrew install are in
+[Releases and installation](docs/releases.md#build-and-install):
+
+```sh
+go install github.com/Lu1sDV/wafme0w/v2/cmd/wafme0w@latest
+brew install Lu1sDV/tap/wafme0w
+```
+
 ## 2. Scan an authorized target
 
 ```sh
