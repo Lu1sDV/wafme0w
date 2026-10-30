@@ -25,7 +25,8 @@ const (
 // Config is copied by Run. Concurrency must be 1..MaxConcurrency and
 // MaxBodyBytes must be positive.
 // Zero timeouts, header/evidence limits and request budgets use finite defaults.
-// Zero MaxConnections follows Concurrency; DefaultConfig retains an explicit 20.
+// Zero MaxConnections follows the larger of Concurrency and ProbeConcurrency;
+// DefaultConfig retains an explicit 20.
 // ProbeConcurrency bounds full-mode probes after Normal (1..8, zero uses 1).
 // Normal completes before full-mode fan-out; fast mode keeps its three probes.
 // Parallel probes share budgets, so allocation of a tight budget can vary.
@@ -114,7 +115,7 @@ func (c Config) normalized() Config {
 		c.MaxRequests = defaults.MaxRequests
 	}
 	if c.MaxConnections == 0 {
-		c.MaxConnections = c.Concurrency
+		c.MaxConnections = max(c.Concurrency, c.ProbeConcurrency)
 	}
 	if c.RedirectPolicy == "" {
 		c.RedirectPolicy = defaults.RedirectPolicy

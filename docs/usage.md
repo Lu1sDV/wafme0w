@@ -457,8 +457,18 @@ Overrides apply to every selected request.
 | Retained HTTP evidence | `--max-target-evidence-bytes` defaults to 16,777,216 bytes per target across all probes; 0 selects that default |
 | Request / target deadlines | `--request-timeout` defaults to 5s; `--target-timeout` to 30s |
 | Requests per target | `--max-requests` defaults to 54, including redirects |
-| Globally in-flight requests | `--max-connections` defaults to 0, following `--concurrency` (20 unless changed). Slots include response-body reads |
+| Globally in-flight requests | `--max-connections` defaults to 0, following the larger of `--concurrency` and `--probe-concurrency`. Slots include response-body reads |
 | Redirect limit | `--max-redirects` defaults to 5 per request; 0 follows none |
+
+Parallel probes are also bounded by `--max-connections`. At 0 it follows the
+larger of target concurrency and probe concurrency, so raising
+`--probe-concurrency` alone takes effect. On 100 Tranco targets at one worker,
+probe concurrency 4 and 8 reduced full-mode elapsed time from 113.2 s to 68.0 s
+and 58.7 s with unchanged named, generic and complete counts. Lowering
+`--max-body-bytes` to 102,400 saved about 3% but truncated 24 probes and reduced
+complete evidence by five targets; lowering `--request-timeout` to 1 s saved
+about 27% but added five incomplete targets. Keep the evidence-driven defaults
+unless throughput matters more than completeness.
 
 Bodies are bounded after gzip/deflate decoding. Responses that cannot carry a
 message body, such as 204 and 304, have complete empty content regardless of

@@ -54,7 +54,7 @@ type HTTPOptions struct {
 
 type LimitOptions struct {
 	Concurrency            int     `short:"c" long:"concurrency" value-name:"N" description:"Concurrent target workers (1..65536); offline workers also capped by CPU count"`
-	MaxConnections         int     `long:"max-connections" value-name:"N" description:"Global in-flight HTTP connections; 0 follows target concurrency (default 0)"`
+	MaxConnections         int     `long:"max-connections" value-name:"N" description:"Global in-flight HTTP connections; 0 follows the larger of target and probe concurrency (default 0)"`
 	Rate                   float64 `long:"rate" value-name:"RPS" description:"Global HTTP requests per second; 0 disables pacing (default 0)"`
 	PerOriginRate          float64 `long:"per-origin-rate" value-name:"RPS" description:"HTTP requests per second per origin; 0 disables pacing (default 0)"`
 	MaxRequests            int     `long:"max-requests" value-name:"N" description:"HTTP requests per target, including redirects; live acquisition only"`
