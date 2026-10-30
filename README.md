@@ -23,9 +23,6 @@
 
 <p align="center"><a href="#1-build">Quick start</a> · <a href="docs/migrating-from-wafw00f.md">Moving from wafw00f</a> · <a href="#benchmarks">Benchmarks</a> · <a href="#documentation">Documentation</a></p>
 
-From a checked-out source tree with Go installed: `go install ./cmd/wafme0w`.
-The binary is installed in `GOBIN`, or `$(go env GOPATH)/bin` by default.
-
 <p align="center">
   <a href="assets/demo/tern-demo-split.gif">
     <picture>
