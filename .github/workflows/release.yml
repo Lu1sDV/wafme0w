@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       bump:
-        description: Next stable release (leave patch for fixes; ignored with an existing tag)
+        description: Automatic increment (ignored when version or tag is supplied)
         required: true
         default: patch
         type: choice
@@ -14,8 +14,12 @@ on:
           - patch
           - minor
           - major
+      version:
+        description: Exact NEW version (e.g. v2.0.5 or v2.1.0-rc.1); overrides bump; leave tag empty
+        required: false
+        type: string
       tag:
-        description: Optional existing tag for recovery or prereleases; leave empty for a new release
+        description: EXISTING tag for recovery; leave empty when creating a new version
         required: false
         type: string
 
@@ -55,19 +59,17 @@ jobs:
         id: request
         env:
           RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          RELEASE_VERSION: ${{ inputs.version }}
         run: |
           python - <<'PY'
           import os
           import sys
           from pathlib import Path
           sys.path.insert(0, 'tools')
-          import release
-          tag = os.environ['RELEASE_TAG']
-          if not tag:
-              release.require(os.environ['GITHUB_EVENT_NAME'] == 'workflow_dispatch' and
-                              os.environ['GITHUB_REF'] == 'refs/heads/main',
-                              'Start a new release with Run workflow on main')
-          stable = not tag or release.version_key(tag)[3]
+          import release_start
+          stable = release_start.validate_request(
+              os.environ['RELEASE_TAG'], os.environ['RELEASE_VERSION'],
+              os.environ['GITHUB_EVENT_NAME'], os.environ['GITHUB_REF'])
           with Path(os.environ['GITHUB_OUTPUT']).open('a', encoding='utf-8') as output:
               output.write(f'stable={str(stable).lower()}\n')
           PY
@@ -87,6 +89,7 @@ jobs:
         id: prepare
         env:
           RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          RELEASE_VERSION: ${{ inputs.version }}
           RELEASE_BUMP: ${{ inputs.bump || 'patch' }}
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -95,7 +98,8 @@ jobs:
             python tools/release.py prepare --tag "$RELEASE_TAG"
           else
             # Continue this run: GITHUB_TOKEN-created tags do not start a second workflow.
-            python tools/release_start.py --bump "$RELEASE_BUMP" --revision "$GITHUB_SHA"
+            python tools/release_start.py --bump "$RELEASE_BUMP" --version "$RELEASE_VERSION" \
+              --revision "$GITHUB_SHA"
           fi
       - name: Record the selected release
         env:

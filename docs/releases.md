@@ -5,7 +5,8 @@
 ## Release when ready
 
 Merge the changes you want to ship, then open **Actions → Release → Run workflow**
-on `main`. Leave **bump** as `patch` and **tag** empty for a normal fix release.
+on `main`. Leave **bump** as `patch` and both **version** and **tag** empty for a
+normal fix release.
 The workflow chooses the next version, creates its annotated tag, runs all release
 gates, publishes the GitHub archives and GHCR images, and updates the Homebrew tap.
 For example, after `v2.0.0`, the default selection is `v2.0.1`.
@@ -21,6 +22,38 @@ the numbers are calculated from the highest published stable version. Drafts
 and prereleases do not change that baseline. A major bump must already agree
 with the candidate's Go module path. This is an explicit release policy, not
 an attempt to infer compatibility from commit messages.
+
+### Choose an exact version
+
+To choose the number yourself, enter a **new** version such as `v2.0.5` in
+**version**, leave **tag** empty, and click **Run workflow** on `main`.
+**version** overrides **bump**. The workflow creates that exact tag and runs the
+same validation, GitHub release, GHCR and stable Homebrew delivery steps; there
+is no release PR, version-file commit, or local tag command.
+
+```sh
+gh workflow run release.yml --repo Lu1sDV/wafme0w --ref main -f version=v2.0.5
+```
+
+| Intent | bump | version | tag |
+| --- | --- | --- | --- |
+| Next patch automatically | `patch` | empty | empty |
+| Choose a new stable version | ignored | `v2.0.5` | empty |
+| Choose a new prerelease | ignored | `v2.1.0-rc.1` | empty |
+| Recover an existing candidate | ignored | empty | existing tag |
+
+Use canonical `vMAJOR.MINOR.PATCH[-PRERELEASE]` syntax, including the leading `v`,
+without whitespace or build metadata. A new version must be greater than the
+highest published stable release, agree with the source's Go module major, and
+have no existing tag or release (including a draft). Selecting both **version**
+and **tag** is rejected before credential preflight or tag creation. With the
+current `/v2` module, `v3.0.0` requires a module migration first.
+
+An exact prerelease publishes its archives and the configured GHCR channel but
+does not become latest or update the stable Homebrew formula. After a custom
+stable version such as `v2.0.5` is published, the next automatic patch is
+`v2.0.6`, not `v2.0.1`. A rerun recovers only the exact version and source owned
+by its original workflow run; it never substitutes another version.
 
 The source SHA is fixed when you click **Run workflow**. A new release requires
 that SHA to still be the tip of `main` when the queued run starts, with new commits
@@ -62,9 +95,10 @@ reject a later write; that failure remains visible in the release run.
 ### Existing tags and interrupted runs
 
 The optional **tag** input accepts an existing
-`vMAJOR.MINOR.PATCH[-PRERELEASE]` tag and ignores **bump**. Use it for a prerelease
-or to resume an unpublished candidate; its source must contain the current
-release helpers. An existing tag must never be moved to fix a failed candidate.
+`vMAJOR.MINOR.PATCH[-PRERELEASE]` tag and ignores **bump**. Leave **version**
+empty in this mode. Use **tag** to resume an unpublished candidate or deliver a
+tag created separately; use **version** above to create a new tag automatically.
+The existing tag's source must contain the current release helpers. An existing tag must never be moved to fix a failed candidate.
 Prereleases publish their archives and the configured GHCR channel, and leave
 the stable Homebrew formula alone.
 
@@ -84,8 +118,8 @@ A failed Homebrew-only job can be retried; an already identical formula is a
 successful no-op, and a newer or unexpected formula is never overwritten.
 
 GitHub, GHCR and Homebrew are separate publication steps. Treat delivery as
-complete when all configured delivery jobs succeed; the normal new-release
-flow requires all three. This workflow distributes
+complete when all configured delivery jobs succeed; a new stable release
+requires all three. This workflow distributes
 the CLI and container image; running a container on a server remains a separate
 deployment decision.
 

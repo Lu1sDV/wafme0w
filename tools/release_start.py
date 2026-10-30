@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Allocate a stable release only for an explicit workflow_dispatch on main.
+"""Allocate a release only for an explicit workflow_dispatch on main.
 
 The dispatch commit is frozen before version selection. An annotated tag records
 the workflow run that owns it, so retrying that run cannot allocate another
@@ -22,6 +22,17 @@ def api(repository, path, **fields):
         for name, value in fields.items():
             args.extend(("-f", f"{name}={value}"))
     return json.loads(release.command(*args))
+
+
+def validate_request(tag, version, event_name, ref):
+    """Validate the form before credential preflight or any release mutation."""
+    release.require(not (tag and version),
+                    "Choose either an exact new version or an existing tag, not both")
+    if not tag:
+        release.require(event_name == "workflow_dispatch" and ref == "refs/heads/main",
+                        "Start a new release with Run workflow on main")
+    selected = version or tag
+    return not selected or release.version_key(selected)[3]
 
 
 def stable_base(releases):
@@ -57,7 +68,7 @@ def require_sha(value):
     return value
 
 
-def owned_tag(repository, refs, run_id, bump, revision):
+def owned_tag(repository, refs, run_id, bump, revision, *, version=""):
     matches = []
     for ref in refs:
         name = ref["ref"]
@@ -83,7 +94,10 @@ def owned_tag(repository, refs, run_id, bump, revision):
         release.require(annotation["tag"] == tag and annotation["object"]["type"] == "commit"
                         and annotation["object"]["sha"] == revision,
                         "This workflow run's tag no longer points directly to its frozen commit")
-        release.require(release.version_key(tag)[3], "Automatic release tag must be stable")
+        if version:
+            release.require(tag == version, "This workflow run owns a different exact version")
+        else:
+            release.require(release.version_key(tag)[3], "Automatic release tag must be stable")
         matches.append(tag)
     release.require(len(matches) <= 1, "Multiple release tags claim this workflow run; refusing ambiguous recovery")
     return matches[0] if matches else None
@@ -94,10 +108,8 @@ def require_unpublished(tag, releases):
                     f"Release {tag} already exists; refusing overwrite (including drafts)")
 
 
-def start(bump, revision):
-    release.require(os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
-                    and os.environ.get("GITHUB_REF") == "refs/heads/main",
-                    "Automatic version selection must be manually dispatched from main")
+def start(bump, revision, *, version=""):
+    validate_request("", version, os.environ.get("GITHUB_EVENT_NAME"), os.environ.get("GITHUB_REF"))
     require_sha(revision)
     release.require(os.environ.get("GITHUB_SHA") == revision,
                     "Release source must equal the frozen workflow dispatch SHA")
@@ -112,7 +124,9 @@ def start(bump, revision):
 
     refs = api(repository, "git/matching-refs/tags/")
     release.require(isinstance(refs, list), "Expected a complete tag reference listing")
-    tag = owned_tag(repository, refs, run_id, bump, revision)
+    # The annotation records the effective selection, not an ignored dropdown.
+    selection = "exact" if version else bump
+    tag = owned_tag(repository, refs, run_id, selection, revision, version=version)
     releases = release.repository_releases()
     if tag:
         require_unpublished(tag, releases)
@@ -124,7 +138,9 @@ def start(bump, revision):
     # may have removed a tag. Neither permits a rerun to choose a new version.
     release.require(attempt == "1", "No release tag owned by this rerun; start a new manual workflow run")
     previous_tag = stable_base(releases)
-    tag = next_version(previous_tag, bump)
+    tag = version or next_version(previous_tag, bump)
+    release.require(release.version_key(tag) > release.version_key(previous_tag),
+                    f"New version {tag} must be newer than the latest stable release {previous_tag}")
     require_unpublished(tag, releases)
     release.require(not any(item["ref"] == "refs/tags/" + tag for item in refs),
                     f"Tag {tag} already exists; retry its original run or supply that existing tag")
@@ -144,7 +160,7 @@ def start(bump, revision):
     release.require(main["ref"] == "refs/heads/main" and main["object"]["type"] == "commit"
                     and main["object"]["sha"] == revision,
                     "main advanced after this dispatch; start a new manual workflow run")
-    message = annotation_message(repository, run_id, tag, bump, revision)
+    message = annotation_message(repository, run_id, tag, selection, revision)
     annotation = api(repository, "git/tags", tag=tag, message=message, object=revision, type="commit")
     sha = require_sha(annotation["sha"])
     release.require(annotation["tag"] == tag and annotation["message"].rstrip("\n") == message
@@ -163,9 +179,11 @@ def start(bump, revision):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bump", choices=("patch", "minor", "major"), default="patch")
+    parser.add_argument("--version", default="",
+                        help="Exact new vMAJOR.MINOR.PATCH[-PRERELEASE]; overrides --bump")
     parser.add_argument("--revision", required=True)
     args = parser.parse_args()
-    start(args.bump, args.revision)
+    start(args.bump, args.revision, version=args.version)
 
 
 if __name__ == "__main__":

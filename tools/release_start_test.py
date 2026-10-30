@@ -5,6 +5,7 @@ import copy
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -99,6 +100,120 @@ class ManualReleaseTests(unittest.TestCase):
                          release_start.annotation_message(REPOSITORY, RUN_ID, "v2.0.1", "patch", REVISION))
         self.validate.assert_called_once_with("v2.0.1", REVISION)
         self.prepare.assert_called_once_with("v2.0.1", expected_revision=REVISION)
+
+    def test_exact_version_overrides_each_increment_without_calculating_a_bump(self):
+        for bump in ("patch", "minor", "major"):
+            with self.subTest(bump=bump):
+                self.github.refs.clear()
+                self.github.objects.clear()
+                self.github.writes.clear()
+                with patch.object(release_start, "next_version", side_effect=AssertionError("ignored bump")):
+                    self.assertEqual(release_start.start(bump, REVISION, version="v2.0.5"), "v2.0.5")
+                ref = self.github.refs["refs/tags/v2.0.5"]
+                annotation = self.github.objects[ref["object"]["sha"]]
+                self.assertEqual(annotation["object"], {"type": "commit", "sha": REVISION})
+                self.assertEqual(annotation["message"], release_start.annotation_message(
+                    REPOSITORY, RUN_ID, "v2.0.5", "exact", REVISION))
+                self.prepare.assert_called_with("v2.0.5", expected_revision=REVISION)
+
+    def test_exact_prerelease_is_supported_without_promoting_stable(self):
+        tag = "v2.1.0-rc.1"
+        self.assertEqual(release_start.start("patch", REVISION, version=tag), tag)
+        self.prepare.assert_called_once_with(tag, expected_revision=REVISION)
+        self.assertFalse(release.make_latest(tag, self.releases.return_value))
+        self.assertFalse(release_start.validate_request("", tag, "workflow_dispatch", "refs/heads/main"))
+
+    def test_malformed_exact_version_is_rejected_before_any_api_call(self):
+        for version in ("2.0.5", "v02.0.5", "v2.0", "v2.0.5+build", "v2.1.0-rc.01",
+                        "v2.0.5\n", " v2.0.5", "v2.0.5 ", "v2.0.5;exit", "$(touch sentinel)", " "):
+            with self.subTest(version=version), self.assertRaises(ValueError):
+                release_start.start("patch", REVISION, version=version)
+        self.api.assert_not_called()
+        self.releases.assert_not_called()
+        self.prepare.assert_not_called()
+
+    def test_exact_version_must_exceed_highest_published_stable_by_semver(self):
+        self.releases.return_value = [published("v2.9.0"), published("v2.10.0")]
+        for version in ("v1.99.99", "v2.9.9", "v2.10.0", "v2.10.0-rc.1"):
+            with self.subTest(version=version), self.assertRaisesRegex(ValueError, "must be newer"):
+                release_start.start("patch", REVISION, version=version)
+        self.assertEqual(self.github.writes, [])
+        self.validate.assert_not_called()
+        self.prepare.assert_not_called()
+
+    def test_exact_version_refuses_existing_lightweight_or_annotated_tag(self):
+        name = "refs/tags/v2.0.5"
+        self.github.refs[name] = {"ref": name, "object": {"type": "commit", "sha": REVISION}}
+        with self.assertRaisesRegex(ValueError, "Tag v2.0.5 already exists"):
+            release_start.start("patch", REVISION, version="v2.0.5")
+        self.github.annotated("v2.0.5", run_id="9999", bump="exact")
+        with self.assertRaisesRegex(ValueError, "Tag v2.0.5 already exists"):
+            release_start.start("minor", REVISION, version="v2.0.5")
+        self.assertEqual(self.github.writes, [])
+        self.prepare.assert_not_called()
+
+    def test_exact_version_cannot_replace_existing_draft_or_prerelease(self):
+        for tag, draft, prerelease in (("v2.0.5", True, False), ("v2.1.0-rc.1", False, True)):
+            self.releases.return_value = [published("v2.0.0"),
+                                          published(tag, draft=draft, prerelease=prerelease)]
+            with self.subTest(tag=tag), self.assertRaisesRegex(ValueError, "already exists"):
+                release_start.start("patch", REVISION, version=tag)
+        self.assertEqual(self.github.writes, [])
+        self.prepare.assert_not_called()
+
+    def test_exact_version_keeps_new_source_and_main_freshness_guards(self):
+        self.remote.return_value = REVISION
+        with self.assertRaisesRegex(ValueError, "No new commits"):
+            release_start.start("patch", REVISION, version="v2.0.5")
+        self.remote.return_value = PREVIOUS
+        self.command.side_effect = subprocess.CalledProcessError(1, ["git", "merge-base"])
+        with self.assertRaisesRegex(ValueError, "not an ancestor"):
+            release_start.start("patch", REVISION, version="v2.0.5")
+        self.command.side_effect = None
+        self.github.main = "c" * 40
+        with self.assertRaisesRegex(ValueError, "main advanced"):
+            release_start.start("patch", REVISION, version="v2.0.5")
+        self.assertEqual(self.github.writes, [])
+        self.prepare.assert_not_called()
+
+    def test_exact_version_recovers_same_run_even_after_baseline_advances(self):
+        for tag in ("v2.0.5", "v2.1.0-rc.1"):
+            self.github.refs.clear()
+            self.github.annotated(tag, bump="exact")
+            self.github.main = "c" * 40
+            self.releases.return_value = [published("v2.9.0")]
+            with self.subTest(tag=tag), patch.dict(os.environ, {"GITHUB_RUN_ATTEMPT": "2"}):
+                self.assertEqual(release_start.start("major", REVISION, version=tag), tag)
+            self.prepare.assert_called_with(tag, expected_revision=REVISION)
+        self.assertEqual(self.github.writes, [])
+
+    def test_exact_version_recovery_cannot_change_version_source_or_mode(self):
+        sha = self.github.annotated("v2.0.5", bump="exact")
+        with patch.dict(os.environ, {"GITHUB_RUN_ATTEMPT": "2"}):
+            with self.assertRaisesRegex(ValueError, "different exact version"):
+                release_start.start("patch", REVISION, version="v2.0.6")
+            with self.assertRaisesRegex(ValueError, "metadata"):
+                release_start.start("patch", REVISION)
+            self.github.objects[sha]["object"]["sha"] = "c" * 40
+            with self.assertRaisesRegex(ValueError, "frozen commit"):
+                release_start.start("patch", REVISION, version="v2.0.5")
+        self.assertEqual(self.github.writes, [])
+        self.prepare.assert_not_called()
+
+    def test_lost_exact_tag_response_recovers_without_another_write(self):
+        self.github.fail_reference = "after"
+        with self.assertRaisesRegex(RuntimeError, "response lost"):
+            release_start.start("patch", REVISION, version="v2.0.5")
+        writes = copy.deepcopy(self.github.writes)
+        self.github.fail_reference = None
+        with patch.dict(os.environ, {"GITHUB_RUN_ATTEMPT": "2"}):
+            self.assertEqual(release_start.start("patch", REVISION, version="v2.0.5"), "v2.0.5")
+        self.assertEqual(self.github.writes, writes)
+        self.prepare.assert_called_once_with("v2.0.5", expected_revision=REVISION)
+
+    def test_next_automatic_patch_follows_the_custom_published_version(self):
+        self.releases.return_value = [published("v2.0.0"), published("v2.0.5")]
+        self.assertEqual(release_start.start("patch", REVISION), "v2.0.6")
 
     def test_versions_use_semver_and_skip_drafts_prereleases_and_historical_names(self):
         releases = [published("v2.9.9"), published("v2.10.2"), published("v1.99.99"),
@@ -261,10 +376,54 @@ class RealGitAncestryTests(unittest.TestCase):
                         patch.object(release, "prepare"):
                     with self.assertRaisesRegex(ValueError, "major"):
                         release_start.start("major", revision)
+                    with self.assertRaisesRegex(ValueError, "major"):
+                        release_start.start("patch", revision, version="v3.0.0")
                     self.assertEqual(github.writes, [])
                     self.assertEqual(release_start.start("patch", revision), "v2.0.1")
+                    github.refs.clear()
+                    self.assertEqual(release_start.start("major", revision, version="v2.0.5"), "v2.0.5")
             finally:
                 os.chdir(original)
+
+
+class ReleaseRequestTests(unittest.TestCase):
+    def test_new_version_and_existing_tag_are_mutually_exclusive(self):
+        for tag in ("v2.0.1", "v2.0.5"):
+            with self.subTest(tag=tag), self.assertRaisesRegex(ValueError, "not both"):
+                release_start.validate_request(tag, "v2.0.5", "workflow_dispatch", "refs/heads/main")
+
+    def test_automatic_exact_and_existing_tag_modes_report_stable_correctly(self):
+        for tag, version, stable in (("", "", True), ("", "v2.0.5", True),
+                                     ("", "v2.1.0-rc.1", False), ("v2.0.5", "", True),
+                                     ("v2.1.0-rc.1", "", False)):
+            with self.subTest(tag=tag, version=version):
+                self.assertIs(release_start.validate_request(
+                    tag, version, "workflow_dispatch", "refs/heads/main"), stable)
+
+    def test_new_versions_require_manual_dispatch_from_main(self):
+        for event, ref in (("push", "refs/heads/main"), ("pull_request", "refs/heads/main"),
+                           ("workflow_dispatch", "refs/heads/feature"),
+                           ("workflow_dispatch", "refs/tags/v2.0.0")):
+            for version in ("", "v2.0.5", "v2.1.0-rc.1"):
+                with self.subTest(event=event, ref=ref, version=version), self.assertRaises(ValueError):
+                    release_start.validate_request("", version, event, ref)
+        self.assertTrue(release_start.validate_request("v2.0.5", "", "push", "refs/tags/v2.0.5"))
+
+    def test_malformed_tag_and_version_fail_in_preflight(self):
+        for value in (" ", "v2.0.5\n", "v2.0", "v2.0.5+build", "v2.1.0-01"):
+            for tag, version in ((value, ""), ("", value)):
+                with self.subTest(tag=tag, version=version), self.assertRaises(ValueError):
+                    release_start.validate_request(tag, version, "workflow_dispatch", "refs/heads/main")
+
+    def test_cli_forwards_exact_version_and_blank_default(self):
+        for version in ("", "v2.0.5", "v2.1.0-rc.1"):
+            argv = ["release_start.py", "--revision", REVISION]
+            if version:
+                argv.extend(["--version", version])
+            with self.subTest(version=version), patch.object(sys, "argv", argv), \
+                    patch.object(release_start, "start") as start:
+                release_start.main()
+                start.assert_called_once_with("patch", REVISION, version=version)
 
 
 if __name__ == "__main__":
