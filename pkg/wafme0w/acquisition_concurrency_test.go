@@ -53,6 +53,27 @@ func TestPacedOriginWaitersDoNotReserveConnectionSlots(t *testing.T) {
 	})
 }
 
+func TestRetryPacingSharesOriginAdmissions(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		config := DefaultConfig()
+		config.PerOriginRequestsPerSecond = 10
+		policy := newOutboundPolicy(config)
+		ctx := context.Background()
+		const origin = "http://one.invalid"
+		if err := policy.acquire(ctx, origin); err != nil {
+			t.Fatal(err)
+		}
+		<-policy.slots
+		start := time.Now()
+		if err := policy.waitRate(ctx, origin); err != nil {
+			t.Fatal(err)
+		}
+		if delay := time.Since(start); delay != 100*time.Millisecond {
+			t.Fatalf("retry admission did not share origin pacing: delay=%v", delay)
+		}
+	})
+}
+
 func TestPacingUsesDispatchAfterConnectionWait(t *testing.T) {
 	for _, perOrigin := range []bool{false, true} {
 		name := "global"

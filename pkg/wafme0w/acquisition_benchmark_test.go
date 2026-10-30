@@ -18,8 +18,9 @@ import (
 
 // BenchmarkAcquisitionPipeline measures completed targets through Run, including
 // acquisition, classification with the bundled catalogue, generic detection and
-// result delivery. One Run consumes b.N targets with four workers; compilation,
-// server/transport construction, compression and shutdown are outside the timer.
+// result delivery. One Run consumes b.N targets with four workers over reused
+// HTTP/1 connections; compilation, server/transport construction, compression
+// and shutdown are outside the timer.
 // These are controlled loopback measurements, not Internet-throughput estimates.
 func BenchmarkAcquisitionPipeline(b *testing.B) {
 	catalogue, err := os.ReadFile("../../cmd/wafme0w/resources/waf-fingerprints.json")
@@ -78,7 +79,7 @@ func benchmarkAcquisitionPipeline(b *testing.B, engine *Engine, useTLS, baseline
 	var requests, connections, serverErrors atomic.Int64
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests.Add(1)
-		if r.ProtoMajor != 1 || !r.Close || r.Method != http.MethodGet {
+		if r.ProtoMajor != 1 || r.Close || r.Method != http.MethodGet {
 			serverErrors.Add(1)
 		}
 		w.Header().Set("Date", "Thu, 29 Oct 2026 00:00:00 GMT")
@@ -150,8 +151,9 @@ func benchmarkAcquisitionPipeline(b *testing.B, engine *Engine, useTLS, baseline
 		b.Fatal(err)
 	}
 	wantRequests := int64(b.N) * int64(len(roles))
-	if completed != b.N || requests.Load() != wantRequests || connections.Load() != wantRequests || serverErrors.Load() != 0 {
-		b.Fatalf("work changed: targets=%d/%d requests=%d/%d connections=%d server_errors=%d", completed, b.N, requests.Load(), wantRequests, connections.Load(), serverErrors.Load())
+	if completed != b.N || requests.Load() != wantRequests || connections.Load() >= wantRequests || serverErrors.Load() != 0 {
+		b.Fatalf("work changed: targets=%d/%d requests=%d/%d connections=%d server_errors=%d (want fewer connections than requests)",
+			completed, b.N, requests.Load(), wantRequests, connections.Load(), serverErrors.Load())
 	}
 	b.ReportMetric(float64(requests.Load())/float64(completed), "requests/target")
 	b.ReportMetric(float64(connections.Load())/float64(completed), "connections/target")

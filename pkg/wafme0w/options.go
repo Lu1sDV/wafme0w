@@ -37,11 +37,12 @@ const (
 // Read calls. Run invokes it once on cancellation/failure, never on normal EOF.
 // It must return promptly; Run never closes an arbitrary caller-owned reader.
 // Injected clients/transports must honor request contexts, as net/http does.
-// The built-in transport uses fresh HTTP/1 connections and a bounded run-local TLS
-// session cache. Resumption retains certificate verification; fresh connections
-// prevent transparent retries from bypassing request budgets and pacing.
-// Caller-supplied transports retain their own connection/retry behavior; their
-// internal network effects cannot be bounded by Run's limits on RoundTrip calls.
+// The built-in transport reuses verified HTTP/1 connections between a target's
+// probes and uses a bounded run-local TLS session cache. Transparent transport
+// retries are counted against request budgets and pacing, and abort the probe
+// before either limit is exceeded. Caller-supplied transports retain their own
+// connection/retry behavior; their internal network effects cannot be bounded by
+// Run's limits on RoundTrip calls.
 // MaxResponseHeaderBytes bounds wire headers on owned stdlib transports and
 // parsed headers at the retention boundary for every transport. Injected
 // transports still own their wire-level allocation and retry policies.

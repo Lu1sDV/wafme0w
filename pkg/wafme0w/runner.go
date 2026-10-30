@@ -198,6 +198,9 @@ func run(ctx context.Context, engine *Engine, inputs io.Reader, config Config, e
 		cancel()
 	}()
 	policy := newOutboundPolicy(config)
+	if policy.ownedTransport != nil {
+		defer policy.ownedTransport.CloseIdleConnections()
+	}
 	type targetWork struct {
 		target     string
 		occurrence uint64

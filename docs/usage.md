@@ -508,11 +508,13 @@ Stdin is a single-consumer stream. If Linux cannot reopen an inherited pipe, the
 CLI temporarily sets its shared nonblocking flag and restores it on close;
 concurrent readers of that same pipe are not isolated.
 
-The built-in HTTP transport opens a fresh HTTP/1 connection for each request and
-uses a bounded, run-local TLS session cache. TLS certificate verification remains
-enabled. Connection reuse and HTTP/2 are disabled to prevent transparent retries
-from bypassing `--max-requests` and request pacing. TLS session resumption can
-reduce handshake cost when the origin supports it, without reusing HTTP connections.
+The built-in HTTP transport keeps verified HTTP/1 connections alive for reuse
+between a target's probes and uses a bounded, run-local TLS session cache. TLS
+certificate verification remains enabled. HTTP/2 is disabled. A transparent
+transport retry on a reused connection is counted against `--max-requests` and
+request pacing; when either limit would be exceeded, the probe is aborted instead
+of sending the retry. TLS session resumption can reduce handshake cost when the
+origin supports it.
 Library callers supplying a transport (including a replacement
 `http.DefaultTransport`) own any retries or network effects inside its
 `RoundTrip` calls; the runner cannot enforce a wire-request ceiling inside that

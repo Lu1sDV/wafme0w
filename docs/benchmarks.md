@@ -63,7 +63,10 @@ The **2,000-target run completed on 30 October 2026** measured every configurati
 in three complete blocks and reports median elapsed time with its observed
 per-block range. It used the first 2,000 ranked domains of
 [Tranco ZJ8PG, 28 October 2026](https://tranco-list.eu/list/ZJ8PG/1000000) as HTTPS
-root URLs, scanned under explicit authorization, and stock wafw00f 2.4.2.
+root URLs, scanned under explicit authorization, and stock wafw00f 2.4.2. This
+run predates HTTP/1 connection reuse
+([ADR 0002](../adrs/0002-http1-connection-reuse-for-probes.md)); the same-day
+reused-connection comparison is below.
 
 ### Wall-clock results
 
@@ -230,6 +233,105 @@ tools' medians, keeping fast and full separate and including cells where wafme0w
 is slower. A rate or “hosts in under a minute” claim must also say how many
 targets returned usable evidence.
 
+## Connection reuse comparison
+
+Recorded on 30 October 2026. The owned transport reuses verified HTTP/1
+connections between a target's probes and counts transparent retries against the
+request budget and pacing
+([ADR 0002](../adrs/0002-http1-connection-reuse-for-probes.md)). The 2,000-target
+run above predates this change. Every cell ran on four allowed logical CPUs with
+`GOMAXPROCS=4`, a 3-second request timeout, redirects disabled and inherited
+proxy settings cleared. wafme0w cells used `--concurrency` equal to the
+configured workers, `--probe-concurrency=1`, a 30-second target deadline, a
+54-request budget and a 1 MiB decoded-body limit, and verified TLS. Stock
+wafw00f 2.4.2 used `--findall`, `-r`, `-T 3` and did not verify certificates.
+The 500- and 100-target cells ran sequentially and alternated tool order; the
+paired and scaling runs below state their concurrency explicitly.
+
+### 500-target blocks
+
+Input: the first 500 ranked domains of the authorized Tranco sample, as HTTPS
+root URLs. Block A ran wafme0w and then wafw00f; block B reversed the order.
+
+| Configuration | Block A | Block B | Median | Returned | Named | Generic | Complete |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| wafme0w full, reused connections | 587.5 s | 574.3 s | 580.9 s | 500/500 | 156–158 | 102–104 | 317–318 |
+| wafw00f 2.4.2 | 872.8 s | 876.3 s | 874.6 s | 342–343/500 | 152–156 | 88 | Not reported |
+
+wafw00f returned multiple records for some targets; **Returned** counts unique
+URLs. At the medians, wafw00f took **1.51×** as long while omitting 157–158 of
+the 500 inputs. Per-target completion timing from block B shows where the
+reused-connection time goes: the 324 targets with nine observations consumed
+485.3 s (median 1.03 s), while the 176 targets whose first request failed
+consumed 89.0 s (median 0.04 s; a few reached the 3-second request timeout).
+
+### One target worker, 100-target alternating blocks
+
+Input: the first 100 entries of the authorized 500-target Tranco sample, as HTTPS
+root URLs. Two observations per wafme0w configuration and three for wafw00f,
+collected in alternating blocks.
+
+| Configuration | Observations | Median | Range | Returned | Named | Generic |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| wafme0w full, fresh connections (before) | 2 | 173.4 s | 160.4–186.4 s | 100/100 | 21–22 | 14–15 |
+| wafme0w full, reused connections (after) | 2 | 96.4 s | 95.3–97.4 s | 100/100 | 21 | 15 |
+| wafw00f 2.4.2 | 3 | 143.3 s | 130.7–146.6 s | 72–73/100 | 21 | 14–15 |
+
+Reuse reduced the wafme0w median by 44% relative to the fresh-connection cells.
+The wafw00f median was 1.49× the reused-connection median. A paired run on ranks
+101–200 executed both builds simultaneously against the same hosts, isolating
+transport reuse from network drift: **198.1 s fresh versus 119.7 s reused**
+(1.66×), under mutual load. wafw00f emits no record for targets whose initial
+request fails; wafme0w returns every input with an explicit incomplete or failed
+result. Named and generic counts are saved-output tallies on this sample, not
+accuracy measurements.
+
+### Scaling check
+
+Single observations on disjoint 200-target slices (ranks 501–700 and 701–900 of
+the authorized list), with each pair run in parallel on separate CPU sets.
+
+| Workers / processes | Targets | wafme0w full (reuse) | wafw00f 2.4.2 | Ratio |
+| ---: | ---: | ---: | ---: | ---: |
+| 10 | 200 | 33.5 s | 102.3 s | 3.05× |
+| 50 | 200 | 17.1 s | 20.0 s | 1.17× |
+
+wafw00f returned 147–149 of 200 targets in these cells; wafme0w returned all 200.
+The two rows use different target slices, so they are not a concurrency-scaling
+curve.
+
+### Controlled loopback acquisition
+
+Owned HTTP/TLS loopback fixtures, full catalogue, four workers, 200 iterations per
+count and three counts per configuration. The baseline is commit `d518b19`; the
+reuse column is that tree plus this change.
+
+| Workload | Fresh (µs/op) | Reused (µs/op) | Change | Connections/target |
+| --- | ---: | ---: | ---: | ---: |
+| HTTP, small bodies | 350.4 | 168.2 | 2.08× faster | 9.00 → 1.54–1.85 |
+| HTTP, 32 KiB bodies | 566.1 | 343.1 | 1.65× faster | 9.00 → 0.82–1.10 |
+| TLS, small bodies | 1,683.5 | 477.2 | 3.53× faster | 9.00 → 2.01–2.06 |
+| TLS, 32 KiB bodies | 1,997.1 | 665.3 | 3.00× faster | 9.00 → 1.59–1.73 |
+
+Median allocations fell from 10,557 to 3,595 per TLS small-body target and from
+2,064 to 1,648 per HTTP small-body target; retained bytes fell from 1,482,862 to
+442,590 B/op and from 239,081 to 148,053 B/op. Connections per target above one
+reflect the four-worker pool on one fixture host; a scan of distinct origins
+reuses one connection per target sequence.
+
+### Limitations
+
+- Live timings are single-host observations under shifting network and DNS state.
+  The 100-target cells alternated tools; 500-target blocks are reported as
+  observed rather than averaged across a single tool order.
+- wafw00f and wafme0w issue different probe sets and body limits, apply different
+  TLS policies, and do not return equivalent completion states. Counts are target
+  outputs, not requests or accuracy.
+- The loopback matrix isolates acquisition and classification on owned fixtures;
+  it is not an Internet-throughput estimate.
+- Reused connections change the connection-level request pattern. Reviewed
+  captures and live comparisons remain the evidence for detection behavior.
+
 ## Local performance benchmarks
 
 Run from the repository root:
@@ -241,8 +343,8 @@ go test ./pkg/wafme0w -run '^$' -bench '^BenchmarkAcquisitionPipeline$' -benchme
 ```
 
 The acquisition matrix uses owned HTTP/TLS loopback fixtures, four workers, and
-the full catalogue. Baseline/full modes perform exactly one/nine probes and
-fresh HTTP/1 connections per target. Bodies cover small HTML, 32 KiB HTML, and
+the full catalogue. Baseline/full modes perform exactly one/nine probes over
+reused HTTP/1 connections per target. Bodies cover small HTML, 32 KiB HTML, and
 gzip. Compilation and fixture setup are outside timing; acquisition,
 classification, and serial result delivery are inside.
 
