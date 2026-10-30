@@ -5,6 +5,7 @@ go 1.26.0
 require (
 	github.com/jessevdk/go-flags v1.6.1
 	github.com/logrusorgru/aurora/v4 v4.0.0
+	github.com/rivo/uniseg v0.4.7
 )
 
 require (

@@ -293,7 +293,7 @@ func TestConsolePreservesUncertaintyWhenWarningsSuppressed(t *testing.T) {
 		result := wafme0w.Result{Target: "invalid://fixture", Outcome: wafme0w.Outcome{
 			State: state, Diagnostics: []wafme0w.Diagnostic{{Code: "fixture_error", Evidence: 0, Message: "diagnostic detail"}},
 		}}
-		if err := printResult(&stdout, &stderr, result, true, au); err != nil {
+		if err := printResult(&stdout, &stderr, result, true, au, au); err != nil {
 			t.Fatal(err)
 		}
 		if !strings.Contains(strings.ToLower(stdout.String()), string(state)) || stderr.Len() != 0 {
@@ -315,7 +315,7 @@ func TestConsoleBlockedRedirectDestination(t *testing.T) {
 	}))
 	defer source.Close()
 	code, _, warning := runCLI(t, nil, "--target", source.URL, "--baseline", "--no-colors")
-	if code != 0 || !strings.Contains(warning, "[Normal] Got Redirect 302: "+location) || strings.Contains(warning, "\x1b") {
+	if code != 0 || !diagnosticRow(warning, "Normal", "Got Redirect 302: "+location) || strings.Contains(warning, "\x1b") {
 		t.Fatalf("missing plain redirect destination: exit=%d stderr=%q", code, warning)
 	}
 	if destinationHits.Load() != 0 {
@@ -329,10 +329,10 @@ func TestConsoleBlockedRedirectDestination(t *testing.T) {
 		Evidence: []wafme0w.EvidenceSummary{{Role: "Normal", StatusCode: http.StatusFound, BlockedRedirectURL: location + "\x1b\nFORGED"}},
 	}
 	var stdout, stderr bytes.Buffer
-	if err := printResult(&stdout, &stderr, result, false, aurora.New(aurora.WithColors(true))); err != nil {
+	if err := printResult(&stdout, &stderr, result, false, aurora.New(aurora.WithColors(true)), aurora.New(aurora.WithColors(false))); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(stderr.String(), location+`\x1b\nFORGED`) || strings.Count(stderr.String(), "\n") != 1 {
+	if !strings.Contains(stderr.String(), location+`\x1b\nFORGED`) || strings.Count(stderr.String(), "\n") != 2 {
 		t.Fatalf("redirect destination was lost or unsafe: %q", stderr.String())
 	}
 }
@@ -691,7 +691,7 @@ func TestHumanOutputEscapesUntrustedControls(t *testing.T) {
 	}
 	var stdout, stderr bytes.Buffer
 	au := colorizer(&stdout, false)
-	if err := printResult(&stdout, &stderr, result, false, au); err != nil {
+	if err := printResult(&stdout, &stderr, result, false, au, au); err != nil {
 		t.Fatal(err)
 	}
 	if err := printProducts(&stdout, []string{poison}, au); err != nil {
@@ -801,11 +801,11 @@ func TestConsoleRetainsDistinctFailureCauses(t *testing.T) {
 		}},
 	}
 	var stdout, stderr bytes.Buffer
-	if err := printResult(&stdout, &stderr, result, false, colorizer(&stdout, true)); err != nil {
+	if err := printResult(&stdout, &stderr, result, false, colorizer(&stdout, true), colorizer(&stderr, true)); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(stderr.String(), "[Normal] lookup fixture.invalid: no such host") ||
-		!strings.Contains(stderr.String(), `[Probe] tls: certificate rejected\nFORGED`) ||
+	if !diagnosticRow(stderr.String(), "Normal", "lookup fixture.invalid: no such host") ||
+		!diagnosticRow(stderr.String(), "Probe", `tls: certificate rejected\nFORGED`) ||
 		strings.Contains(stderr.String(), "\nFORGED") {
 		t.Fatalf("failure causes lost or unsafe: stdout=%q stderr=%q", &stdout, &stderr)
 	}

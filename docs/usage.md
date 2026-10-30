@@ -388,7 +388,9 @@ Use JSONL stdout or JSON/JSONL/CSV/TXT report files for structured output.
 `--jsonl` prints only the overview to stderr, not the URL table. `--silent`
 suppresses human scan output; `--no-warning` hides diagnostic prose but preserves
 outcome and completeness. Color is disabled for redirected output, `NO_COLOR`,
-`TERM=dumb`, or `--no-colors`. Diagnostics are plain text on stderr.
+`TERM=dumb`, or `--no-colors`. Diagnostics use stderr's own terminal status for
+color, independently of stdout. HTTP diagnostics appear one per row under a
+single warning header, with descriptions aligned after the escaped role tags.
 
 ### Certificate verification failures
 

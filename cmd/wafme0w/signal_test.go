@@ -104,11 +104,42 @@ func TestSignalCapturedHTTPDiagnosticCannotBecomeBrowserFailure(t *testing.T) {
 					if strings.Contains(stderr.String(), "WARN") || strings.Contains(stderr.String(), cause) {
 						t.Fatalf("suppressed HTTP warning leaked: %q", stderr.String())
 					}
-				} else if !strings.Contains(stderr.String(), "[Normal] "+cause) {
+				} else if !diagnosticRow(stderr.String(), "Normal", cause) {
 					t.Fatalf("HTTP warning lost its observation role: %q", stderr.String())
 				}
 			})
 		}
+	}
+}
+
+// diagnosticRow reports whether output contains role's tag followed by text on
+// the same row, tolerating the alignment padding between tag and description.
+func diagnosticRow(output, role, text string) bool {
+	tag := "[" + role + "]"
+	for _, line := range strings.Split(output, "\n") {
+		if index := strings.Index(line, tag); index >= 0 && strings.Contains(line[index+len(tag):], text) {
+			return true
+		}
+	}
+	return false
+}
+
+func TestSignalDiagnosticsFollowStderrColorSupport(t *testing.T) {
+	result := signalResult(wafme0w.Complete)
+	result.Outcome.Diagnostics = []wafme0w.Diagnostic{{Code: "fixture_diagnostic", Message: "inspect HTTP evidence"}}
+	var stdout, stderr bytes.Buffer
+	au := aurora.New(aurora.WithColors(true))
+	if err := printResult(&stdout, &stderr, result, false, aurora.New(aurora.WithColors(false)), au); err != nil {
+		t.Fatal(err)
+	}
+	if want := fmt.Sprint(au.Bold(au.Yellow("WARN"))); !strings.HasPrefix(stderr.String(), want+"  ") {
+		t.Fatalf("warning label did not use the stderr colorizer: %q", stderr.String())
+	}
+	if !strings.Contains(stderr.String(), fmt.Sprint(au.Cyan("[Normal]"))) {
+		t.Fatalf("probe role tag was not colorized: %q", stderr.String())
+	}
+	if strings.Contains(stdout.String(), "\x1b") {
+		t.Fatalf("stderr color setting styled stdout: %q", stdout.String())
 	}
 }
 
@@ -138,7 +169,7 @@ func TestSignalOutcomeColors(t *testing.T) {
 				result.Outcome.Diagnostics = []wafme0w.Diagnostic{{Code: "fixture_diagnostic", Message: "inspect HTTP evidence"}}
 			}
 			var stdout, stderr bytes.Buffer
-			if err := printResult(&stdout, &stderr, result, false, au); err != nil {
+			if err := printResult(&stdout, &stderr, result, false, au, aurora.New(aurora.WithColors(false))); err != nil {
 				t.Fatal(err)
 			}
 			want := fmt.Sprint(au.Bold(au.Colorize("[ "+test.label+" ]", test.color)))
@@ -174,7 +205,7 @@ func TestSignalMatchedObservationsAreAttributedPerProduct(t *testing.T) {
 		{Product: "Beta", Fingerprints: []wafme0w.FingerprintMatch{{Fingerprint: 1, Evidence: 1}}},
 	}
 	var stdout, stderr bytes.Buffer
-	if err := printResult(&stdout, &stderr, result, false, aurora.New(aurora.WithColors(false))); err != nil {
+	if err := printResult(&stdout, &stderr, result, false, aurora.New(aurora.WithColors(false)), aurora.New(aurora.WithColors(false))); err != nil {
 		t.Fatal(err)
 	}
 	text := stdout.String()
@@ -202,7 +233,7 @@ func TestSignalMissingSupportingObservationIsNotInvented(t *testing.T) {
 	result := signalResult(wafme0w.Complete)
 	result.Outcome.Matches = []wafme0w.Match{{Product: "Fixture", Fingerprints: []wafme0w.FingerprintMatch{{Evidence: -1}, {Evidence: 4}}}}
 	var stdout bytes.Buffer
-	if err := printResult(&stdout, io.Discard, result, false, aurora.New(aurora.WithColors(false))); err != nil {
+	if err := printResult(&stdout, io.Discard, result, false, aurora.New(aurora.WithColors(false)), aurora.New(aurora.WithColors(false))); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(stdout.String(), "matched on  supporting observation unavailable") || strings.Contains(stdout.String(), "#0") || strings.Contains(stdout.String(), "#5") {
@@ -218,7 +249,7 @@ func TestSignalSuppressedWarningsKeepReviewAndBrowserState(t *testing.T) {
 		DOM: wafme0w.BrowserAsset{State: "not_acquired", SaveState: "failed"}, Screenshot: wafme0w.BrowserAsset{State: "not_selected"},
 	}
 	var stdout, stderr bytes.Buffer
-	if err := printResult(&stdout, &stderr, result, true, aurora.New(aurora.WithColors(false))); err != nil {
+	if err := printResult(&stdout, &stderr, result, true, aurora.New(aurora.WithColors(false)), aurora.New(aurora.WithColors(false))); err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{"[ REVIEW ]", "HTTP diagnostics need review", "evidence complete", "browser  failed (text)", "separate from HTTP", "text save failed"} {
@@ -257,10 +288,10 @@ func TestSignalCertificateGuidancePreservesCauseAndOtherEvidence(t *testing.T) {
 			result.Outcome.Matches = []wafme0w.Match{{Product: "Header WAF", Fingerprints: []wafme0w.FingerprintMatch{{Evidence: 0}}}}
 			result.Outcome.Diagnostics = []wafme0w.Diagnostic{{Evidence: 1, Code: code, Message: test.cause}}
 			var stdout, stderr bytes.Buffer
-			if err := printResult(&stdout, &stderr, result, false, aurora.New(aurora.WithColors(false))); err != nil {
+			if err := printResult(&stdout, &stderr, result, false, aurora.New(aurora.WithColors(false)), aurora.New(aurora.WithColors(false))); err != nil {
 				t.Fatal(err)
 			}
-			if !strings.Contains(stderr.String(), "[Probe] "+test.cause) || !strings.Contains(stderr.String(), test.want) {
+			if !diagnosticRow(stderr.String(), "Probe", test.cause) || !strings.Contains(stderr.String(), test.want) {
 				t.Fatalf("lost cause or conditional guidance: %q", stderr.String())
 			}
 			if test.want == "" && strings.Contains(stderr.String(), "Correct the") {
@@ -292,13 +323,83 @@ func TestSignalDiagnosticsRetainDistinctObservations(t *testing.T) {
 	}
 	result.Browser = &wafme0w.BrowserReport{State: "failed", Reason: "browser_capture_failed", Error: "browser only cause"}
 	var stderr bytes.Buffer
-	if err := printResult(io.Discard, &stderr, result, false, aurora.New(aurora.WithColors(false))); err != nil {
+	if err := printResult(io.Discard, &stderr, result, false, aurora.New(aurora.WithColors(false)), aurora.New(aurora.WithColors(false))); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"[Normal] same recorded cause", "[Probe] same recorded cause", "[Normal] HTTP export cause", "browser browser_capture_failed: browser only cause"} {
-		if strings.Count(stderr.String(), want) != 1 {
-			t.Fatalf("lost attribution or duplicate diagnostic %q: %q", want, stderr.String())
+	want := "WARN  https://fixture.invalid/ | 3 diagnostics\n" +
+		"  [Normal] same recorded cause\n" +
+		"  [Probe]  same recorded cause\n" +
+		"  [Normal] HTTP export cause\n" +
+		"WARN  https://fixture.invalid/ | browser browser_capture_failed: browser only cause\n"
+	if stderr.String() != want {
+		t.Fatalf("diagnostic layout, order or attribution changed:\n got %q\nwant %q", stderr.String(), want)
+	}
+}
+
+func TestSignalDiagnosticRoleAlignment(t *testing.T) {
+	for _, test := range []struct {
+		name, role, tag                        string
+		afterTag, afterNormal, anonymousIndent int
+	}{
+		{"ASCII", "Probe", "[Probe]", 2, 1, 11},
+		{"escaped newline", "A\n", `[A\n]`, 4, 1, 11},
+		{"multibyte", "é", "[é]", 6, 1, 11},
+		{"combining mark", "e\u0301", "[e\u0301]", 6, 1, 11},
+		{"wide character", "猫", "[猫]", 5, 1, 11},
+		{"emoji", "😀", "[😀]", 5, 1, 11},
+		{"flag cluster", "🇩🇪", "[🇩🇪]", 5, 1, 11},
+		{"escaped ANSI is widest", "\x1b[31m", `[\x1b[31m]`, 1, 3, 13},
+		{"invalid UTF-8", string([]byte{0xff}), `[\xff]`, 3, 1, 11},
+	} {
+		for _, colors := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/colors=%t", test.name, colors), func(t *testing.T) {
+				result := signalResult(wafme0w.Incomplete)
+				result.Evidence = []wafme0w.EvidenceSummary{{Role: test.role}, {Role: "Normal"}, {}}
+				result.Outcome.Diagnostics = []wafme0w.Diagnostic{
+					{Evidence: 0, Code: "fixture_error", Message: "first cause"},
+					{Evidence: 1, Code: "fixture_error", Message: "second cause"},
+					{Evidence: -1, Code: "fixture_error", Message: "unattributed cause"},
+					{Evidence: 3, Code: "fixture_error", Message: "invalid reference"},
+					{Evidence: 2, Code: "fixture_error", Message: "empty role"},
+				}
+				au := aurora.New(aurora.WithColors(colors))
+				var stderr bytes.Buffer
+				if err := printResultDiagnostics(&stderr, result, au); err != nil {
+					t.Fatal(err)
+				}
+				// Expected spacing is specified independently of the renderer's width calculation.
+				want := fmt.Sprintf("%s  https://fixture.invalid/ | 5 diagnostics\n", au.Bold(au.Yellow("WARN"))) +
+					fmt.Sprintf("  %s%sfirst cause\n", au.Bold(test.tag), strings.Repeat(" ", test.afterTag)) +
+					fmt.Sprintf("  %s%ssecond cause\n", au.Cyan("[Normal]"), strings.Repeat(" ", test.afterNormal)) +
+					strings.Repeat(" ", test.anonymousIndent) + "unattributed cause\n" +
+					strings.Repeat(" ", test.anonymousIndent) + "invalid reference\n" +
+					strings.Repeat(" ", test.anonymousIndent) + "empty role\n"
+				if stderr.String() != want {
+					t.Fatalf("diagnostic columns changed:\n got %q\nwant %q", stderr.String(), want)
+				}
+			})
 		}
+	}
+}
+
+func TestSignalDiagnosticsWithoutRoles(t *testing.T) {
+	result := signalResult(wafme0w.Incomplete)
+	result.Evidence = []wafme0w.EvidenceSummary{{}}
+	result.Outcome.Diagnostics = []wafme0w.Diagnostic{
+		{Evidence: -1, Code: "fixture_error", Message: "unattributed cause"},
+		{Evidence: 1, Code: "fixture_error", Message: "invalid reference"},
+		{Evidence: 0, Code: "fixture_error", Message: "empty role"},
+	}
+	var stderr bytes.Buffer
+	if err := printResultDiagnostics(&stderr, result, aurora.New(aurora.WithColors(false))); err != nil {
+		t.Fatal(err)
+	}
+	want := "WARN  https://fixture.invalid/ | 3 diagnostics\n" +
+		"     unattributed cause\n" +
+		"     invalid reference\n" +
+		"     empty role\n"
+	if stderr.String() != want {
+		t.Fatalf("unattributed diagnostic layout changed:\n got %q\nwant %q", stderr.String(), want)
 	}
 }
 
@@ -316,7 +417,7 @@ func TestSignalEscapesAllDynamicResultDetails(t *testing.T) {
 		Screenshot: wafme0w.BrowserAsset{State: poison, Saved: poison, SaveState: poison},
 	}
 	var stdout, stderr bytes.Buffer
-	if err := printResult(&stdout, &stderr, result, false, aurora.New(aurora.WithColors(false))); err != nil {
+	if err := printResult(&stdout, &stderr, result, false, aurora.New(aurora.WithColors(false)), aurora.New(aurora.WithColors(false))); err != nil {
 		t.Fatal(err)
 	}
 	for _, text := range []string{stdout.String(), stderr.String()} {
@@ -341,18 +442,18 @@ func TestSignalPropagatesWriterErrors(t *testing.T) {
 	result.Outcome.Diagnostics = []wafme0w.Diagnostic{{Code: "transport_error", Message: "recorded cause"}}
 	au := aurora.New(aurora.WithColors(false))
 	var stderr bytes.Buffer
-	if err := printResult(signalFailWriter{failure}, &stderr, result, false, au); !errors.Is(err, failure) || stderr.Len() != 0 {
+	if err := printResult(signalFailWriter{failure}, &stderr, result, false, au, au); !errors.Is(err, failure) || stderr.Len() != 0 {
 		t.Fatalf("stdout failure not propagated before diagnostics: err=%v stderr=%q", err, stderr.String())
 	}
-	if err := printResult(io.Discard, signalFailWriter{failure}, result, false, au); !errors.Is(err, failure) {
+	if err := printResult(io.Discard, signalFailWriter{failure}, result, false, au, au); !errors.Is(err, failure) {
 		t.Fatalf("diagnostic failure lost: %v", err)
 	}
-	if err := printResult(io.Discard, signalFailWriter{failure}, result, true, au); err != nil {
+	if err := printResult(io.Discard, signalFailWriter{failure}, result, true, au, au); err != nil {
 		t.Fatalf("suppressed warning attempted a write: %v", err)
 	}
 	result.Outcome.Diagnostics = nil
 	result.Browser = &wafme0w.BrowserReport{State: "failed", Error: "recorded browser cause"}
-	if err := printResult(io.Discard, signalFailWriter{failure}, result, false, au); !errors.Is(err, failure) {
+	if err := printResult(io.Discard, signalFailWriter{failure}, result, false, au, au); !errors.Is(err, failure) {
 		t.Fatalf("browser diagnostic failure lost: %v", err)
 	}
 }
