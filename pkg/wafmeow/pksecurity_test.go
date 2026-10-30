@@ -19,6 +19,10 @@ const (
 // regexps or observed classifications. The source is identical in v2.4.2 and:
 // https://github.com/EnableSecurity/wafw00f/blob/69fbe3956bba47a172cf87e40e9037535d32a130/wafw00f/plugins/pksec.py
 // check_schema_01 accepts either marker; check_schema_02 requires all three.
+// matchContent is re.search(regex, attack_response_body, re.I) at the same
+// revision (wafw00f/main.py), so the (?i) patterns and the default newline-free
+// "." are faithful. Identical Normal and Attack bodies isolate Boolean grouping
+// from that intentional difference in response-role selection.
 // This checks source conformance, not independently captured product truth.
 func TestPKSecuritySourceConformance(t *testing.T) {
 	engine, err := Compile(loadBundledCatalogue(t))
