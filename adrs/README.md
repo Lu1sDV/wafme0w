@@ -12,6 +12,7 @@ not a supported CLI or library API.
 | ADR | Title | Status | Recorded |
 | --- | --- | --- | --- |
 | [0001](0001-optional-http-and-browser-acquisition-backends.md) | Optional curl_cffi and Patchright acquisition backends | Proposed | 2026-10-30 |
+| [0002](0002-http1-connection-reuse-for-probes.md) | Reuse HTTP/1 connections between a target's probes | Accepted | 2026-10-30 |
 
 ## Reading and maintaining records
 

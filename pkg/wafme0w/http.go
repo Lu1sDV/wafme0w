@@ -98,7 +98,10 @@ func sendHTTP(ctx context.Context, options requestOpts, client *http.Client, max
 	if maxBodyBytes <= 0 {
 		return evidence, fmt.Errorf("decoded body limit must be positive")
 	}
-	req, err := http.NewRequestWithContext(context.WithValue(ctx, requestTraceKey{}, trace), options.Method, endPoint, options.PostBody)
+	traceCtx, cancelTrace := context.WithCancelCause(context.WithValue(ctx, requestTraceKey{}, trace))
+	defer cancelTrace(nil)
+	trace.abort = func(cause error) { cancelTrace(cause) }
+	req, err := http.NewRequestWithContext(traceCtx, options.Method, endPoint, options.PostBody)
 	if err != nil {
 		evidence.ErrorCode = "invalid_request"
 		return evidence, fmt.Errorf("create request: %w", err)

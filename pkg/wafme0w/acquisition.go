@@ -9,6 +9,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"net/http/httptrace"
 	"net/netip"
 	"net/url"
 	"slices"
@@ -77,6 +78,10 @@ type requestTraceKey struct{}
 type requestTrace struct {
 	urls     []string
 	response *http.Response
+	// abort cancels the probe when a transport retry would exceed the
+	// per-target request budget or pacing admission. sendHTTP owns the
+	// context and clears its cancellation after the response body is closed.
+	abort func(error)
 }
 
 // outboundPolicy is shared by every target in one Run. Slots remain occupied
@@ -90,6 +95,9 @@ type outboundPolicy struct {
 	origins      map[string]time.Time
 	cooldowns    []originCooldown
 	cooldownHead int
+	// ownedTransport is the run-local transport created here; nil when the
+	// caller supplied one. Only an owned transport is closed after a Run.
+	ownedTransport *http.Transport
 }
 
 type originCooldown struct {
@@ -125,9 +133,13 @@ func newOutboundPolicy(config Config) *outboundPolicy {
 		p.base.Transport = http.DefaultTransport
 		if transport, ok := http.DefaultTransport.(*http.Transport); ok {
 			transport = transport.Clone()
-			// A fresh HTTP/1 connection cannot transparently replay a probe
-			// inside RoundTrip, bypassing the request budget and rate limits.
-			transport.DisableKeepAlives = true
+			// Keep-alive reuses verified HTTP/1 connections between a target's
+			// probes. Transparent transport retries are still visible: the
+			// wrapper counts each GetConn attempt against the target budget and
+			// paces it. Guarded writes prevent a refused retry from being sent
+			// even if cancellation races with selecting an idle connection.
+			transport.DisableKeepAlives = false
+			guardOwnedConnections(transport)
 			transport.MaxResponseHeaderBytes = config.MaxResponseHeaderBytes
 			transport.Protocols = new(http.Protocols)
 			transport.Protocols.SetHTTP1(true)
@@ -138,6 +150,7 @@ func newOutboundPolicy(config Config) *outboundPolicy {
 			transport.TLSClientConfig.NextProtos = []string{"http/1.1"}
 			transport.TLSClientConfig.ClientSessionCache = tls.NewLRUClientSessionCache(256)
 			p.base.Transport = transport
+			p.ownedTransport = transport
 		}
 	}
 	if config.PerOriginRequestsPerSecond != 0 {
@@ -157,9 +170,9 @@ func rateInterval(rate float64) time.Duration {
 	return max(time.Nanosecond, time.Duration(ns))
 }
 
-// Check pacing before taking a connection slot, then recheck after waiting for
-// one. Waiting origins cannot monopolize slots, and queued requests cannot spend
-// stale rate admissions in a burst when a slow response finally closes.
+// acquire checks pacing before taking a connection slot and again after waiting
+// for one. Waiting origins cannot monopolize slots, and queued requests cannot
+// spend stale rate admissions in a burst when a slow response finally closes.
 func (p *outboundPolicy) acquire(ctx context.Context, origin string) error {
 	globalInterval := rateInterval(p.config.RequestsPerSecond)
 	originInterval := rateInterval(p.config.PerOriginRequestsPerSecond)
@@ -174,20 +187,12 @@ func (p *outboundPolicy) acquire(ctx context.Context, origin string) error {
 			return nil
 		}
 	}
-	nextAdmission := func(now time.Time) time.Time {
-		p.expireOrigins(now)
-		next := p.next
-		if p.origins[origin].After(next) {
-			next = p.origins[origin]
-		}
-		return next
-	}
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 		p.mu.Lock()
-		next := nextAdmission(time.Now())
+		next := p.nextAdmissionLocked(origin, time.Now())
 		p.mu.Unlock()
 		if delay := time.Until(next); delay > 0 {
 			timer := time.NewTimer(delay)
@@ -206,7 +211,7 @@ func (p *outboundPolicy) acquire(ctx context.Context, origin string) error {
 		}
 		p.mu.Lock()
 		now := time.Now()
-		next = nextAdmission(now)
+		next = p.nextAdmissionLocked(origin, now)
 		if err := ctx.Err(); err != nil {
 			p.mu.Unlock()
 			<-p.slots
@@ -217,15 +222,66 @@ func (p *outboundPolicy) acquire(ctx context.Context, origin string) error {
 			<-p.slots
 			continue
 		}
-		if globalInterval != 0 {
-			p.next = now.Add(globalInterval)
-		}
-		if originInterval != 0 {
-			p.origins[origin] = now.Add(originInterval)
-			p.cooldowns = append(p.cooldowns, originCooldown{origin, p.origins[origin]})
-		}
+		p.commitAdmissionLocked(origin, now, globalInterval, originInterval)
 		p.mu.Unlock()
 		return nil
+	}
+}
+
+// waitRate commits a pacing admission without taking a connection slot. It is
+// used for transport retries, which already hold their probe's slot.
+func (p *outboundPolicy) waitRate(ctx context.Context, origin string) error {
+	globalInterval := rateInterval(p.config.RequestsPerSecond)
+	originInterval := rateInterval(p.config.PerOriginRequestsPerSecond)
+	if globalInterval == 0 && originInterval == 0 {
+		return ctx.Err()
+	}
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		p.mu.Lock()
+		next := p.nextAdmissionLocked(origin, time.Now())
+		p.mu.Unlock()
+		if delay := time.Until(next); delay > 0 {
+			timer := time.NewTimer(delay)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return ctx.Err()
+			case <-timer.C:
+			}
+			continue
+		}
+		p.mu.Lock()
+		now := time.Now()
+		if now.Before(p.nextAdmissionLocked(origin, now)) {
+			p.mu.Unlock()
+			continue
+		}
+		p.commitAdmissionLocked(origin, now, globalInterval, originInterval)
+		p.mu.Unlock()
+		return nil
+	}
+}
+
+// nextAdmissionLocked and commitAdmissionLocked require p.mu.
+func (p *outboundPolicy) nextAdmissionLocked(origin string, now time.Time) time.Time {
+	p.expireOrigins(now)
+	next := p.next
+	if p.origins[origin].After(next) {
+		next = p.origins[origin]
+	}
+	return next
+}
+
+func (p *outboundPolicy) commitAdmissionLocked(origin string, now time.Time, globalInterval, originInterval time.Duration) {
+	if globalInterval != 0 {
+		p.next = now.Add(globalInterval)
+	}
+	if originInterval != 0 {
+		p.origins[origin] = now.Add(originInterval)
+		p.cooldowns = append(p.cooldowns, originCooldown{origin, p.origins[origin]})
 	}
 }
 
@@ -310,6 +366,18 @@ func (p *outboundPolicy) client(origin string) *http.Client {
 	return &client
 }
 
+// reserve records one more outbound attempt, including transport retries, and
+// reports whether the per-target request budget allows it.
+func (t *targetTransport) reserve() bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.requests >= t.policy.config.MaxRequests {
+		return false
+	}
+	t.requests++
+	return true
+}
+
 func (t *targetTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	p := t.policy
 	u, err := httputil.ParseURI(req.URL.String())
@@ -335,10 +403,37 @@ func (t *targetTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		release()
 		return nil, err
 	}
-	if trace, ok := req.Context().Value(requestTraceKey{}).(*requestTrace); ok {
+	trace, _ := req.Context().Value(requestTraceKey{}).(*requestTrace)
+	if trace != nil {
 		trace.urls = append(trace.urls, req.URL.String())
 	}
-	response, err := p.base.Transport.RoundTrip(req)
+	baseReq := req
+	if trace != nil && trace.abort != nil && p.ownedTransport != nil {
+		// The owned transport may transparently retry an idempotent probe on a
+		// reused connection. Count each such attempt against the target budget
+		// and pacing, and abort the probe if either would be exceeded. Caller
+		// transports keep their own retry behavior and accounting.
+		attempts := 0
+		baseReq = req.WithContext(httptrace.WithClientTrace(req.Context(), &httptrace.ClientTrace{
+			GetConn: func(string) {
+				attempts++
+				if attempts == 1 {
+					return
+				}
+				if !t.reserve() {
+					trace.abort(&acquisitionError{"request_budget", "per-target outbound request budget exhausted"})
+					return
+				}
+				if err := p.waitRate(req.Context(), origin); err != nil {
+					trace.abort(err)
+				}
+			},
+			GotConn: func(info httptrace.GotConnInfo) {
+				rejectConnectionWrite(info.Conn, context.Cause(req.Context()))
+			},
+		}))
+	}
+	response, err := p.base.Transport.RoundTrip(baseReq)
 	if response != nil && !responseHeadersWithinLimit(response, p.config.MaxResponseHeaderBytes) {
 		if response.Body != nil {
 			response.Body.Close()
@@ -360,6 +455,12 @@ func (t *targetTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	} else {
 		release()
+	}
+	// A response can race with cancellation. Keep its bounded metadata in the
+	// trace before reporting the cause; sendHTTP must not lose received evidence
+	// or treat the unread body as complete. The shared error path closes it once.
+	if cause := context.Cause(req.Context()); cause != nil {
+		err = cause
 	}
 	if err != nil || response == nil {
 		if response != nil && response.Body != nil {

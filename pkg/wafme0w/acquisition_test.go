@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"math"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -381,55 +382,97 @@ func TestRequestBudgetSharedAcrossExistingFastRequests(t *testing.T) {
 	})
 }
 
-func TestDefaultTransportDoesNotRetryOutsideRequestBudget(t *testing.T) {
-	var connections sync.Map
-	var retries atomic.Int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, reused := connections.LoadOrStore(r.RemoteAddr, struct{}{})
-		if r.URL.Path == "/retry" {
-			retries.Add(1)
-			if reused {
-				connection, _, err := w.(http.Hijacker).Hijack()
-				if err != nil {
-					t.Error(err)
-					return
+func TestDefaultTransportCountsRetriesAgainstRequestBudget(t *testing.T) {
+	for _, test := range []struct {
+		name             string
+		maxRequests      int
+		wantRequests     int32
+		wantConnections  int
+		wantRetryError   string
+		wantFinalOutcome int
+	}{
+		{"refused", 1, 1, 1, "request_budget", 0},
+		{"admitted", 2, 2, 2, "", http.StatusNoContent},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var connections sync.Map
+			var retries atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_, reused := connections.LoadOrStore(r.RemoteAddr, struct{}{})
+				if r.URL.Path == "/retry" {
+					retries.Add(1)
+					if reused {
+						connection, _, err := w.(http.Hijacker).Hijack()
+						if err != nil {
+							t.Error(err)
+							return
+						}
+						_ = connection.Close()
+						return
+					}
 				}
-				_ = connection.Close()
-				return
+				w.WriteHeader(http.StatusNoContent)
+			}))
+			defer server.Close()
+			config := DefaultConfig()
+			config.Concurrency, config.MaxConnections, config.MaxRequests = 1, 1, test.maxRequests
+			config.BaselineOnly = true
+			var results []Result
+			input := strings.NewReader(server.URL + "/warm\n" + server.URL + "/retry\n")
+			if err := Run(context.Background(), emptyEngine(t), input, config, func(result Result) error {
+				results = append(results, result)
+				return nil
+			}); err != nil {
+				t.Fatal(err)
 			}
-		}
+			if got := retries.Load(); got != test.wantRequests {
+				t.Fatalf("request budget %d sent %d /retry probes, want %d", test.maxRequests, got, test.wantRequests)
+			}
+			connectionCount := 0
+			connections.Range(func(_, _ any) bool {
+				connectionCount++
+				return true
+			})
+			if connectionCount != test.wantConnections {
+				t.Fatalf("request budget %d used %d connections, want %d", test.maxRequests, connectionCount, test.wantConnections)
+			}
+			if len(results) != 2 {
+				t.Fatalf("emitted %d results, want 2", len(results))
+			}
+			warm, retried := results[0], results[1]
+			if len(warm.Evidence) != 1 || warm.Evidence[0].StatusCode != http.StatusNoContent || warm.Evidence[0].ErrorCode != "" {
+				t.Fatalf("lost successful target evidence: %+v", warm)
+			}
+			if len(retried.Evidence) != 1 || retried.Evidence[0].ErrorCode != test.wantRetryError ||
+				retried.Evidence[0].StatusCode != test.wantFinalOutcome {
+				t.Fatalf("retry accounting lost evidence: %+v", retried)
+			}
+		})
+	}
+}
+
+func TestRunClosesOwnedIdleConnections(t *testing.T) {
+	var open atomic.Int32
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
-	defer server.Close()
-	config := DefaultConfig()
-	config.Concurrency, config.MaxConnections, config.MaxRequests = 1, 1, 1
-	config.BaselineOnly = true
-	var results []Result
-	input := strings.NewReader(server.URL + "/warm\n" + server.URL + "/retry\n")
-	if err := Run(context.Background(), emptyEngine(t), input, config, func(result Result) error {
-		results = append(results, result)
-		return nil
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if got := retries.Load(); got != 1 {
-		t.Fatalf("one-request target budget sent %d requests after a reused connection failed", got)
-	}
-	connectionCount := 0
-	connections.Range(func(_, _ any) bool {
-		connectionCount++
-		return true
-	})
-	if connectionCount != 2 {
-		t.Fatalf("two bounded requests used %d connections, want 2 fresh connections", connectionCount)
-	}
-	if len(results) != 2 {
-		t.Fatalf("emitted %d results, want 2", len(results))
-	}
-	for _, result := range results {
-		if len(result.Evidence) != 1 || result.Evidence[0].StatusCode != http.StatusNoContent || result.Evidence[0].ErrorCode != "" {
-			t.Fatalf("lost successful target evidence: %+v", result)
+	server.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+		switch state {
+		case http.StateNew:
+			open.Add(1)
+		case http.StateClosed, http.StateHijacked:
+			open.Add(-1)
 		}
+	}
+	server.Start()
+	defer server.Close()
+	runBaseline(t, server.URL, DefaultConfig())
+	deadline := time.Now().Add(2 * time.Second)
+	for open.Load() != 0 {
+		if time.Now().After(deadline) {
+			t.Fatalf("Run retained %d idle connections after return", open.Load())
+		}
+		time.Sleep(time.Millisecond)
 	}
 }
 
