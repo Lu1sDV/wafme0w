@@ -51,18 +51,25 @@ go install github.com/Lu1sDV/wafme0w/v2/cmd/wafme0w@latest
 This command installs published module versions, not unreleased source. Use the
 source build above to evaluate an unreleased revision.
 
-### Homebrew formula artifact
+### Homebrew
 
 The verification job generates `wafme0w.rb` from the four verified Unix archive
 hashes, covering Linux and macOS on x64 and ARM64. The formula installs the binary,
 redistribution notices and synthetic demo captures; its test runs the offline
 demo. Both `manifest.json` and `SHA256SUMS` bind the formula to the same release.
 
-This workflow does not create or update a public Homebrew tap. After publication,
-verify the downloaded formula and archives, review the formula, and put it in
-`Formula/wafme0w.rb` in a tap you control. Run `brew audit` and `brew test` there
-before advertising that tap as an installation channel. A generated formula is
-not evidence that a public `brew install` command already works.
+Published formulae are maintained in the
+[`Lu1sDV/homebrew-tap`](https://github.com/Lu1sDV/homebrew-tap) tap:
+
+```sh
+brew install Lu1sDV/tap/wafme0w
+```
+
+The workflow still does not push to that tap. After each publication, verify the
+downloaded formula and archives, copy the formula to `Formula/wafme0w.rb` in the tap,
+and require `brew audit --strict --online` and `brew test` to pass against the fresh
+tap before announcing a release as installable through Homebrew. Until the tap
+carries the release's archive hashes, `brew install` serves an older version.
 
 ## Container image
 
@@ -141,6 +148,13 @@ for deployment. If publication stops after an architecture image is uploaded,
 inspect that partial publication before recovery; the helper will not overwrite
 it automatically. GitHub releases and GHCR cannot be published atomically, so
 check both workflow jobs before announcing both distribution channels.
+
+The package is publicly readable, and `actions/attest` reads
+`$HOME/.docker/config.json` rather than `DOCKER_CONFIG`, so the publication job logs
+in to the default credential file and removes it again afterwards. Images published
+before that fix, including v2.0.0, carry no registry attestation: verify those by
+matching the digest to the release run's `published-container-identity` artifact and
+the container binary hash to `manifest.json`.
 
 ## Publication gates
 
