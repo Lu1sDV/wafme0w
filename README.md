@@ -152,18 +152,18 @@ configuration**, completed on 30 October 2026. Lower is better.
 
 **CPU:** Intel Core Ultra 9 275HX (4 logical CPUs allowed) · **RAM:** 32 GB.
 
-| Workers / processes | wafw00f 2.4.2 | wafme0w fast | wafme0w full |
-| ---: | ---: | ---: | ---: |
-| 1 | 70m 27s | 29m 29s | 78m 05s |
-| 5 | 15m 26s | 7m 27s | 14m 30s |
-| 10 | 7m 46s | 3m 48s | 7m 18s |
-| 50 | 3m 45s | 49s | 1m 40s |
-| 100 | 2m 45s | 28s | 1m 02s |
+| Workers / processes | wafw00f 2.4.2 | <img src="assets/wafme0w.svg" width="20" height="20" alt=""> wafme0w fast | <img src="assets/wafme0w.svg" width="20" height="20" alt=""> wafme0w full | Speedup fast | Speedup full |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 70m 27s | 29m 29s | 78m 05s | **2.39×** | 0.90× |
+| 5 | 15m 26s | 7m 27s | 14m 30s | **2.07×** | **1.06×** |
+| 10 | 7m 46s | 3m 48s | 7m 18s | **2.04×** | **1.07×** |
+| 50 | 3m 45s | 49s | 1m 40s | **4.55×** | **2.24×** |
+| 100 | 2m 45s | 28s | 1m 02s | **5.90×** | **2.66×** |
 
 **Detection results at 100 workers/processes** — targets out of 2,000, shown as
 the range across three runs.
 
-| Targets with… | wafw00f 2.4.2 | wafme0w fast | wafme0w full |
+| Targets with… | wafw00f 2.4.2 | <img src="assets/wafme0w.svg" width="20" height="20" alt=""> wafme0w fast | <img src="assets/wafme0w.svg" width="20" height="20" alt=""> wafme0w full |
 | --- | ---: | ---: | ---: |
 | Named WAF match | 856–858 | 853–858 | 845–852 |
 | Generic WAF signal | 411–423 | 424–430 | 492–504 |

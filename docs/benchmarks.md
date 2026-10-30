@@ -71,7 +71,7 @@ Times are **medians of three runs**; parentheses show the shortest–longest run
 Lower is better. Concurrency means target workers for wafme0w and separate CLI
 processes for wafw00f.
 
-| Workers / processes | wafw00f 2.4.2 | wafme0w fast | wafme0w full |
+| Workers / processes | wafw00f 2.4.2 | <img src="../assets/wafme0w.svg" width="20" height="20" alt=""> wafme0w fast | <img src="../assets/wafme0w.svg" width="20" height="20" alt=""> wafme0w full |
 | ---: | ---: | ---: | ---: |
 | 1 | 70m 27s (67m 27s–73m 44s) | 29m 29s (28m 54s–30m 15s) | 78m 05s (75m 17s–79m 18s) |
 | 5 | 15m 26s (15m 09s–16m 16s) | 7m 27s (7m 26s–7m 32s) | 14m 30s (14m 21s–14m 40s) |
@@ -84,7 +84,7 @@ processes for wafw00f.
 Each recorded ratio divides wafw00f's median elapsed time by wafme0w's for the
 same concurrency. **Above 1 favors wafme0w; below 1 favors wafw00f.**
 
-| Workers / processes | wafme0w fast | wafme0w full |
+| Workers / processes | <img src="../assets/wafme0w.svg" width="20" height="20" alt=""> wafme0w fast | <img src="../assets/wafme0w.svg" width="20" height="20" alt=""> wafme0w full |
 | ---: | ---: | ---: |
 | 1 | 2.39× | 0.90× |
 | 5 | 2.07× | 1.06× |
