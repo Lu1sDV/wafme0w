@@ -195,6 +195,7 @@ classification. Keep each result attached to its workload and measured build.
 | [Operations](docs/operations.md) | Result semantics, safe report consumption, deployment and soak checks |
 | [Releases](docs/releases.md) | Installation, Docker, validation, security scans and publication controls |
 | [Go library](docs/library.md) | Working example, ownership and streaming contracts |
+| [Architecture decisions](adrs/README.md) | Design rationale, alternatives, experiments and decision status |
 | [Benchmarks](docs/benchmarks.md) | Measurement methodology, results and offline conformance checks |
 | [Contributing](CONTRIBUTING.md) | Development setup, reviewed fingerprint fixtures and starter tasks |
 | [Security policy](SECURITY.md) | Private vulnerability reporting and supported versions |
