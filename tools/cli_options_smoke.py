@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Exercise CLI parsing and output contracts without live targets.
 
-Run on Linux with Python 3 and an explicitly selected wafme0w binary. The suite
+Run on Linux with Python 3 and an explicitly selected wafmeow binary. The suite
 uses invalid URL schemes, saved synthetic captures, and private files/pipes; it
 never sends a live HTTP request. Its literal-filename cases intentionally use
 Linux path syntax, including quotes, backslashes, colons, and leading dashes.
@@ -34,7 +34,7 @@ if not sys.platform.startswith('linux'):
 ROOT = arguments.output.resolve()
 ROOT.mkdir(parents=True, exist_ok=False)
 SOURCE_BINARY = arguments.binary.resolve()
-BINARY = ROOT / 'wafme0w-reviewed'
+BINARY = ROOT / 'wafmeow-reviewed'
 shutil.copy2(SOURCE_BINARY, BINARY)
 sha = hashlib.sha256(BINARY.read_bytes()).hexdigest()
 TARGETS = 'invalid://from-file-one\r\n\ninvalid://from-file-two\n'

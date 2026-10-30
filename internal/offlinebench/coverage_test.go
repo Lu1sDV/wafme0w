@@ -3,13 +3,13 @@ package offlinebench
 import (
 	"testing"
 
-	"github.com/Lu1sDV/wafme0w/v2/pkg/wafme0w"
+	"github.com/Lu1sDV/wafmeow/v2/pkg/wafmeow"
 )
 
 func TestCoverageKeepsFullDenominatorAndRejectsUnreviewedChanges(t *testing.T) {
-	alpha := wafme0w.WAF{Name: "Alpha", Schemas: []wafme0w.Scheme{{FingerPrints: []wafme0w.FingerPrint{{Type: "Content", Pattern: "alpha"}}}}}
-	beta := wafme0w.WAF{Name: "Beta", Schemas: []wafme0w.Scheme{{FingerPrints: []wafme0w.FingerPrint{{Type: "Content", Pattern: "beta"}}}}}
-	catalogue := []wafme0w.WAF{alpha, beta}
+	alpha := wafmeow.WAF{Name: "Alpha", Schemas: []wafmeow.Scheme{{FingerPrints: []wafmeow.FingerPrint{{Type: "Content", Pattern: "alpha"}}}}}
+	beta := wafmeow.WAF{Name: "Beta", Schemas: []wafmeow.Scheme{{FingerPrints: []wafmeow.FingerPrint{{Type: "Content", Pattern: "beta"}}}}}
+	catalogue := []wafmeow.WAF{alpha, beta}
 	corpus := Corpus{Cases: []Case{
 		{ID: "positive", Review: "reviewed alpha marker", Responses: []Response{{Role: "Normal", StatusCode: 200, Body: []byte("alpha")}}},
 		{ID: "negative", Review: "reviewed nonmatching control", Responses: []Response{{Role: "Normal", StatusCode: 200, Body: []byte("ordinary")}}},
@@ -54,7 +54,7 @@ func TestCoverageKeepsFullDenominatorAndRejectsUnreviewedChanges(t *testing.T) {
 		t.Fatal("missing reviewed fixture did not gate")
 	}
 
-	changed := []wafme0w.WAF{{Name: "Alpha", Schemas: []wafme0w.Scheme{{FingerPrints: []wafme0w.FingerPrint{{Type: "Content", Pattern: "changed"}}}}}, beta}
+	changed := []wafmeow.WAF{{Name: "Alpha", Schemas: []wafmeow.Scheme{{FingerPrints: []wafmeow.FingerPrint{{Type: "Content", Pattern: "changed"}}}}}, beta}
 	unreviewed, err := assessCoverage(corpus, changed, contract)
 	if err != nil {
 		t.Fatal(err)
@@ -74,7 +74,7 @@ func TestCoverageKeepsFullDenominatorAndRejectsUnreviewedChanges(t *testing.T) {
 }
 
 func TestCoverageDoesNotCountIncompleteNegativeEvidence(t *testing.T) {
-	rule := wafme0w.Scheme{FingerPrints: []wafme0w.FingerPrint{{Type: "Content", Pattern: "alpha"}}}
+	rule := wafmeow.Scheme{FingerPrints: []wafmeow.FingerPrint{{Type: "Content", Pattern: "alpha"}}}
 	digest, err := ruleDigest("Alpha", 1, rule)
 	if err != nil {
 		t.Fatal(err)
@@ -89,7 +89,7 @@ func TestCoverageDoesNotCountIncompleteNegativeEvidence(t *testing.T) {
 		corpus.Cases[index].Provenance = syntheticProvenance(corpus.Cases[index].ID)
 	}
 	contract.Rules[0].Provenance = ReviewProvenance{Scope: "synthetic-conformance", SourceID: "test-rule:" + digest, ReviewedOn: "unknown", Reviewer: "unknown"}
-	report, err := assessCoverage(corpus, []wafme0w.WAF{{Name: "Alpha", Schemas: []wafme0w.Scheme{rule}}}, contract)
+	report, err := assessCoverage(corpus, []wafmeow.WAF{{Name: "Alpha", Schemas: []wafmeow.Scheme{rule}}}, contract)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func TestCoverageDoesNotCountIncompleteNegativeEvidence(t *testing.T) {
 }
 
 func TestSyntheticRuleReviewCannotClaimReviewedRealCoverage(t *testing.T) {
-	rule := wafme0w.Scheme{FingerPrints: []wafme0w.FingerPrint{{Type: "Content", Pattern: "alpha"}}}
+	rule := wafmeow.Scheme{FingerPrints: []wafmeow.FingerPrint{{Type: "Content", Pattern: "alpha"}}}
 	digest, err := ruleDigest("Alpha", 1, rule)
 	if err != nil {
 		t.Fatal(err)
@@ -113,7 +113,7 @@ func TestSyntheticRuleReviewCannotClaimReviewedRealCoverage(t *testing.T) {
 		Positive: []string{"positive"}, Negative: []string{"negative"},
 		Provenance: ReviewProvenance{Scope: "reviewed-real", SourceID: "test-only:review", ReviewedOn: "2026-09-03", Reviewer: "test-reviewer"},
 	}}}
-	catalogue := []wafme0w.WAF{{Name: "Alpha", Schemas: []wafme0w.Scheme{rule}}}
+	catalogue := []wafmeow.WAF{{Name: "Alpha", Schemas: []wafmeow.Scheme{rule}}}
 	report, err := assessCoverage(corpus, catalogue, contract)
 	if err != nil || report.ReviewedRealSchemas != 0 || report.TestedSchemas != 0 || len(report.Violations) == 0 {
 		t.Fatalf("synthetic fixtures promoted to real coverage: %+v, %v", report, err)

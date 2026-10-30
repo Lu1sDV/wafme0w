@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Lu1sDV/wafme0w/v2/pkg/wafme0w"
+	"github.com/Lu1sDV/wafmeow/v2/pkg/wafmeow"
 )
 
 func TestLoadCorpusRejectsUntrustedEvidence(t *testing.T) {
@@ -31,14 +31,14 @@ func TestLoadCorpusRejectsUntrustedEvidence(t *testing.T) {
 			SchemaVersion: SchemaVersion,
 			Profile:       "test",
 			Products: []Product{{ID: "example", Names: map[string]string{
-				"wafme0w": "Example", "wafw00f": "Example",
+				"wafmeow": "Example", "wafw00f": "Example",
 			}}},
 			Cases: []Case{{
 				ID: "case", Kind: "synthetic-conformance", Truth: Truth{State: "known", Products: []string{"example"}},
 				Provenance: syntheticProvenance("case"),
 				Review:     "Reviewed local example marker",
 				Expected: map[string]Expectation{
-					"wafme0w": {State: "complete", Products: []string{"example"}},
+					"wafmeow": {State: "complete", Products: []string{"example"}},
 					"wafw00f": {State: "complete", Products: []string{"example"}},
 				},
 				Responses: []Response{{Role: "Normal", StatusCode: 200, Reason: "OK", BodySHA256: digest}},
@@ -70,18 +70,18 @@ func TestLoadCorpusRejectsUntrustedEvidence(t *testing.T) {
 	}{
 		{name: "digest mismatch", mutate: func(*Corpus) {}, body: []byte("tampered"), want: "digest mismatch"},
 		{name: "header injection", mutate: func(c *Corpus) {
-			c.Cases[0].Responses[0].Headers = []wafme0w.Header{{Name: "X-Test", Value: "ok\r\nInjected: true"}}
+			c.Cases[0].Responses[0].Headers = []wafmeow.Header{{Name: "X-Test", Value: "ok\r\nInjected: true"}}
 		}, body: body, want: "invalid header"},
 		{name: "embedded body", mutate: func(c *Corpus) { c.Cases[0].Responses[0].Body = []byte("hidden") }, body: body, want: "embeds body data"},
 		{name: "trailing value", mutate: func(*Corpus) {}, body: body, suffix: `{}`, want: "trailing JSON value"},
 		{name: "missing expectation", mutate: func(c *Corpus) { delete(c.Cases[0].Expected, "wafw00f") }, body: body, want: "expectations for both"},
-		{name: "incomplete without products", mutate: func(c *Corpus) { c.Cases[0].Expected["wafme0w"] = Expectation{State: "incomplete"} }, body: body, want: "inconsistent"},
+		{name: "incomplete without products", mutate: func(c *Corpus) { c.Cases[0].Expected["wafmeow"] = Expectation{State: "incomplete"} }, body: body, want: "inconsistent"},
 		{name: "unreviewed fixture", mutate: func(c *Corpus) { c.Cases[0].Review = "" }, body: body, want: "requires id, kind, and review"},
 		{name: "ambiguous native product mapping", mutate: func(c *Corpus) {
-			c.Products = append(c.Products, Product{ID: "other", Names: map[string]string{"wafme0w": "Example", "wafw00f": "Other"}})
-		}, body: body, want: "duplicate wafme0w product name"},
+			c.Products = append(c.Products, Product{ID: "other", Names: map[string]string{"wafmeow": "Example", "wafw00f": "Other"}})
+		}, body: body, want: "duplicate wafmeow product name"},
 		{name: "ambiguous upstream product mapping", mutate: func(c *Corpus) {
-			c.Products = append(c.Products, Product{ID: "other", Names: map[string]string{"wafme0w": "Other", "wafw00f": "Example"}})
+			c.Products = append(c.Products, Product{ID: "other", Names: map[string]string{"wafmeow": "Other", "wafw00f": "Example"}})
 		}, body: body, want: "duplicate wafw00f product name"},
 	} {
 		t.Run(test.name, func(t *testing.T) {

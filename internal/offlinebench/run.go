@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Lu1sDV/wafme0w/v2/internal/atomicfile"
+	"github.com/Lu1sDV/wafmeow/v2/internal/atomicfile"
 )
 
 type Config struct {
@@ -91,9 +91,9 @@ func Execute(ctx context.Context, corpus Corpus, corpusPath string, config Confi
 	if err != nil {
 		return nil, Summary{}, RunManifest{}, fmt.Errorf("encode worker input: %w", err)
 	}
-	pattern := []string{"wafme0w", "wafw00f", "wafw00f", "wafme0w"}
+	pattern := []string{"wafmeow", "wafw00f", "wafw00f", "wafmeow"}
 	order := make([]string, config.Blocks)
-	blocks := map[string][]WorkerOutput{"wafme0w": {}, "wafw00f": {}}
+	blocks := map[string][]WorkerOutput{"wafmeow": {}, "wafw00f": {}}
 	for block := range config.Blocks {
 		tool := pattern[block%len(pattern)]
 		order[block] = tool
@@ -116,7 +116,7 @@ func Execute(ctx context.Context, corpus Corpus, corpusPath string, config Confi
 	if err != nil {
 		return nil, Summary{}, RunManifest{}, err
 	}
-	summary.FullNative, err = runWorker(ctx, config, "wafme0w", fullPayload)
+	summary.FullNative, err = runWorker(ctx, config, "wafmeow", fullPayload)
 	if err != nil {
 		return nil, Summary{}, RunManifest{}, fmt.Errorf("full-native profile: %w", err)
 	}
@@ -171,11 +171,11 @@ print('isolated')`
 func runWorker(ctx context.Context, config Config, tool string, input []byte) (WorkerOutput, error) {
 	args := sandboxBase()
 	switch tool {
-	case "wafme0w":
+	case "wafmeow":
 		args = append(args,
 			"--ro-bind", config.Executable, "/work/offlinebench",
 			"--ro-bind", config.Catalogue, "/work/catalogue.json",
-			"/work/offlinebench", "-worker", "wafme0w", "-catalogue", "/work/catalogue.json")
+			"/work/offlinebench", "-worker", "wafmeow", "-catalogue", "/work/catalogue.json")
 	case "wafw00f":
 		venv := filepath.Dir(filepath.Dir(config.Wafw00fPython))
 		args = append(args,
@@ -258,7 +258,7 @@ func (buffer *limitedBuffer) Write(data []byte) (int, error) {
 
 func buildManifest(corpus Corpus, corpusPath string, config Config, order []string, blocks map[string][]WorkerOutput) (RunManifest, error) {
 	digests := make(map[string]string, 4)
-	for name, path := range map[string]string{"corpus": corpusPath, "coverage_contract": config.CoverageContract, "wafme0w_executable": config.Executable, "wafme0w_catalogue": config.Catalogue, "wafw00f_adapter": config.Wafw00fAdapter} {
+	for name, path := range map[string]string{"corpus": corpusPath, "coverage_contract": config.CoverageContract, "wafmeow_executable": config.Executable, "wafmeow_catalogue": config.Catalogue, "wafw00f_adapter": config.Wafw00fAdapter} {
 		digest, err := fileDigest(path)
 		if err != nil {
 			return RunManifest{}, err

@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/Lu1sDV/wafme0w/v2/pkg/wafme0w"
+	"github.com/Lu1sDV/wafmeow/v2/pkg/wafmeow"
 )
 
 // CoverageContract is a reviewed identity inventory, not generated detector truth.
@@ -97,7 +97,7 @@ func AssessCatalogue(corpus Corpus, cataloguePath, contractPath string) (Catalog
 	return assessCoverage(corpus, catalogue, contract)
 }
 
-func assessCoverage(corpus Corpus, catalogue []wafme0w.WAF, contract CoverageContract) (CatalogueCoverage, error) {
+func assessCoverage(corpus Corpus, catalogue []wafmeow.WAF, contract CoverageContract) (CatalogueCoverage, error) {
 	report := CatalogueCoverage{TotalProducts: len(catalogue), ExpectedFixtures: len(contract.Fixtures), PresentFixtures: len(corpus.Cases)}
 	violate := func(format string, args ...any) {
 		report.Violations = append(report.Violations, fmt.Sprintf(format, args...))
@@ -157,7 +157,7 @@ func assessCoverage(corpus Corpus, catalogue []wafme0w.WAF, contract CoverageCon
 						violate("reviewed rule %s needs review rationale and both positive and negative fixtures", key)
 						break
 					}
-					engine, err := wafme0w.Compile([]wafme0w.WAF{{Name: product.Name, Schemas: []wafme0w.Scheme{schema}}})
+					engine, err := wafmeow.Compile([]wafmeow.WAF{{Name: product.Name, Schemas: []wafmeow.Scheme{schema}}})
 					if err != nil {
 						return CatalogueCoverage{}, err
 					}
@@ -177,7 +177,7 @@ func assessCoverage(corpus Corpus, catalogue []wafme0w.WAF, contract CoverageCon
 								continue
 							}
 							outcome := engine.Classify(nativeEvidence(fixture.Responses))
-							if outcome.State != wafme0w.Complete || (len(outcome.Matches) != 0) != positive {
+							if outcome.State != wafmeow.Complete || (len(outcome.Matches) != 0) != positive {
 								violate("rule %s fixture %q does not satisfy its reviewed positive=%t expectation (state=%s)", key, id, positive, outcome.State)
 								continue
 							}
@@ -229,7 +229,7 @@ func assessCoverage(corpus Corpus, catalogue []wafme0w.WAF, contract CoverageCon
 
 func ruleKey(product string, schema int) string { return fmt.Sprintf("%s/schema/%d", product, schema) }
 
-func ruleDigest(product string, schema int, rule wafme0w.Scheme) (string, error) {
+func ruleDigest(product string, schema int, rule wafmeow.Scheme) (string, error) {
 	data, err := json.Marshal(map[string]any{"product": product, "schema": schema, "rule": rule})
 	if err != nil {
 		return "", err

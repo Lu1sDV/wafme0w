@@ -14,7 +14,7 @@ For example, after `v2.0.0`, the default selection is `v2.0.1`.
 The same action is available from an authenticated GitHub CLI:
 
 ```sh
-gh workflow run release.yml --repo Lu1sDV/wafme0w --ref main -f bump=patch
+gh workflow run release.yml --repo Lu1sDV/wafmeow --ref main -f bump=patch
 ```
 
 Choose `minor` for compatible features or `major` for an incompatible release;
@@ -32,7 +32,7 @@ same validation, GitHub release, GHCR and stable Homebrew delivery steps; there
 is no release PR, version-file commit, or local tag command.
 
 ```sh
-gh workflow run release.yml --repo Lu1sDV/wafme0w --ref main -f version=v2.0.5
+gh workflow run release.yml --repo Lu1sDV/wafmeow --ref main -f version=v2.0.5
 ```
 
 | Intent | bump | version | tag |
@@ -133,13 +133,13 @@ use **Go 1.27.3**.
 From the repository root:
 
 ```sh
-go build -o wafme0w ./cmd/wafme0w
-./wafme0w --help
+go build -o wafmeow ./cmd/wafmeow
+./wafmeow --help
 ```
 
 ### Release archives
 
-[GitHub Releases](https://github.com/Lu1sDV/wafme0w/releases) is the binary
+[GitHub Releases](https://github.com/Lu1sDV/wafmeow/releases) is the binary
 distribution channel. New releases from this source require native validation
 for the following matrix; older releases may have fewer archives:
 
@@ -152,7 +152,7 @@ for the following matrix; older releases may have fewer archives:
 | Windows x64 | `_windows_amd64.zip` |
 
 Verify the archive against the release's `SHA256SUMS` before extraction, then put
-`wafme0w` (`wafme0w.exe` on Windows) on `PATH`. Archives include synthetic demo
+`wafmeow` (`wafmeow.exe` on Windows) on `PATH`. Archives include synthetic demo
 captures under `assets/demo/` and `LICENSE.md` with project and third-party
 redistribution notices. Keep those notices with redistributed binaries.
 
@@ -166,7 +166,7 @@ production deployment requires a newly built, scanned release that passes the
 The library and CLI use the v2 module path. Once a v2 release is published:
 
 ```sh
-go install github.com/Lu1sDV/wafme0w/v2/cmd/wafme0w@latest
+go install github.com/Lu1sDV/wafmeow/v2/cmd/wafmeow@latest
 ```
 
 This command installs published module versions, not unreleased source. Use the
@@ -174,7 +174,7 @@ source build above to evaluate an unreleased revision.
 
 ### Homebrew
 
-The verification job generates `wafme0w.rb` from the four verified Unix archive
+The verification job generates `wafmeow.rb` from the four verified Unix archive
 hashes, covering Linux and macOS on x64 and ARM64. The formula installs the binary,
 redistribution notices and synthetic demo captures; its test runs the offline
 demo. Both `manifest.json` and `SHA256SUMS` bind the formula to the same release.
@@ -183,12 +183,12 @@ Published formulae are maintained in the
 [`Lu1sDV/homebrew-tap`](https://github.com/Lu1sDV/homebrew-tap) tap:
 
 ```sh
-brew install Lu1sDV/tap/wafme0w
+brew install Lu1sDV/tap/wafmeow
 ```
 
 Stable delivery verifies the formula and archive hashes against the published
 GitHub assets, runs `brew audit --strict --online`, installs the fresh formula
-and runs `brew test` on macOS before updating only `Formula/wafme0w.rb` in the tap.
+and runs `brew test` on macOS before updating only `Formula/wafmeow.rb` in the tap.
 The update checks the existing blob SHA to detect concurrent edits, rejects
 downgrades and unexpected formula changes, and accepts an already identical
 formula on retry. Until that job succeeds, `brew install` can still serve the
@@ -206,16 +206,16 @@ The default identity is UID/GID `65532:65532`; the binary, CA bundle, and licens
 are root-owned and not writable by that identity.
 
 ```sh
-git clone https://github.com/Lu1sDV/wafme0w.git
-cd wafme0w
-docker build -t wafme0w:latest .
+git clone https://github.com/Lu1sDV/wafmeow.git
+cd wafmeow
+docker build -t wafmeow:latest .
 ```
 
 Inspect the container without sending requests:
 
 ```sh
-docker run --rm --network none wafme0w:latest --help
-docker run --rm --network none wafme0w:latest --silent --list --no-colors
+docker run --rm --network none wafmeow:latest --help
+docker run --rm --network none wafmeow:latest --silent --list --no-colors
 ```
 
 The default working directory is `/work`. `/work` and the private `/tmp`
@@ -227,7 +227,7 @@ docker run --rm --network none --read-only \
   --cap-drop ALL --security-opt no-new-privileges \
   --pids-limit 128 --memory 512m --cpus 2 \
   --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m,mode=0700,uid=65532,gid=65532 \
-  -v "$PWD/assets/demo:/captures:ro" wafme0w:latest \
+  -v "$PWD/assets/demo:/captures:ro" wafmeow:latest \
   --evidence /captures/captures.jsonl --no-colors
 ```
 
@@ -259,7 +259,7 @@ permissions. After all source, native, archive-scan and GitHub-release gates
 pass, a separate job loads those images, compares their binaries to the verified
 manifest, and publishes:
 
-- `ghcr.io/lu1sdv/wafme0w:<release-tag>`: a Linux x64/ARM64 manifest list.
+- `ghcr.io/lu1sdv/wafmeow:<release-tag>`: a Linux x64/ARM64 manifest list.
 - `<release-tag>-linux-amd64` and `<release-tag>-linux-arm64`: native images.
 - An attestation for the manifest digest with the frozen source SHA and child
   image digests. The `published-container-identity` workflow artifact retains
@@ -267,7 +267,7 @@ manifest, and publishes:
 
 There is no floating `latest` tag. The helper refuses existing version tags and
 fails closed on authentication or registry errors; registry tags themselves are
-not an immutability guarantee. Pin `ghcr.io/lu1sdv/wafme0w@sha256:<verified-digest>`
+not an immutability guarantee. Pin `ghcr.io/lu1sdv/wafmeow@sha256:<verified-digest>`
 for deployment. If publication stops after an architecture image is uploaded,
 inspect that partial publication before recovery; the helper will not overwrite
 it automatically. GitHub releases and GHCR cannot be published atomically, so

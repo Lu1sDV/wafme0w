@@ -6,10 +6,10 @@
 | --- | --- |
 | Status | **Proposed** |
 | Recorded | 2026-10-30 |
-| Decision owner | wafme0w maintainers |
+| Decision owner | wafmeow maintainers |
 | Implementation | No collector, helper protocol, backend selector, or browser adapter is introduced by this ADR |
 | Validation | Source and documentation review only; the experiments below have not been executed for these integrations |
-| Repository baseline | [`5a1866d6e5021fddf5972d4a6d3c020ff08538b1`](https://github.com/Lu1sDV/wafme0w/tree/5a1866d6e5021fddf5972d4a6d3c020ff08538b1) |
+| Repository baseline | [`5a1866d6e5021fddf5972d4a6d3c020ff08538b1`](https://github.com/Lu1sDV/wafmeow/tree/5a1866d6e5021fddf5972d4a6d3c020ff08538b1) |
 | Review point | After the curl_cffi feasibility experiments, before any supported integration or default change |
 | Supersedes / superseded by | None |
 
@@ -57,7 +57,7 @@ targets. These integrations are not prerequisites for the current release.
 
 ## Context and existing architecture
 
-wafme0w acquires HTTP responses and evaluates them with a shared fingerprint
+wafmeow acquires HTTP responses and evaluates them with a shared fingerprint
 engine. Saved native captures and supported httpx exports use the same engine
 without issuing requests. Named matches, generic anomalies, evidence
 completeness, and optional browser metadata are separate concepts.
@@ -191,7 +191,7 @@ capture quality rather than a new named-product detection path.
 
 Upstream recommends headed Chrome, a persistent context, and no custom browser
 headers or User-Agent for its preferred setup. Headless operation is possible,
-but that recommendation does not validate wafme0w's restricted configuration.
+but that recommendation does not validate wafmeow's restricted configuration.
 A persistent-context API can use an owned temporary profile; it does not require
 sharing the user's ordinary profile or retaining state between targets.
 [Python package guidance][p-python].
@@ -267,7 +267,7 @@ manifest. A working offline interface already exists:
 
 ```sh
 # captures/curl-cffi.jsonl would be produced by the future collector.
-wafme0w --evidence captures/curl-cffi.jsonl --jsonl
+wafmeow --evidence captures/curl-cffi.jsonl --jsonl
 ```
 
 The collector and manifest do not exist yet. This example documents the existing
@@ -428,7 +428,7 @@ control. [Playwright networking][p-network-docs], [context routing][p-routing],
 
 Playwright's launch API documents `chromiumSandbox` as false by default. Configure
 and verify the effective launch explicitly; a convenience launch example does
-not establish parity with wafme0w's launcher. Preserve private control channels
+not establish parity with wafmeow's launcher. Preserve private control channels
 and cleanup. Dependencies or display requirements must fail clearly rather than
 triggering a less restricted browser configuration. [Launch API][p-launch].
 
@@ -470,10 +470,10 @@ reserved compatibility promises:
 Illustrative future usage, not executable with the current CLI:
 
 ```text
-wafme0w --target https://app.example.test --baseline \
+wafmeow --target https://app.example.test --baseline \
   --http-backend curl-cffi --http-profile chrome152 --jsonl
 
-wafme0w --target https://app.example.test --baseline \
+wafmeow --target https://app.example.test --baseline \
   --browser screenshot --browser-backend patchright \
   --save-screenshots ./screenshots --jsonl
 ```
@@ -657,7 +657,7 @@ distribution is justified, publish it separately with explicit prerequisites,
 supported platform combinations, version checks, and reproducible dependency
 installation. A compatible upstream wheel does not validate our adapter on that
 platform. Do not promise that upstream browser platform support expands
-wafme0w's current Linux browser support automatically.
+wafmeow's current Linux browser support automatically.
 
 Pin and audit the actual package/native/browser graph. Record driver/browser
 compatibility, update profiles outside runs, and repeat affected contract tests
@@ -782,7 +782,7 @@ the reviewed driver commit, which is not asserted to identify every published
 package build. Upstream documentation is mutable. Freeze full package, native
 library, driver, browser, and profile identities for actual experiments.
 
-### wafme0w source and contracts
+### wafmeow source and contracts
 
 - [Configuration and injected-client contract][r-config]
 - [Scope, request, pacing, and exchange admission][r-acquisition]
@@ -809,22 +809,22 @@ library, driver, browser, and profile identities for actual experiments.
 - [Patchright license][p-license], [Playwright notice][p-notice], and [Chromium license][p-chromium-license]
 - [uTLS scope][a-utls] and [Go TLS-Client alternative][a-tls-client]
 
-[r-config]: https://github.com/Lu1sDV/wafme0w/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/pkg/wafme0w/options.go
-[r-acquisition]: https://github.com/Lu1sDV/wafme0w/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/pkg/wafme0w/acquisition.go
-[r-http]: https://github.com/Lu1sDV/wafme0w/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/pkg/wafme0w/http.go
-[r-probes]: https://github.com/Lu1sDV/wafme0w/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/pkg/wafme0w/request.go
-[r-runner]: https://github.com/Lu1sDV/wafme0w/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/pkg/wafme0w/runner.go
-[r-classifier]: https://github.com/Lu1sDV/wafme0w/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/pkg/wafme0w/identify.go
-[r-capture]: https://github.com/Lu1sDV/wafme0w/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/pkg/wafme0w/capture.go
-[r-capture-decode]: https://github.com/Lu1sDV/wafme0w/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/pkg/wafme0w/capture_decode.go
-[r-evidence]: https://github.com/Lu1sDV/wafme0w/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/pkg/wafme0w/evidence.go
-[r-availability]: https://github.com/Lu1sDV/wafme0w/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/pkg/wafme0w/availability.go
-[r-browser-guide]: https://github.com/Lu1sDV/wafme0w/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/docs/browser.md
-[r-browser-runtime]: https://github.com/Lu1sDV/wafme0w/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/internal/browserruntime/runtime_linux.go
-[r-library]: https://github.com/Lu1sDV/wafme0w/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/docs/library.md
-[r-operations]: https://github.com/Lu1sDV/wafme0w/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/docs/operations.md
-[r-releases]: https://github.com/Lu1sDV/wafme0w/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/docs/releases.md
-[r-benchmarks]: https://github.com/Lu1sDV/wafme0w/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/docs/benchmarks.md
+[r-config]: https://github.com/Lu1sDV/wafmeow/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/pkg/wafme0w/options.go
+[r-acquisition]: https://github.com/Lu1sDV/wafmeow/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/pkg/wafme0w/acquisition.go
+[r-http]: https://github.com/Lu1sDV/wafmeow/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/pkg/wafme0w/http.go
+[r-probes]: https://github.com/Lu1sDV/wafmeow/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/pkg/wafme0w/request.go
+[r-runner]: https://github.com/Lu1sDV/wafmeow/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/pkg/wafme0w/runner.go
+[r-classifier]: https://github.com/Lu1sDV/wafmeow/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/pkg/wafme0w/identify.go
+[r-capture]: https://github.com/Lu1sDV/wafmeow/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/pkg/wafme0w/capture.go
+[r-capture-decode]: https://github.com/Lu1sDV/wafmeow/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/pkg/wafme0w/capture_decode.go
+[r-evidence]: https://github.com/Lu1sDV/wafmeow/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/pkg/wafme0w/evidence.go
+[r-availability]: https://github.com/Lu1sDV/wafmeow/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/pkg/wafme0w/availability.go
+[r-browser-guide]: https://github.com/Lu1sDV/wafmeow/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/docs/browser.md
+[r-browser-runtime]: https://github.com/Lu1sDV/wafmeow/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/internal/browserruntime/runtime_linux.go
+[r-library]: https://github.com/Lu1sDV/wafmeow/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/docs/library.md
+[r-operations]: https://github.com/Lu1sDV/wafmeow/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/docs/operations.md
+[r-releases]: https://github.com/Lu1sDV/wafmeow/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/docs/releases.md
+[r-benchmarks]: https://github.com/Lu1sDV/wafmeow/blob/5a1866d6e5021fddf5972d4a6d3c020ff08538b1/docs/benchmarks.md
 [c-project]: https://github.com/lexiforest/curl_cffi
 [c-release]: https://github.com/lexiforest/curl_cffi/releases/tag/v0.17.0
 [c-start]: https://curl-cffi.readthedocs.io/en/latest/quick_start.html

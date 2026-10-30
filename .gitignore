@@ -37,6 +37,6 @@ benchmarks/
 /.worktree-archive/
 
 # Local build outputs and scan scratch files
-/wafme0w
-/wafme0w-*.json
+/wafmeow
+/wafmeow-*.json
 /urls.txt

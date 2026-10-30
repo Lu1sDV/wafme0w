@@ -14,7 +14,7 @@ import release
 import release_start
 
 
-REPOSITORY = "owner/wafme0w"
+REPOSITORY = "owner/wafmeow"
 REVISION = "b" * 40
 PREVIOUS = "a" * 40
 RUN_ID = "1234"

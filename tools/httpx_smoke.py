@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Owned-loopback httpx v1.12.0 integration and Linux network-attempt smoke.
 
-Requires built wafme0w, a separately installed pinned httpx, strace, and GNU time.
+Requires built wafmeow, a separately installed pinned httpx, strace, and GNU time.
 The default 5,000/50,000-record runs compare child peak RSS, not harness memory.
 No targets outside the owned loopback fixture are scanned.
 """
@@ -130,7 +130,7 @@ def main():
     worker = threading.Thread(target=server.serve_forever)
     worker.start()
     try:
-        with tempfile.TemporaryDirectory(prefix="wafme0w-httpx-smoke-") as directory:
+        with tempfile.TemporaryDirectory(prefix="wafmeow-httpx-smoke-") as directory:
             root = Path(directory)
             catalogue = root / "catalogue.json"
             catalogue.write_text(json.dumps([

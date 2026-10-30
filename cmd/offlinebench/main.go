@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/Lu1sDV/wafme0w/v2/internal/offlinebench"
+	"github.com/Lu1sDV/wafmeow/v2/internal/offlinebench"
 )
 
 func main() {
@@ -22,7 +22,7 @@ func run(args []string) int {
 	worker := flags.String("worker", "", "internal worker mode")
 	corpusPath := flags.String("corpus", "tools/offlinebench/testdata/corpus.json", "offline corpus manifest")
 	bodiesDir := flags.String("bodies", "tools/offlinebench/testdata/bodies", "content-addressed body directory")
-	catalogue := flags.String("catalogue", "cmd/wafme0w/resources/waf-fingerprints.json", "wafme0w fingerprint catalogue")
+	catalogue := flags.String("catalogue", "cmd/wafmeow/resources/waf-fingerprints.json", "wafmeow fingerprint catalogue")
 	coverageContract := flags.String("coverage-contract", "tools/offlinebench/testdata/coverage-contract.json", "reviewed fixture and full-catalogue rule identity inventory")
 	python := flags.String("wafw00f-python", os.Getenv("WAFW00F_PYTHON"), "Python executable in a wafw00f virtual environment")
 	adapter := flags.String("wafw00f-adapter", "tools/offlinebench/wafw00f_adapter.py", "wafw00f replay adapter")
@@ -67,7 +67,7 @@ func run(args []string) int {
 		return 0
 	}
 	if *worker != "" {
-		if *worker != "wafme0w" {
+		if *worker != "wafmeow" {
 			fmt.Fprintf(os.Stderr, "unsupported worker %q\n", *worker)
 			return 2
 		}
@@ -132,12 +132,12 @@ func run(args []string) int {
 		}
 		return 1
 	}
-	for _, tool := range []string{"wafme0w", "wafw00f"} {
+	for _, tool := range []string{"wafmeow", "wafw00f"} {
 		metrics := summary.Metrics[tool]
 		fmt.Printf("%s raw-completion=%.2f%% expected-complete=%.2f%% state-conformance=%.2f%% product-conformance=%.2f%% exact=%d/%d median=%dns\n", tool, 100*metrics.RawCompletionRate, 100*metrics.ExpectedCompleteCoverage, 100*metrics.StateConformance, 100*metrics.ProductConformance, metrics.ExactCases, metrics.ExpectedLabelledCases, metrics.MedianCaseNS)
 	}
 	fmt.Printf("observed cross-detector disagreements=%d/%d (independent of expected conformance)\n", len(summary.Comparison.Disagreements), summary.Comparison.OutcomeCases)
-	fmt.Printf("wafw00f/wafme0w median latency ratio=%.3fx\n", summary.Comparison.Wafw00fOverWafme0wRatio)
+	fmt.Printf("wafw00f/wafmeow median latency ratio=%.3fx\n", summary.Comparison.Wafw00fOverWafme0wRatio)
 	fmt.Printf("native reviewed schemas=%d/%d; fully reviewed products=%d/%d; full-native profile products=%d\n", summary.Catalogue.TestedSchemas, summary.Catalogue.TotalSchemas, summary.Catalogue.TestedProducts, summary.Catalogue.TotalProducts, summary.FullNative.CatalogueSize)
 	fmt.Printf("complete generation: %s (verify before consuming: offlinebench -verify-run %q)\n", *outputDir, *outputDir)
 	return 0

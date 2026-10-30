@@ -165,7 +165,7 @@ class ReproductionPolicyTests(unittest.TestCase):
         self.assertIn("source_state_error", metadata)
 
     def test_dirty_finish_invalidates_successful_run(self):
-        self.final_status = " M pkg/wafme0w/matcher.go\n"
+        self.final_status = " M pkg/wafmeow/matcher.go\n"
         with self.assertRaisesRegex(RuntimeError, "Source verification failed"):
             self.run_wrapper()
         self.assertFalse(self.metadata()["complete"])

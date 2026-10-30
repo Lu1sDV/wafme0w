@@ -3,11 +3,11 @@
 !go.mod
 !go.sum
 !LICENSE.md
-!cmd/wafme0w/*.go
-!cmd/wafme0w/resources/waf-fingerprints.json
+!cmd/wafmeow/*.go
+!cmd/wafmeow/resources/waf-fingerprints.json
 !internal/atomicfile/*.go
 !internal/browserruntime/*.go
 !internal/httpmeta/*.go
-!pkg/wafme0w/*.go
+!pkg/wafmeow/*.go
 !pkg/utils/http/*.go
 **/*_test.go

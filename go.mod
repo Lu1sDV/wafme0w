@@ -1,4 +1,4 @@
-module github.com/Lu1sDV/wafme0w/v2
+module github.com/Lu1sDV/wafmeow/v2
 
 go 1.26.0
 

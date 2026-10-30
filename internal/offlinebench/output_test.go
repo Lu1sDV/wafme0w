@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Lu1sDV/wafme0w/v2/internal/atomicfile"
+	"github.com/Lu1sDV/wafmeow/v2/internal/atomicfile"
 )
 
 // Test-only provenance is never part of the saved benchmark corpus.
@@ -28,8 +28,8 @@ func testManifest(t *testing.T) RunManifest {
 	}
 	digest := sha256.Sum256(encoded)
 	return RunManifest{SchemaVersion: SchemaVersion, Profile: "test-only",
-		Digests: map[string]string{"corpus": zero, "coverage_contract": zero, "wafme0w_executable": zero, "wafme0w_catalogue": zero, "wafw00f_adapter": zero},
-		Tools:   map[string]string{"wafme0w": "test-only", "wafw00f": "2.4.2"},
+		Digests: map[string]string{"corpus": zero, "coverage_contract": zero, "wafmeow_executable": zero, "wafmeow_catalogue": zero, "wafw00f_adapter": zero},
+		Tools:   map[string]string{"wafmeow": "test-only", "wafw00f": "2.4.2"},
 		Python: &PythonProvenance{
 			RequestedExecutable: "/test/python", Executable: "/test/python", ExecutableRealPath: "/test/python", ExecutableSHA256: zero,
 			Runtime: "test-only runtime", Implementation: "test-only", Platform: "test-only",

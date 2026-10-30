@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         This is a public issue. For a suspected security vulnerability, follow
-        [SECURITY.md](https://github.com/Lu1sDV/wafme0w/blob/main/SECURITY.md)
+        [SECURITY.md](https://github.com/Lu1sDV/wafmeow/blob/main/SECURITY.md)
         before sharing details. Use the Fingerprint report form for detection-rule changes.
         Use synthetic input or owned loopback fixtures; do not publish secrets,
         private target names, session cookies, or customer captures.
@@ -21,7 +21,7 @@ body:
     id: environment
     attributes:
       label: Version and environment
-      description: Include wafme0w --version, install method, OS/architecture, and shell. Include Go version for a source build and Chromium version for browser behavior.
+      description: Include wafmeow --version, install method, OS/architecture, and shell. Include Go version for a source build and Chromium version for browser behavior.
     validations:
       required: true
   - type: textarea

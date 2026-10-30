@@ -5,203 +5,203 @@
     {
       "id": "aws-elb",
       "names": {
-        "wafme0w": "AWS Elastic Load Balancer (Amazon)",
+        "wafmeow": "AWS Elastic Load Balancer (Amazon)",
         "wafw00f": "AWS Elastic Load Balancer (Amazon)"
       }
     },
     {
       "id": "cloudflare",
       "names": {
-        "wafme0w": "Cloudflare (Cloudflare Inc.)",
+        "wafmeow": "Cloudflare (Cloudflare Inc.)",
         "wafw00f": "Cloudflare (Cloudflare Inc.)"
       }
     },
     {
       "id": "fastly",
       "names": {
-        "wafme0w": "Fastly (Fastly CDN)",
+        "wafmeow": "Fastly (Fastly CDN)",
         "wafw00f": "Fastly (Fastly CDN)"
       }
     },
     {
       "id": "modsecurity",
       "names": {
-        "wafme0w": "ModSecurity (SpiderLabs)",
+        "wafmeow": "ModSecurity (SpiderLabs)",
         "wafw00f": "ModSecurity (SpiderLabs)"
       }
     },
     {
       "id": "aliyundun",
       "names": {
-        "wafme0w": "AliYunDun (Alibaba Cloud Computing)",
+        "wafmeow": "AliYunDun (Alibaba Cloud Computing)",
         "wafw00f": "AliYunDun (Alibaba Cloud Computing)"
       }
     },
     {
       "id": "azion",
       "names": {
-        "wafme0w": "Azion Edge Firewall (Azion)",
+        "wafmeow": "Azion Edge Firewall (Azion)",
         "wafw00f": "Azion Edge Firewall (Azion)"
       }
     },
     {
       "id": "shieldon",
       "names": {
-        "wafme0w": "Shieldon Firewall (Shieldon.io)",
+        "wafmeow": "Shieldon Firewall (Shieldon.io)",
         "wafw00f": "Shieldon Firewall (Shieldon.io)"
       }
     },
     {
       "id": "siteguard",
       "names": {
-        "wafme0w": "SiteGuard (EG Secure Solutions Inc.)",
+        "wafmeow": "SiteGuard (EG Secure Solutions Inc.)",
         "wafw00f": "SiteGuard (EG Secure Solutions Inc.)"
       }
     },
     {
       "id": "tencent",
       "names": {
-        "wafme0w": "Tencent Cloud Firewall (Tencent Technologies)",
+        "wafmeow": "Tencent Cloud Firewall (Tencent Technologies)",
         "wafw00f": "Tencent Cloud Firewall (Tencent Technologies)"
       }
     },
     {
       "id": "yunjiasu",
       "names": {
-        "wafme0w": "Yunjiasu (Baidu Cloud Computing)",
+        "wafmeow": "Yunjiasu (Baidu Cloud Computing)",
         "wafw00f": "Yunjiasu (Baidu Cloud Computing)"
       }
     },
     {
       "id": "bigip-asm",
       "names": {
-        "wafme0w": "BIG-IP AppSec Manager (F5 Networks)",
+        "wafmeow": "BIG-IP AppSec Manager (F5 Networks)",
         "wafw00f": "BIG-IP AppSec Manager (F5 Networks)"
       }
     },
     {
       "id": "denyall",
       "names": {
-        "wafme0w": "DenyALL (Rohde & Schwarz CyberSecurity)",
+        "wafmeow": "DenyALL (Rohde & Schwarz CyberSecurity)",
         "wafw00f": "DenyALL (Rohde & Schwarz CyberSecurity)"
       }
     },
     {
       "id": "webknight",
       "names": {
-        "wafme0w": "WebKnight (AQTRONIX)",
+        "wafmeow": "WebKnight (AQTRONIX)",
         "wafw00f": "WebKnight (AQTRONIX)"
       }
     },
     {
       "id": "anubis",
       "names": {
-        "wafme0w": "Anubis (Techaro)",
+        "wafmeow": "Anubis (Techaro)",
         "wafw00f": "Anubis (Techaro)"
       }
     },
     {
       "id": "azure-gateway",
       "names": {
-        "wafme0w": "Azure Application Gateway (Microsoft)",
+        "wafmeow": "Azure Application Gateway (Microsoft)",
         "wafw00f": "Azure Application Gateway (Microsoft)"
       }
     },
     {
       "id": "baffin-bay",
       "names": {
-        "wafme0w": "Baffin Bay (Mastercard)",
+        "wafmeow": "Baffin Bay (Mastercard)",
         "wafw00f": "Baffin Bay (Mastercard)"
       }
     },
     {
       "id": "envoy",
       "names": {
-        "wafme0w": "Envoy (EnvoyProxy)",
+        "wafmeow": "Envoy (EnvoyProxy)",
         "wafw00f": "Envoy (EnvoyProxy)"
       }
     },
     {
       "id": "fortigate",
       "names": {
-        "wafme0w": "FortiGate (Fortinet)",
+        "wafmeow": "FortiGate (Fortinet)",
         "wafw00f": "FortiGate (Fortinet)"
       }
     },
     {
       "id": "fortiguard",
       "names": {
-        "wafme0w": "FortiGuard (Fortinet)",
+        "wafmeow": "FortiGuard (Fortinet)",
         "wafw00f": "FortiGuard (Fortinet)"
       }
     },
     {
       "id": "gcp-armor",
       "names": {
-        "wafme0w": "Google Cloud App Armor (Google Cloud)",
+        "wafmeow": "Google Cloud App Armor (Google Cloud)",
         "wafw00f": "Google Cloud App Armor (Google Cloud)"
       }
     },
     {
       "id": "kemp",
       "names": {
-        "wafme0w": "Kemp LoadMaster (Progress Software)",
+        "wafmeow": "Kemp LoadMaster (Progress Software)",
         "wafw00f": "Kemp LoadMaster (Progress Software)"
       }
     },
     {
       "id": "link11",
       "names": {
-        "wafme0w": "Link11 WAAP (Link11)",
+        "wafmeow": "Link11 WAAP (Link11)",
         "wafw00f": "Link11 WAAP (Link11)"
       }
     },
     {
       "id": "panyun360",
       "names": {
-        "wafme0w": "360PanYun (360 Technologies)",
+        "wafmeow": "360PanYun (360 Technologies)",
         "wafw00f": "360PanYun (360 Technologies)"
       }
     },
     {
       "id": "reflected",
       "names": {
-        "wafme0w": "Reflected Networks (Reflected Networks)",
+        "wafmeow": "Reflected Networks (Reflected Networks)",
         "wafw00f": "Reflected Networks (Reflected Networks)"
       }
     },
     {
       "id": "scutum",
       "names": {
-        "wafme0w": "Scutum (Secure Sky Technology Inc.)",
+        "wafmeow": "Scutum (Secure Sky Technology Inc.)",
         "wafw00f": "Scutum (Secure Sky Technology Inc.)"
       }
     },
     {
       "id": "threatx",
       "names": {
-        "wafme0w": "ThreatX (A10 Networks)",
+        "wafmeow": "ThreatX (A10 Networks)",
         "wafw00f": "ThreatX (A10 Networks)"
       }
     },
     {
       "id": "variti",
       "names": {
-        "wafme0w": "Variti (Variti)",
+        "wafmeow": "Variti (Variti)",
         "wafw00f": "Variti (Variti)"
       }
     },
     {
       "id": "vercel",
       "names": {
-        "wafme0w": "Vercel WAF (Vercel)",
+        "wafmeow": "Vercel WAF (Vercel)",
         "wafw00f": "Vercel WAF (Vercel)"
       }
     },
     {
       "id": "pksecurity",
       "names": {
-        "wafme0w": "pkSecurity IDS (pkSec)",
+        "wafmeow": "pkSecurity IDS (pkSec)",
         "wafw00f": "pkSecurity IDS (pkSec)"
       }
     }
@@ -238,7 +238,7 @@
       ],
       "review": "Local synthetic shared-product rule review: explicit marker is confined to the labelled product; both roles are complete. Not live-captured truth. Expansion review against the 28 selected source definitions: complete unrelated markers do not introduce additional products; unknown fields remain unknown according to each adapter, not detector-derived labels.",
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "aws-elb"
@@ -253,7 +253,7 @@
       },
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/aws-header",
+        "source_id": "wafmeow:inherited-synthetic/aws-header",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -295,7 +295,7 @@
       ],
       "review": "Local synthetic shared-product rule review: explicit marker is confined to the labelled product; both roles are complete. Not live-captured truth. Expansion review against the 28 selected source definitions: complete unrelated markers do not introduce additional products; unknown fields remain unknown according to each adapter, not detector-derived labels.",
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "cloudflare"
@@ -310,7 +310,7 @@
       },
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/cloudflare-repeated-header",
+        "source_id": "wafmeow:inherited-synthetic/cloudflare-repeated-header",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -348,7 +348,7 @@
       ],
       "review": "Local synthetic shared-product rule review: explicit marker is confined to the labelled product; both roles are complete. Not live-captured truth. Expansion review against the 28 selected source definitions: complete unrelated markers do not introduce additional products; unknown fields remain unknown according to each adapter, not detector-derived labels.",
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "cloudflare"
@@ -363,7 +363,7 @@
       },
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/cloudflare-server",
+        "source_id": "wafmeow:inherited-synthetic/cloudflare-server",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -401,7 +401,7 @@
       ],
       "review": "Local synthetic shared-product rule review: explicit marker is confined to the labelled product; both roles are complete. Not live-captured truth. Expansion review against the 28 selected source definitions: complete unrelated markers do not introduce additional products; unknown fields remain unknown according to each adapter, not detector-derived labels.",
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "fastly"
@@ -416,7 +416,7 @@
       },
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/fastly-request-id",
+        "source_id": "wafmeow:inherited-synthetic/fastly-request-id",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -448,7 +448,7 @@
       ],
       "review": "Local synthetic shared-product rule review: explicit marker is confined to the labelled product; both roles are complete. Not live-captured truth. Expansion review against the 28 selected source definitions: complete unrelated markers do not introduce additional products; unknown fields remain unknown according to each adapter, not detector-derived labels.",
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "modsecurity"
@@ -463,7 +463,7 @@
       },
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/modsecurity-body",
+        "source_id": "wafmeow:inherited-synthetic/modsecurity-body",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -495,7 +495,7 @@
       ],
       "review": "Local synthetic shared-product rule review: explicit marker is confined to the labelled product; both roles are complete. Not live-captured truth. Expansion review against the 28 selected source definitions: complete unrelated markers do not introduce additional products; unknown fields remain unknown according to each adapter, not detector-derived labels.",
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "modsecurity"
@@ -510,7 +510,7 @@
       },
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/modsecurity-reason-status",
+        "source_id": "wafmeow:inherited-synthetic/modsecurity-reason-status",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -552,7 +552,7 @@
       ],
       "review": "Reviewed control: ordinary metadata and body contain none of the 28 selected products' markers. Both response roles and bodies are complete, so every selected rule is settled without a match.",
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -563,7 +563,7 @@
       },
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/known-empty",
+        "source_id": "wafmeow:inherited-synthetic/known-empty",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -578,7 +578,7 @@
         "state": "unknown"
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "incomplete",
           "products": [],
           "incomplete_products": [
@@ -652,7 +652,7 @@
       "responses": [],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/missing-all",
+        "source_id": "wafmeow:inherited-synthetic/missing-all",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -668,7 +668,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -707,7 +707,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/normal-only",
+        "source_id": "wafmeow:inherited-synthetic/normal-only",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -722,7 +722,7 @@
         "state": "unknown"
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "incomplete",
           "products": [],
           "incomplete_products": [
@@ -804,7 +804,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/transport-error-no-metadata",
+        "source_id": "wafmeow:inherited-synthetic/transport-error-no-metadata",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -819,7 +819,7 @@
         "state": "unknown"
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "incomplete",
           "products": [],
           "incomplete_products": [
@@ -878,7 +878,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/truncated-content",
+        "source_id": "wafmeow:inherited-synthetic/truncated-content",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -893,7 +893,7 @@
         "state": "unknown"
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "incomplete",
           "products": [
             "cloudflare"
@@ -962,7 +962,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/body-read-error-preserves-header",
+        "source_id": "wafmeow:inherited-synthetic/body-read-error-preserves-header",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -983,7 +983,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "incomplete",
           "products": [
             "aws-elb",
@@ -1068,7 +1068,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/truncated-body-header-only-positives",
+        "source_id": "wafmeow:inherited-synthetic/truncated-body-header-only-positives",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -1086,7 +1086,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "incomplete",
           "products": [
             "modsecurity"
@@ -1147,7 +1147,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/body-error-status-reason-positive",
+        "source_id": "wafmeow:inherited-synthetic/body-error-status-reason-positive",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -1162,7 +1162,7 @@
         "state": "unknown"
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -1187,7 +1187,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/unknown-truth-complete",
+        "source_id": "wafmeow:inherited-synthetic/unknown-truth-complete",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -1203,7 +1203,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -1280,7 +1280,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/near-miss-product-headers",
+        "source_id": "wafmeow:inherited-synthetic/near-miss-product-headers",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -1296,7 +1296,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -1321,7 +1321,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/near-miss-modsecurity-content",
+        "source_id": "wafmeow:inherited-synthetic/near-miss-modsecurity-content",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -1337,7 +1337,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -1362,7 +1362,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/modsecurity-reason-wrong-status",
+        "source_id": "wafmeow:inherited-synthetic/modsecurity-reason-wrong-status",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -1378,7 +1378,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -1403,7 +1403,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/modsecurity-status-wrong-reason",
+        "source_id": "wafmeow:inherited-synthetic/modsecurity-status-wrong-reason",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -1421,7 +1421,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "modsecurity"
@@ -1450,7 +1450,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/modsecurity-reason-status-406",
+        "source_id": "wafmeow:inherited-synthetic/modsecurity-reason-status-406",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -1468,7 +1468,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "anubis"
@@ -1509,7 +1509,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/anubis-cookie",
+        "source_id": "wafmeow:inherited-synthetic/anubis-cookie",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -1525,7 +1525,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -1552,7 +1552,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/anubis-negative",
+        "source_id": "wafmeow:inherited-synthetic/anubis-negative",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -1570,7 +1570,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "azure-gateway"
@@ -1601,7 +1601,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/azure-positive",
+        "source_id": "wafmeow:inherited-synthetic/azure-positive",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -1617,7 +1617,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -1644,7 +1644,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/azure-missing-title",
+        "source_id": "wafmeow:inherited-synthetic/azure-missing-title",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -1662,7 +1662,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "baffin-bay"
@@ -1703,7 +1703,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/baffin-positive",
+        "source_id": "wafmeow:inherited-synthetic/baffin-positive",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -1719,7 +1719,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -1756,7 +1756,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/baffin-negative",
+        "source_id": "wafmeow:inherited-synthetic/baffin-negative",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -1774,7 +1774,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "envoy"
@@ -1815,7 +1815,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/envoy-positive-server",
+        "source_id": "wafmeow:inherited-synthetic/envoy-positive-server",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -1831,7 +1831,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -1868,7 +1868,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/envoy-negative",
+        "source_id": "wafmeow:inherited-synthetic/envoy-negative",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -1887,7 +1887,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "fortigate",
@@ -1920,7 +1920,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/fortigate-schema1",
+        "source_id": "wafmeow:inherited-synthetic/fortigate-schema1",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -1939,7 +1939,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "fortigate",
@@ -1972,7 +1972,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/fortigate-schema2",
+        "source_id": "wafmeow:inherited-synthetic/fortigate-schema2",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -1988,7 +1988,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -2015,7 +2015,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/fortigate-negative",
+        "source_id": "wafmeow:inherited-synthetic/fortigate-negative",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -2033,7 +2033,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "fortiguard"
@@ -2064,7 +2064,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/fortiguard-positive",
+        "source_id": "wafmeow:inherited-synthetic/fortiguard-positive",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -2080,7 +2080,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -2107,7 +2107,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/fortiguard-negative",
+        "source_id": "wafmeow:inherited-synthetic/fortiguard-negative",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -2125,7 +2125,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "gcp-armor"
@@ -2166,7 +2166,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/gcparmor-positive",
+        "source_id": "wafmeow:inherited-synthetic/gcparmor-positive",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -2182,7 +2182,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -2219,7 +2219,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/gcparmor-negative",
+        "source_id": "wafmeow:inherited-synthetic/gcparmor-negative",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -2237,7 +2237,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "kemp"
@@ -2278,7 +2278,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/kemp-positive",
+        "source_id": "wafmeow:inherited-synthetic/kemp-positive",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -2294,7 +2294,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -2331,7 +2331,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/kemp-negative",
+        "source_id": "wafmeow:inherited-synthetic/kemp-negative",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -2349,7 +2349,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "link11"
@@ -2390,7 +2390,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/link11-positive",
+        "source_id": "wafmeow:inherited-synthetic/link11-positive",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -2406,7 +2406,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -2443,7 +2443,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/link11-negative",
+        "source_id": "wafmeow:inherited-synthetic/link11-negative",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -2461,7 +2461,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "panyun360"
@@ -2502,7 +2502,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/panyun-positive",
+        "source_id": "wafmeow:inherited-synthetic/panyun-positive",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -2518,7 +2518,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -2555,7 +2555,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/panyun-negative",
+        "source_id": "wafmeow:inherited-synthetic/panyun-negative",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -2573,7 +2573,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "reflected"
@@ -2604,7 +2604,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/reflected-positive",
+        "source_id": "wafmeow:inherited-synthetic/reflected-positive",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -2620,7 +2620,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -2647,7 +2647,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/reflected-negative",
+        "source_id": "wafmeow:inherited-synthetic/reflected-negative",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -2665,7 +2665,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "scutum"
@@ -2706,7 +2706,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/scutum-positive",
+        "source_id": "wafmeow:inherited-synthetic/scutum-positive",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -2722,7 +2722,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -2759,7 +2759,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/scutum-negative",
+        "source_id": "wafmeow:inherited-synthetic/scutum-negative",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -2777,7 +2777,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "threatx"
@@ -2818,7 +2818,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/threatx-positive",
+        "source_id": "wafmeow:inherited-synthetic/threatx-positive",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -2834,7 +2834,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -2871,7 +2871,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/threatx-negative",
+        "source_id": "wafmeow:inherited-synthetic/threatx-negative",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -2889,7 +2889,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "variti"
@@ -2930,7 +2930,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/variti-positive",
+        "source_id": "wafmeow:inherited-synthetic/variti-positive",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -2946,7 +2946,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -2983,7 +2983,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/variti-negative",
+        "source_id": "wafmeow:inherited-synthetic/variti-negative",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -3001,7 +3001,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "vercel"
@@ -3032,7 +3032,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/vercel-positive",
+        "source_id": "wafmeow:inherited-synthetic/vercel-positive",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -3048,7 +3048,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -3075,7 +3075,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/vercel-negative",
+        "source_id": "wafmeow:inherited-synthetic/vercel-negative",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -3093,7 +3093,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "aws-elb"
@@ -3134,7 +3134,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/aws-blocked-header",
+        "source_id": "wafmeow:inherited-synthetic/aws-blocked-header",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -3150,7 +3150,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -3187,7 +3187,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/aws-blocked-header-near-miss",
+        "source_id": "wafmeow:inherited-synthetic/aws-blocked-header-near-miss",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -3205,7 +3205,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "aliyundun"
@@ -3236,7 +3236,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/aliyundun-four-way-and",
+        "source_id": "wafmeow:inherited-synthetic/aliyundun-four-way-and",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -3252,7 +3252,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -3279,7 +3279,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/aliyundun-missing-image",
+        "source_id": "wafmeow:inherited-synthetic/aliyundun-missing-image",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -3295,7 +3295,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -3322,7 +3322,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/aliyundun-wrong-status",
+        "source_id": "wafmeow:inherited-synthetic/aliyundun-wrong-status",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -3340,7 +3340,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "azion"
@@ -3381,7 +3381,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/azion-pop",
+        "source_id": "wafmeow:inherited-synthetic/azion-pop",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -3399,7 +3399,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "azion"
@@ -3440,7 +3440,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/azion-request",
+        "source_id": "wafmeow:inherited-synthetic/azion-request",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -3456,7 +3456,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -3493,7 +3493,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/azion-stale-server",
+        "source_id": "wafmeow:inherited-synthetic/azion-stale-server",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -3511,7 +3511,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "fastly"
@@ -3552,7 +3552,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/fastly-served-by",
+        "source_id": "wafmeow:inherited-synthetic/fastly-served-by",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -3568,7 +3568,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -3605,7 +3605,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/fastly-served-by-near-miss",
+        "source_id": "wafmeow:inherited-synthetic/fastly-served-by-near-miss",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -3623,7 +3623,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "shieldon"
@@ -3654,7 +3654,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/shieldon-schema-1",
+        "source_id": "wafmeow:inherited-synthetic/shieldon-schema-1",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -3670,7 +3670,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -3697,7 +3697,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/shieldon-schema-1-missing-term",
+        "source_id": "wafmeow:inherited-synthetic/shieldon-schema-1-missing-term",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -3715,7 +3715,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "shieldon"
@@ -3746,7 +3746,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/shieldon-schema-2",
+        "source_id": "wafmeow:inherited-synthetic/shieldon-schema-2",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -3762,7 +3762,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -3789,7 +3789,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/shieldon-schema-2-missing-term",
+        "source_id": "wafmeow:inherited-synthetic/shieldon-schema-2-missing-term",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -3807,7 +3807,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "shieldon"
@@ -3838,7 +3838,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/shieldon-schema-3",
+        "source_id": "wafmeow:inherited-synthetic/shieldon-schema-3",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -3854,7 +3854,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -3881,7 +3881,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/shieldon-schema-3-missing-term",
+        "source_id": "wafmeow:inherited-synthetic/shieldon-schema-3-missing-term",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -3897,7 +3897,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -3934,7 +3934,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/shieldon-literal-header-key",
+        "source_id": "wafmeow:inherited-synthetic/shieldon-literal-header-key",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -3952,7 +3952,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "siteguard"
@@ -3983,7 +3983,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/siteguard-powered",
+        "source_id": "wafmeow:inherited-synthetic/siteguard-powered",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -4001,7 +4001,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "siteguard"
@@ -4032,7 +4032,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/siteguard-refusal",
+        "source_id": "wafmeow:inherited-synthetic/siteguard-refusal",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -4048,7 +4048,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -4075,7 +4075,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/siteguard-near-miss",
+        "source_id": "wafmeow:inherited-synthetic/siteguard-near-miss",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -4093,7 +4093,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "tencent"
@@ -4124,7 +4124,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/tencent-redirect",
+        "source_id": "wafmeow:inherited-synthetic/tencent-redirect",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -4140,7 +4140,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -4167,7 +4167,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/tencent-redirect-near-miss",
+        "source_id": "wafmeow:inherited-synthetic/tencent-redirect-near-miss",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -4185,7 +4185,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "yunjiasu"
@@ -4226,7 +4226,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/yunjiasu-server",
+        "source_id": "wafmeow:inherited-synthetic/yunjiasu-server",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -4244,7 +4244,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "yunjiasu"
@@ -4275,7 +4275,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/yunjiasu-link",
+        "source_id": "wafmeow:inherited-synthetic/yunjiasu-link",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -4293,7 +4293,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "yunjiasu"
@@ -4324,7 +4324,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/yunjiasu-cookie-script",
+        "source_id": "wafmeow:inherited-synthetic/yunjiasu-cookie-script",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -4340,7 +4340,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -4377,7 +4377,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/yunjiasu-near-miss",
+        "source_id": "wafmeow:inherited-synthetic/yunjiasu-near-miss",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -4395,7 +4395,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "bigip-asm"
@@ -4426,7 +4426,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/bigip-content-and",
+        "source_id": "wafmeow:inherited-synthetic/bigip-content-and",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -4442,7 +4442,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -4469,7 +4469,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/bigip-content-missing-term",
+        "source_id": "wafmeow:inherited-synthetic/bigip-content-missing-term",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -4487,7 +4487,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "bigip-asm"
@@ -4528,7 +4528,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/bigip-cookie-hex8",
+        "source_id": "wafmeow:inherited-synthetic/bigip-cookie-hex8",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -4546,7 +4546,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "bigip-asm"
@@ -4587,7 +4587,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/bigip-cookie-hex6",
+        "source_id": "wafmeow:inherited-synthetic/bigip-cookie-hex6",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -4603,7 +4603,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -4640,7 +4640,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/bigip-cookie-seven-digits",
+        "source_id": "wafmeow:inherited-synthetic/bigip-cookie-seven-digits",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -4658,7 +4658,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "denyall"
@@ -4689,7 +4689,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/denyall-reason-exact",
+        "source_id": "wafmeow:inherited-synthetic/denyall-reason-exact",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -4705,7 +4705,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -4732,7 +4732,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/denyall-reason-prefix",
+        "source_id": "wafmeow:inherited-synthetic/denyall-reason-prefix",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -4748,7 +4748,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -4775,7 +4775,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/modsecurity-reason-case",
+        "source_id": "wafmeow:inherited-synthetic/modsecurity-reason-case",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -4793,7 +4793,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "webknight"
@@ -4824,7 +4824,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/webknight-999-reason",
+        "source_id": "wafmeow:inherited-synthetic/webknight-999-reason",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -4842,7 +4842,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "webknight"
@@ -4873,7 +4873,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/webknight-404-reason",
+        "source_id": "wafmeow:inherited-synthetic/webknight-404-reason",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -4889,7 +4889,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -4916,7 +4916,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/webknight-reason-case",
+        "source_id": "wafmeow:inherited-synthetic/webknight-reason-case",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -4934,7 +4934,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "webknight"
@@ -4965,7 +4965,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/webknight-content",
+        "source_id": "wafmeow:inherited-synthetic/webknight-content",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -4980,7 +4980,7 @@
         "state": "unknown"
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "threatx"
@@ -5019,7 +5019,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/threatx-empty-header",
+        "source_id": "wafmeow:inherited-synthetic/threatx-empty-header",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -5034,7 +5034,7 @@
         "state": "unknown"
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "fastly"
@@ -5081,7 +5081,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/fastly-repeated-header-anchor",
+        "source_id": "wafmeow:inherited-synthetic/fastly-repeated-header-anchor",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -5096,7 +5096,7 @@
         "state": "unknown"
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -5135,7 +5135,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/bigip-malformed-cookie",
+        "source_id": "wafmeow:inherited-synthetic/bigip-malformed-cookie",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -5150,7 +5150,7 @@
         "state": "unknown"
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "fastly"
@@ -5184,7 +5184,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/fastly-attack-only-header",
+        "source_id": "wafmeow:inherited-synthetic/fastly-attack-only-header",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -5201,7 +5201,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "azion"
@@ -5245,7 +5245,7 @@
       "kind": "synthetic-conformance",
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/azion-header-name-case",
+        "source_id": "wafmeow:inherited-synthetic/azion-header-name-case",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -5260,7 +5260,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [],
           "incomplete_products": []
@@ -5310,7 +5310,7 @@
       "kind": "synthetic-conformance",
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/azion-repeated-empty-header-values",
+        "source_id": "wafmeow:inherited-synthetic/azion-repeated-empty-header-values",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -5327,7 +5327,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "aws-elb"
@@ -5371,7 +5371,7 @@
       "kind": "synthetic-conformance",
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/aws-request-id-whitespace",
+        "source_id": "wafmeow:inherited-synthetic/aws-request-id-whitespace",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -5388,7 +5388,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "aws-elb"
@@ -5432,7 +5432,7 @@
       "kind": "synthetic-conformance",
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/aws-quoted-cookie",
+        "source_id": "wafmeow:inherited-synthetic/aws-quoted-cookie",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -5446,7 +5446,7 @@
         "state": "unknown"
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [],
           "incomplete_products": []
@@ -5488,7 +5488,7 @@
       "kind": "synthetic-conformance",
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/aws-malformed-cookie-name-space",
+        "source_id": "wafmeow:inherited-synthetic/aws-malformed-cookie-name-space",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -5502,7 +5502,7 @@
         "state": "unknown"
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [],
           "incomplete_products": []
@@ -5544,7 +5544,7 @@
       "kind": "synthetic-conformance",
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/cloudflare-bare-cookie-token",
+        "source_id": "wafmeow:inherited-synthetic/cloudflare-bare-cookie-token",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -5559,7 +5559,7 @@
         "products": []
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [],
           "incomplete_products": []
@@ -5589,7 +5589,7 @@
       "kind": "synthetic-conformance",
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/denyall-reason-trailing-space",
+        "source_id": "wafmeow:inherited-synthetic/denyall-reason-trailing-space",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -5603,7 +5603,7 @@
         "state": "unknown"
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "modsecurity"
@@ -5635,7 +5635,7 @@
       "kind": "synthetic-conformance",
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/modsecurity-normal-only-reason-status",
+        "source_id": "wafmeow:inherited-synthetic/modsecurity-normal-only-reason-status",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -5649,7 +5649,7 @@
         "state": "unknown"
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "modsecurity"
@@ -5681,7 +5681,7 @@
       "kind": "synthetic-conformance",
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/modsecurity-cross-response-reason-status",
+        "source_id": "wafmeow:inherited-synthetic/modsecurity-cross-response-reason-status",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -5696,7 +5696,7 @@
         "state": "unknown"
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "aliyundun"
@@ -5727,7 +5727,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/aliyundun-conjunction-cross-role",
+        "source_id": "wafmeow:inherited-synthetic/aliyundun-conjunction-cross-role",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -5742,7 +5742,7 @@
         "state": "unknown"
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "reflected"
@@ -5773,7 +5773,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/reflected-conjunction-cross-role",
+        "source_id": "wafmeow:inherited-synthetic/reflected-conjunction-cross-role",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -5788,7 +5788,7 @@
         "state": "unknown"
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "kemp"
@@ -5824,7 +5824,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/kemp-cross-role-header-body",
+        "source_id": "wafmeow:inherited-synthetic/kemp-cross-role-header-body",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -5839,7 +5839,7 @@
         "state": "unknown"
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "webknight"
@@ -5870,7 +5870,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/webknight-status-reason-cross-role",
+        "source_id": "wafmeow:inherited-synthetic/webknight-status-reason-cross-role",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -5885,7 +5885,7 @@
         "state": "unknown"
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "fortigate",
@@ -5917,7 +5917,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/fortigate-cross-role-overlap",
+        "source_id": "wafmeow:inherited-synthetic/fortigate-cross-role-overlap",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -5935,7 +5935,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "modsecurity"
@@ -5968,7 +5968,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/modsecurity-body-survives-wrong-metadata",
+        "source_id": "wafmeow:inherited-synthetic/modsecurity-body-survives-wrong-metadata",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -5983,7 +5983,7 @@
         "state": "unknown"
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "azure-gateway"
@@ -6021,7 +6021,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/azure-auxiliary-role-conjunction",
+        "source_id": "wafmeow:inherited-synthetic/azure-auxiliary-role-conjunction",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -6040,7 +6040,7 @@
         ]
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "cloudflare",
@@ -6093,7 +6093,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/cloudflare-fastly-multi-product",
+        "source_id": "wafmeow:inherited-synthetic/cloudflare-fastly-multi-product",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -6127,7 +6127,7 @@
       ],
       "review": "Source-reviewed boundary from the existing truncated-content case: all bodies remain unavailable, but Attack now has status 405. Native AliYunDun can no longer settle its AND schema false using status 200; its content terms are unknown, adding aliyundun to the native unknown set. Reflected still has a known-false 403 term. wafw00f checks content before status for both products and remains unknown for both. Other selected rules and their unknown sets are unchanged. Expected states follow identify.go three-valued AND logic and pinned aliyundun.py:11-20/reflected.py:11-15 control flow, not detector output.",
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "incomplete",
           "products": [],
           "incomplete_products": [
@@ -6171,7 +6171,7 @@
       },
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/status-opens-unknown-aliyundun-conjunction",
+        "source_id": "wafmeow:inherited-synthetic/status-opens-unknown-aliyundun-conjunction",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -6215,7 +6215,7 @@
       ],
       "review": "Source-reviewed boundary from truncated-content: preserved metadata now includes a valid Anubis authentication cookie while both bodies remain unavailable. Native Anubis is a known-true OR product regardless of its unknown content alternatives. Pinned anubis.py:11-12 returns on the normal-response cookie before any body access, so wafw00f also reports Anubis rather than leaving it unknown. Remove only anubis from each previously reviewed body-unknown set; the cookie contains no other selected marker. Unavailable content prevents assigning exhaustive product truth.",
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "incomplete",
           "products": [
             "anubis"
@@ -6260,7 +6260,7 @@
       },
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/anubis-cookie-survives-unavailable-body",
+        "source_id": "wafmeow:inherited-synthetic/anubis-cookie-survives-unavailable-body",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -6293,7 +6293,7 @@
       ],
       "review": "Only the Normal body is unavailable; Attack body and both metadata sets are complete ordinary negatives. Native content matching considers every response, so an empty Attack body cannot rule out a marker in the unavailable Normal body: retain the reviewed truncated-content native unknown set. All selected wafw00f content helpers read Attack; normal-only header/cookie helpers have available negative metadata, so every selected plugin settles false without reading the unavailable Normal body. This guards role-sensitive availability, not merely the presence of a truncation flag.",
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "incomplete",
           "products": [],
           "incomplete_products": [
@@ -6320,7 +6320,7 @@
       },
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:inherited-synthetic/unavailable-normal-body-complete-attack-negative",
+        "source_id": "wafmeow:inherited-synthetic/unavailable-normal-body-complete-attack-negative",
         "collected_on": "unknown",
         "review_status": "conformance",
         "reviewed_on": "unknown",
@@ -6335,7 +6335,7 @@
         "state": "unknown"
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": []
         },
@@ -6362,7 +6362,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:source-conformance/2026-09-07/pksecurity-schema1-single-marker",
+        "source_id": "wafmeow:source-conformance/2026-09-07/pksecurity-schema1-single-marker",
         "collected_on": "2026-09-07",
         "review_status": "conformance",
         "reviewed_on": "2026-09-07",
@@ -6377,7 +6377,7 @@
         "state": "unknown"
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "pksecurity"
@@ -6406,7 +6406,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:source-conformance/2026-09-07/pksecurity-schema1-both-markers",
+        "source_id": "wafmeow:source-conformance/2026-09-07/pksecurity-schema1-both-markers",
         "collected_on": "2026-09-07",
         "review_status": "conformance",
         "reviewed_on": "2026-09-07",
@@ -6421,7 +6421,7 @@
         "state": "unknown"
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "pksecurity"
@@ -6448,7 +6448,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:source-conformance/2026-09-07/pksecurity-schema2-single-marker",
+        "source_id": "wafmeow:source-conformance/2026-09-07/pksecurity-schema2-single-marker",
         "collected_on": "2026-09-07",
         "review_status": "conformance",
         "reviewed_on": "2026-09-07",
@@ -6463,7 +6463,7 @@
         "state": "unknown"
       },
       "expected": {
-        "wafme0w": {
+        "wafmeow": {
           "state": "complete",
           "products": [
             "pksecurity"
@@ -6492,7 +6492,7 @@
       ],
       "provenance": {
         "type": "synthetic",
-        "source_id": "wafme0w:source-conformance/2026-09-07/pksecurity-schema2-all-markers",
+        "source_id": "wafmeow:source-conformance/2026-09-07/pksecurity-schema2-all-markers",
         "collected_on": "2026-09-07",
         "review_status": "conformance",
         "reviewed_on": "2026-09-07",

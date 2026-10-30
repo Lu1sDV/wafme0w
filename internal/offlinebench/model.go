@@ -14,8 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Lu1sDV/wafme0w/v2/internal/httpmeta"
-	"github.com/Lu1sDV/wafme0w/v2/pkg/wafme0w"
+	"github.com/Lu1sDV/wafmeow/v2/internal/httpmeta"
+	"github.com/Lu1sDV/wafmeow/v2/pkg/wafmeow"
 )
 
 const (
@@ -89,7 +89,7 @@ type Response struct {
 	Role           string           `json:"role"`
 	StatusCode     int              `json:"status_code"`
 	Reason         string           `json:"reason"`
-	Headers        []wafme0w.Header `json:"headers,omitempty"`
+	Headers        []wafmeow.Header `json:"headers,omitempty"`
 	BodySHA256     string           `json:"body_sha256"`
 	Body           []byte           `json:"body,omitempty"`
 	BodyTruncated  bool             `json:"body_truncated,omitempty"`
@@ -129,7 +129,7 @@ type WorkerResult struct {
 	IncompleteProducts []string        `json:"incomplete_products,omitempty"`
 	Generic            string          `json:"generic,omitempty"`
 	ElapsedNS          int64           `json:"elapsed_ns"`
-	Matches            []wafme0w.Match `json:"matches,omitempty"`
+	Matches            []wafmeow.Match `json:"matches,omitempty"`
 	PreparationNS      int64           `json:"preparation_ns"`
 	BytesPerOp         uint64          `json:"bytes_per_op,omitempty"`
 	AllocsPerOp        float64         `json:"allocs_per_op,omitempty"`
@@ -220,7 +220,7 @@ func validateCorpus(ctx context.Context, corpus *Corpus, bodiesDir string) error
 		return errors.New("corpus profile, products, and cases are required")
 	}
 	productIDs := make(map[string]struct{}, len(corpus.Products))
-	names := map[string]map[string]bool{"wafme0w": {}, "wafw00f": {}}
+	names := map[string]map[string]bool{"wafmeow": {}, "wafw00f": {}}
 	for _, product := range corpus.Products {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -232,7 +232,7 @@ func validateCorpus(ctx context.Context, corpus *Corpus, bodiesDir string) error
 			return fmt.Errorf("duplicate product ID %q", product.ID)
 		}
 		productIDs[product.ID] = struct{}{}
-		for _, tool := range []string{"wafme0w", "wafw00f"} {
+		for _, tool := range []string{"wafmeow", "wafw00f"} {
 			if product.Names[tool] == "" {
 				return fmt.Errorf("product %q has no %s name", product.ID, tool)
 			}
@@ -273,7 +273,7 @@ func validateCorpus(ctx context.Context, corpus *Corpus, bodiesDir string) error
 		if len(fixture.Expected) != 2 {
 			return fmt.Errorf("case %q requires expectations for both tools", fixture.ID)
 		}
-		for _, tool := range []string{"wafme0w", "wafw00f"} {
+		for _, tool := range []string{"wafmeow", "wafw00f"} {
 			expected, exists := fixture.Expected[tool]
 			if !exists || !validState(expected.State) {
 				return fmt.Errorf("case %q has invalid %s evaluation expectation", fixture.ID, tool)

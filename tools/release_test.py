@@ -225,7 +225,7 @@ class ReleasePolicyTests(unittest.TestCase):
     def test_archive_resource_bounds_on_real_small_archives(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            for extension, binary in (("tar.gz", "wafme0w"), ("zip", "wafme0w.exe")):
+            for extension, binary in (("tar.gz", "wafmeow"), ("zip", "wafmeow.exe")):
                 archive = root / ("archive." + extension)
                 files = [(binary, b"x" * 40), ("LICENSE.md", b"license"),
                          (smoke.CAPTURE.as_posix(), b"capture")]
@@ -249,7 +249,7 @@ class ReleasePolicyTests(unittest.TestCase):
                             smoke.extract_archive(archive, destination)
             fourth = root / "fourth.tar.gz"
             with tarfile.open(fourth, "w:gz") as output:
-                for name in ("wafme0w", "LICENSE.md", smoke.CAPTURE.as_posix(), "unexpected"):
+                for name in ("wafmeow", "LICENSE.md", smoke.CAPTURE.as_posix(), "unexpected"):
                     member = tarfile.TarInfo(name)
                     member.size = 1
                     output.addfile(member, io.BytesIO(b"x"))
@@ -258,7 +258,7 @@ class ReleasePolicyTests(unittest.TestCase):
             # A huge declared payload must be rejected from its header, without
             # allocating or attempting to read the absent payload.
             huge = root / "header.tar.gz"
-            header = tarfile.TarInfo("wafme0w")
+            header = tarfile.TarInfo("wafmeow")
             header.size = 2**40
             huge.write_bytes(gzip.compress(header.tobuf()))
             with self.assertRaisesRegex(RuntimeError, "member size"):
@@ -270,7 +270,7 @@ class ReleasePolicyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             archive = root / "comment.zip"
-            names = ("wafme0w.exe", "LICENSE.md", smoke.CAPTURE.as_posix())
+            names = ("wafmeow.exe", "LICENSE.md", smoke.CAPTURE.as_posix())
             for comment_size in (0, 65516, 65535):
                 with self.subTest(comment_size=comment_size):
                     with zipfile.ZipFile(archive, "w") as output:
@@ -331,10 +331,34 @@ class ReleasePolicyTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Missing"):
             release.published_assets(legacy)
 
+    def test_releases_published_before_the_rename_remain_scannable(self):
+        legacy = {"tag_name": "v2.0.1", "assets": [
+            {"name": name, "size": 1}
+            for name in release.archive_names("v2.0.1", prefix="wafme0w")]}
+        self.assertEqual(set(release.published_assets(legacy)),
+                         set(release.archive_names("v2.0.1", prefix="wafme0w")))
+
+    def test_pre_rename_archive_binary_is_extracted_by_its_historical_name(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / "legacy.tar.gz"
+            with tarfile.open(archive, "w:gz") as output:
+                for name, data in (("wafme0w", b"x" * 40), ("LICENSE.md", b"license"),
+                                   (smoke.CAPTURE.as_posix(), b"capture")):
+                    member = tarfile.TarInfo(name)
+                    member.size = len(data)
+                    output.addfile(member, io.BytesIO(data))
+            destination = root / "extracted"
+            destination.mkdir()
+            extracted = smoke.extract_archive(archive, destination, binary_stem="wafme0w")
+            self.assertEqual(extracted.name, "wafme0w")
+
     def test_formula_has_exact_verified_unix_artifacts_and_rejects_interpolation(self):
         archives = {name: {"archive_sha256": hashlib.sha256(name.encode()).hexdigest()}
                     for name in release.archive_names("v2.0.0-rc.1")}
-        formula = release.homebrew_formula("v2.0.0-rc.1", "b" * 40, archives, "Lu1sDV/wafme0w")
+        formula = release.homebrew_formula("v2.0.0-rc.1", "b" * 40, archives, "Lu1sDV/wafmeow")
+        # Homebrew rejects a formula whose class does not match the file name.
+        self.assertIn("class Wafmeow < Formula", formula)
         for name, metadata in archives.items():
             if "windows" in name:
                 self.assertNotIn(name, formula)

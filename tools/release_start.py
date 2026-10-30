@@ -53,7 +53,7 @@ def next_version(tag, bump):
 
 
 def owner_line(repository, run_id):
-    return f"wafme0w manual release run {repository}#{run_id}"
+    return f"wafmeow manual release run {repository}#{run_id}"
 
 
 def annotation_message(repository, run_id, tag, bump, revision):

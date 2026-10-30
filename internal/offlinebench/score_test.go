@@ -3,12 +3,12 @@ package offlinebench
 import "testing"
 
 func bothExpectations(expected Expectation) map[string]Expectation {
-	return map[string]Expectation{"wafme0w": expected, "wafw00f": expected}
+	return map[string]Expectation{"wafmeow": expected, "wafw00f": expected}
 }
 
 func scoreOutputs(products int, results []WorkerResult) map[string][]WorkerOutput {
 	outputs := make(map[string][]WorkerOutput)
-	for _, tool := range []string{"wafme0w", "wafw00f"} {
+	for _, tool := range []string{"wafmeow", "wafw00f"} {
 		outputs[tool] = []WorkerOutput{{SchemaVersion: SchemaVersion, Profile: "shared-products", CatalogueSize: products, Tool: tool, InitNS: 10, Results: results}}
 	}
 	return outputs
@@ -16,8 +16,8 @@ func scoreOutputs(products int, results []WorkerResult) map[string][]WorkerOutpu
 
 func TestAggregateKeepsFailuresAndUnknownTruthOutOfConfusionMatrix(t *testing.T) {
 	products := []Product{
-		{ID: "alpha", Names: map[string]string{"wafme0w": "Alpha", "wafw00f": "Alpha"}},
-		{ID: "beta", Names: map[string]string{"wafme0w": "Beta", "wafw00f": "Beta"}},
+		{ID: "alpha", Names: map[string]string{"wafmeow": "Alpha", "wafw00f": "Alpha"}},
+		{ID: "beta", Names: map[string]string{"wafmeow": "Beta", "wafw00f": "Beta"}},
 	}
 	corpus := Corpus{SchemaVersion: SchemaVersion, Profile: "test", Products: products, Cases: []Case{
 		{ID: "wrong-product", Truth: Truth{State: "known", Products: []string{"alpha"}}, Expected: bothExpectations(Expectation{State: "complete", Products: []string{"alpha"}})},
@@ -47,7 +47,7 @@ func TestAggregateKeepsFailuresAndUnknownTruthOutOfConfusionMatrix(t *testing.T)
 }
 
 func TestExpectedIncompletePassesWithoutWeakeningCompleteCaseAccuracy(t *testing.T) {
-	corpus := Corpus{SchemaVersion: SchemaVersion, Profile: "test", Products: []Product{{ID: "alpha", Names: map[string]string{"wafme0w": "Alpha", "wafw00f": "Alpha"}}}, Cases: []Case{
+	corpus := Corpus{SchemaVersion: SchemaVersion, Profile: "test", Products: []Product{{ID: "alpha", Names: map[string]string{"wafmeow": "Alpha", "wafw00f": "Alpha"}}}, Cases: []Case{
 		{ID: "complete-positive", Truth: Truth{State: "known", Products: []string{"alpha"}}, Expected: bothExpectations(Expectation{State: "complete", Products: []string{"alpha"}})},
 		{ID: "complete-negative", Truth: Truth{State: "known"}, Expected: bothExpectations(Expectation{State: "complete"})},
 		{ID: "unavailable", Truth: Truth{State: "unknown"}, Expected: bothExpectations(Expectation{State: "incomplete", IncompleteProducts: []string{"alpha"}})},
@@ -65,7 +65,7 @@ func TestExpectedIncompletePassesWithoutWeakeningCompleteCaseAccuracy(t *testing
 	if err := checkGates(summary, gates); err != nil {
 		t.Fatalf("intentional incompleteness failed gate: %v", err)
 	}
-	if got := summary.Metrics["wafme0w"]; got.RawCompletionRate != 2.0/3 || got.ExpectedCompleteCoverage != 1 || got.StateConformance != 1 {
+	if got := summary.Metrics["wafmeow"]; got.RawCompletionRate != 2.0/3 || got.ExpectedCompleteCoverage != 1 || got.StateConformance != 1 {
 		t.Fatalf("wrong coverage denominator: %+v", got)
 	}
 	if summary.Comparison.PairedCases != 2 {
@@ -77,7 +77,7 @@ func TestExpectedIncompletePassesWithoutWeakeningCompleteCaseAccuracy(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := summary.Metrics["wafme0w"]; got.ExactAccuracy == nil || *got.ExactAccuracy != 0.5 || got.ExpectedCompleteCoverage != 0.5 {
+	if got := summary.Metrics["wafmeow"]; got.ExactAccuracy == nil || *got.ExactAccuracy != 0.5 || got.ExpectedCompleteCoverage != 0.5 {
 		t.Fatalf("failure silently improved accuracy: %+v", got)
 	}
 	if err := checkGates(summary, gates); err == nil {
@@ -105,11 +105,11 @@ func TestAggregateRejectsDuplicateOrMissingCases(t *testing.T) {
 
 func TestObservedDisagreementIsIndependentOfExpectedConformance(t *testing.T) {
 	corpus := Corpus{Products: []Product{
-		{ID: "alpha", Names: map[string]string{"wafme0w": "Native Alpha", "wafw00f": "Upstream Alpha"}},
-		{ID: "beta", Names: map[string]string{"wafme0w": "Native Beta", "wafw00f": "Upstream Beta"}},
+		{ID: "alpha", Names: map[string]string{"wafmeow": "Native Alpha", "wafw00f": "Upstream Alpha"}},
+		{ID: "beta", Names: map[string]string{"wafmeow": "Native Beta", "wafw00f": "Upstream Beta"}},
 	}, Cases: []Case{
 		{ID: "expected-difference", Expected: map[string]Expectation{
-			"wafme0w": {State: "complete", Products: []string{"alpha"}},
+			"wafmeow": {State: "complete", Products: []string{"alpha"}},
 			"wafw00f": {State: "incomplete", IncompleteProducts: []string{"alpha"}},
 		}},
 		{ID: "both-wrong-different", Expected: bothExpectations(Expectation{State: "complete", Products: []string{"alpha"}})},
@@ -172,7 +172,7 @@ func TestReviewedRealMetricsExcludeSyntheticUnknownAndUnreviewedEvidence(t *test
 	unreviewed.Expected = bothExpectations(Expectation{State: "complete"})
 	unknown := Case{ID: "unknown", Kind: "unknown", Truth: Truth{State: "unknown"}, Expected: bothExpectations(Expectation{State: "complete"}),
 		Provenance: CaptureProvenance{Type: "unknown", SourceID: "test-only:unknown", CollectedOn: "unknown", ReviewStatus: "unreviewed", ReviewedOn: "unknown", Reviewer: "unknown"}}
-	corpus := Corpus{Products: []Product{{ID: "alpha", Names: map[string]string{"wafme0w": "Alpha", "wafw00f": "Alpha"}}}, Cases: []Case{real, synthetic, unreviewed, unknown}, fixtureDigests: map[string]string{real.ID: "test-only-identity"}}
+	corpus := Corpus{Products: []Product{{ID: "alpha", Names: map[string]string{"wafmeow": "Alpha", "wafw00f": "Alpha"}}}, Cases: []Case{real, synthetic, unreviewed, unknown}, fixtureDigests: map[string]string{real.ID: "test-only-identity"}}
 	results := []WorkerResult{{CaseID: real.ID, State: "failed"}, {CaseID: synthetic.ID, State: "complete"}, {CaseID: unreviewed.ID, State: "complete"}, {CaseID: unknown.ID, State: "complete"}}
 	_, summary, err := Aggregate(corpus, scoreOutputs(1, results))
 	if err != nil {

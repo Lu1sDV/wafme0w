@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Offline release checks (Python 3.12+, standard library only).
 
-    python3 tools/smoke.py archive dist/wafme0w_VERSION_linux_amd64.tar.gz
-    python3 tools/smoke.py docker wafme0w:ci --runtime podman
+    python3 tools/smoke.py archive dist/wafmeow_VERSION_linux_amd64.tar.gz
+    python3 tools/smoke.py docker wafmeow:ci --runtime podman
 
 Archives are extracted and executed in a temporary directory outside the checkout.
 Container checks use only synthetic captures, no network, and the image's default
@@ -87,7 +87,7 @@ def check_records(records, version):
         require(outcome["state"] == state, record)
         require({match["product"] for match in outcome.get("matches", [])} == products, record)
         require(record["provenance"]["scan_mode"] == "passive", record)
-        require("wafme0w " + record["provenance"]["program_version"] == version, record)
+        require("wafmeow " + record["provenance"]["program_version"] == version, record)
 
 
 def smoke(command, work, expected_version=None, require_vcs=False):
@@ -95,11 +95,11 @@ def smoke(command, work, expected_version=None, require_vcs=False):
     help_result = run([*command, "--help"], work)
     require("--evidence" in help_result.stdout, "Help omitted capture support")
     version = run([*command, "--version"], work).stdout.strip()
-    require(version.startswith("wafme0w ") and "\n" not in version, version)
+    require(version.startswith("wafmeow ") and "\n" not in version, version)
     if require_vcs:
-        require(version != "wafme0w devel", "Archive lacks embedded build/VCS identity")
+        require(version != "wafmeow devel", "Archive lacks embedded build/VCS identity")
     if expected_version is not None:
-        require(version == "wafme0w " + expected_version, version)
+        require(version == "wafmeow " + expected_version, version)
 
     args = ["--evidence", CAPTURE.as_posix(), "--jsonl"]
     normal = records_from(run([*command, *args], work).stdout)
@@ -143,10 +143,10 @@ def smoke(command, work, expected_version=None, require_vcs=False):
     print(f"{version}: help, captures, human tables, JSONL, strict exit and atomic reports passed")
 
 
-def extract_archive(archive, work):
+def extract_archive(archive, work, binary_stem="wafmeow"):
     archive_size = archive.stat().st_size
     require(0 < archive_size <= MAX_ARCHIVE_BYTES, "Archive exceeds compressed byte limit")
-    binary = "wafme0w.exe" if archive.suffix == ".zip" else "wafme0w"
+    binary = f"{binary_stem}.exe" if archive.suffix == ".zip" else binary_stem
     expected = {binary, "LICENSE.md", CAPTURE.as_posix()}
     if archive.suffix == ".zip":
         # Bound the directory before ZipFile allocates an object per entry.
@@ -201,14 +201,14 @@ def extract_archive(archive, work):
 
 
 def smoke_archive(archive, expected_version):
-    with tempfile.TemporaryDirectory(prefix="wafme0w-archive-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="wafmeow-archive-") as temporary:
         work = Path(temporary)
         binary = extract_archive(archive, work)
         smoke([str(binary)], work, expected_version, require_vcs=True)
 
 
 def smoke_cancellation(runtime, command, image, work):
-    name = "wafme0w-smoke-" + uuid.uuid4().hex
+    name = "wafmeow-smoke-" + uuid.uuid4().hex
     sentinel = b"previous report\n"
     (work / "cancel.json").write_bytes(sentinel)
     process = subprocess.Popen([
@@ -255,11 +255,11 @@ def smoke_default_identity(runtime, command, image, work, expected_version):
             "Image must default to numeric UID:GID 65532:65532")
     require(metadata[0]["Config"]["WorkingDir"] == "/work", "Image must default to /work")
     version = run([*command, "--rm", image, "--version"], work).stdout.strip()
-    require(version.startswith("wafme0w ") and "\n" not in version, version)
+    require(version.startswith("wafmeow ") and "\n" not in version, version)
     if expected_version is not None:
-        require(version == "wafme0w " + expected_version, version)
+        require(version == "wafmeow " + expected_version, version)
     capture = (work / CAPTURE).read_text()
-    name = "wafme0w-default-" + uuid.uuid4().hex
+    name = "wafmeow-default-" + uuid.uuid4().hex
     try:
         # No --user, mount, tmpfs or read-only flag: exercise image defaults,
         # including its private temporary directory and owned report workdir.
@@ -279,7 +279,7 @@ def smoke_default_identity(runtime, command, image, work, expected_version):
             with rootfs.extractfile(report) as contents:
                 records = json.load(contents)
             check_records(records, version)
-            for path in ("usr/local/bin/wafme0w", "etc/ssl/certs/ca-certificates.crt", "LICENSE.md"):
+            for path in ("usr/local/bin/wafmeow", "etc/ssl/certs/ca-certificates.crt", "LICENSE.md"):
                 member = members[path]
                 require(member.isfile() and member.size > 0 and
                         (member.uid, member.gid) == (0, 0) and member.mode & 0o222 == 0,
@@ -311,7 +311,7 @@ def smoke_default_identity(runtime, command, image, work, expected_version):
             ], work, expected=1, input=capture)
             require("permission denied" in denied.stderr.lower(),
                     f"Protected output did not fail with a permission denial: {denied.stderr}")
-        for path in ("/usr/local/bin/wafme0w", "/etc/ssl/certs/ca-certificates.crt", "/LICENSE.md"):
+        for path in ("/usr/local/bin/wafmeow", "/etc/ssl/certs/ca-certificates.crt", "/LICENSE.md"):
             denied = run([
                 *command, "--rm", "--name", name, "-i", image,
                 "--evidence", "-", "--jsonl", "--diagnostics-journal", path,
@@ -337,7 +337,7 @@ def smoke_default_identity(runtime, command, image, work, expected_version):
 
 
 def smoke_docker(image, runtime, expected_version):
-    with tempfile.TemporaryDirectory(prefix="wafme0w-container-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="wafmeow-container-") as temporary:
         work = Path(temporary)
         # Only the explicit host-UID mount tests below use this shared directory;
         # default-identity tests write inside the image's owned /work instead.
@@ -362,7 +362,7 @@ def smoke_docker(image, runtime, expected_version):
             # Rootless Podman's default subordinate IDs cannot read host-created
             # files owned by this user or let this user read mode-0600 reports.
             command.extend(["--userns", "keep-id"])
-        name = "wafme0w-smoke-" + uuid.uuid4().hex
+        name = "wafmeow-smoke-" + uuid.uuid4().hex
         try:
             smoke([*command, "--name", name, image], work, expected_version)
         finally:

@@ -26,7 +26,7 @@ func writeBodyLimitCorpus(t *testing.T, bodies [][]byte) (string, string) {
 	fixture := Case{
 		ID: "body-limits", Kind: "synthetic-conformance", Review: "synthetic admission fixture",
 		Provenance: syntheticProvenance("body-limits"), Truth: Truth{State: "unknown"},
-		Expected: map[string]Expectation{"wafme0w": {State: "complete"}, "wafw00f": {State: "complete"}},
+		Expected: map[string]Expectation{"wafmeow": {State: "complete"}, "wafw00f": {State: "complete"}},
 	}
 	for i, body := range bodies {
 		digest := sha256.Sum256(body)
@@ -36,7 +36,7 @@ func writeBodyLimitCorpus(t *testing.T, bodies [][]byte) (string, string) {
 		}
 		fixture.Responses = append(fixture.Responses, Response{Role: fmt.Sprintf("response-%d", i), StatusCode: 200, BodySHA256: key})
 	}
-	corpus := Corpus{SchemaVersion: SchemaVersion, Profile: "test", Products: []Product{{ID: "example", Names: map[string]string{"wafme0w": "Example", "wafw00f": "Example"}}}, Cases: []Case{fixture}}
+	corpus := Corpus{SchemaVersion: SchemaVersion, Profile: "test", Products: []Product{{ID: "example", Names: map[string]string{"wafmeow": "Example", "wafw00f": "Example"}}}, Cases: []Case{fixture}}
 	encoded, err := json.Marshal(corpus)
 	if err != nil {
 		t.Fatal(err)
@@ -167,20 +167,20 @@ func TestLoadedCorpusPreservesReviewedNativeExpectations(t *testing.T) {
 	result := invokeNativeWorker(t, WorkerInput{
 		SchemaVersion: SchemaVersion, Profile: "shared-products", Iterations: 1,
 		Products: corpus.Products, Cases: corpus.Cases,
-	}, "../../cmd/wafme0w/resources/waf-fingerprints.json")
+	}, "../../cmd/wafmeow/resources/waf-fingerprints.json")
 	if len(result.Results) != len(corpus.Cases) {
 		t.Fatalf("worker returned %d of %d cases", len(result.Results), len(corpus.Cases))
 	}
 	for index, got := range result.Results {
 		fixture := corpus.Cases[index]
-		want := fixture.Expected["wafme0w"]
-		products := normalizeProducts(corpus.Products, "wafme0w", got.RawProducts)
-		incomplete := normalizeProducts(corpus.Products, "wafme0w", got.IncompleteProducts)
+		want := fixture.Expected["wafmeow"]
+		products := normalizeProducts(corpus.Products, "wafmeow", got.RawProducts)
+		incomplete := normalizeProducts(corpus.Products, "wafmeow", got.IncompleteProducts)
 		if got.CaseID != fixture.ID || got.State != want.State || !equalSets(makeSet(products), makeSet(want.Products)) || !equalSets(makeSet(incomplete), makeSet(want.IncompleteProducts)) {
 			t.Errorf("case %q changed reviewed expectation: state=%s products=%v incomplete=%v, want=%+v", fixture.ID, got.State, products, incomplete, want)
 		}
 	}
-	coverage, err := AssessCatalogue(corpus, "../../cmd/wafme0w/resources/waf-fingerprints.json", "../../tools/offlinebench/testdata/coverage-contract.json")
+	coverage, err := AssessCatalogue(corpus, "../../cmd/wafmeow/resources/waf-fingerprints.json", "../../tools/offlinebench/testdata/coverage-contract.json")
 	if err != nil || len(coverage.Violations) != 0 {
 		t.Fatalf("fixture identity/review contract changed: %+v, %v", coverage.Violations, err)
 	}

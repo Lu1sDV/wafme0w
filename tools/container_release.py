@@ -35,7 +35,7 @@ def local_image(tag, arch):
     release.version_key(tag)
     require(arch in ARCHES and len(tag + "-linux-" + arch) <= 128,
             "Unsupported container tag or architecture")
-    return f"wafme0w-release:{tag}-{arch}"
+    return f"wafmeow-release:{tag}-{arch}"
 
 
 def inspect_image(image, tag, revision, arch, repository):
@@ -47,7 +47,7 @@ def inspect_image(image, tag, revision, arch, repository):
     require(value["Os"] == "linux" and value["Architecture"] == arch,
             "Container architecture differs from native tested target")
     require(config.get("User") == "65532:65532" and config.get("WorkingDir") == "/work" and
-            config.get("Entrypoint") == ["/usr/local/bin/wafme0w"] and not config.get("Cmd"),
+            config.get("Entrypoint") == ["/usr/local/bin/wafmeow"] and not config.get("Cmd"),
             "Container changed the hardened runtime identity or entry point")
     require(labels.get("org.opencontainers.image.source") == "https://github.com/" + repository and
             labels.get("org.opencontainers.image.revision") == revision and
@@ -63,12 +63,12 @@ def build(args):
     require(release.command("git", "rev-parse", "HEAD") == args.revision, "Container checkout differs from frozen source")
     release.validate_candidate(args.tag, args.revision)
     image = local_image(args.tag, args.arch)
-    archive = args.dist / f"wafme0w_{args.tag}_linux_{args.arch}.tar.gz"
+    archive = args.dist / f"wafmeow_{args.tag}_linux_{args.arch}.tar.gz"
     metadata = json.loads((args.dist / (archive.name + ".metadata.json")).read_text(encoding="utf-8"))
     require(metadata["tag"] == args.tag and metadata["archive_sha256"] == release.digest(archive),
             "Native archive changed before container build")
     require(not args.output.exists(), "Container output must be a new directory")
-    with tempfile.TemporaryDirectory(prefix="wafme0w-image-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="wafmeow-image-") as temporary:
         root = Path(temporary)
         binary = release.extract_archive(archive, root / "extracted")
         identity = release.binary_identity(binary, args.revision, "linux", args.arch)
@@ -78,7 +78,7 @@ def build(args):
                 "Native archive license differs from frozen source")
         context = root / "context"
         context.mkdir()
-        shutil.copyfile(binary, context / "wafme0w")
+        shutil.copyfile(binary, context / "wafmeow")
         shutil.copyfile(binary.parent / "LICENSE.md", context / "LICENSE.md")
         subprocess.run(["docker", "build", "--file", str(Path("Dockerfile").resolve()),
                         "--target", "release", "--platform", "linux/" + args.arch,
@@ -86,7 +86,7 @@ def build(args):
                         "--label", "org.opencontainers.image.revision=" + args.revision,
                         "--label", "org.opencontainers.image.version=" + args.tag,
                         "--tag", image, str(context)], check=True, timeout=300)
-        version = release.command(str(binary), "--version").removeprefix("wafme0w ")
+        version = release.command(str(binary), "--version").removeprefix("wafmeow ")
         subprocess.run([sys.executable, "tools/smoke.py", "docker", image, "--version", version],
                        check=True, timeout=300)
         identity = inspect_image(image, args.tag, args.revision, args.arch, repository)
@@ -117,7 +117,7 @@ def verify_images(args, manifest):
     for arch in ARCHES:
         record = json.loads((args.images / f"linux-{arch}.json").read_text(encoding="utf-8"))
         archive = args.images / f"linux-{arch}.tar"
-        native = manifest["archives"][f"wafme0w_{args.tag}_linux_{arch}.tar.gz"]
+        native = manifest["archives"][f"wafmeow_{args.tag}_linux_{arch}.tar.gz"]
         require(record.get("schema_version") == 1 and record.get("tag") == args.tag and
                 record.get("revision") == args.revision and record.get("arch") == arch and
                 record.get("repository") == args.repository and
@@ -131,9 +131,9 @@ def verify_images(args, manifest):
         # Creating and copying needs no execution or emulation of the ARM image.
         container = release.command("docker", "create", "--platform", "linux/" + arch, "--network", "none", image_id)
         try:
-            with tempfile.TemporaryDirectory(prefix="wafme0w-image-identity-") as temporary:
-                binary = Path(temporary) / "wafme0w"
-                release.command("docker", "cp", container + ":/usr/local/bin/wafme0w", str(binary))
+            with tempfile.TemporaryDirectory(prefix="wafmeow-image-identity-") as temporary:
+                binary = Path(temporary) / "wafmeow"
+                release.command("docker", "cp", container + ":/usr/local/bin/wafmeow", str(binary))
                 require(release.digest(binary) == native["binary_sha256"], "Container binary differs from scanned native archive")
         finally:
             release.command("docker", "rm", container)
@@ -186,7 +186,7 @@ def main():
     for item in (build_parser, publish_parser):
         item.add_argument("--tag", required=True)
         item.add_argument("--revision", required=True)
-        item.add_argument("--repository", default=os.environ.get("GITHUB_REPOSITORY", "Lu1sDV/wafme0w"))
+        item.add_argument("--repository", default=os.environ.get("GITHUB_REPOSITORY", "Lu1sDV/wafmeow"))
         item.add_argument("--dist", type=Path, default=Path("dist"))
         item.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()

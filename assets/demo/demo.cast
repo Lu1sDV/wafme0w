@@ -1,5 +1,5 @@
-{"version": 2, "width": 124, "height": 32, "timestamp": 1788689318, "env": {"TERM": "dumb"}, "title": "wafme0w offline demo"}
-[0.020466, "o", "# wafme0w: saved evidence, zero network requests.\r\n\r\n"]
+{"version": 2, "width": 124, "height": 32, "timestamp": 1788689318, "env": {"TERM": "dumb"}, "title": "wafmeow offline demo"}
+[0.020466, "o", "# wafmeow: saved evidence, zero network requests.\r\n\r\n"]
 [3.020679, "o", "$ w"]
 [3.045888, "o", "a"]
 [3.070918, "o", "f"]
@@ -46,7 +46,7 @@
 [4.102968, "o", "n"]
 [4.128267, "o", "l"]
 [4.15335, "o", "\r\n"]
-[4.160796, "o", "/\\_/\\  wafme0w  v0.2.2-0.20241221164140-c974229ac3fe+dirty+c974229ac3fe8d98c0ee78e371cd3646822af0d0.dirty\r\n  HTTP evidence fingerprinting | active, baseline or saved capture\r\n\r\nFOUND  synthetic-cloudflare | Cloudflare (Cloudflare Inc.)\r\nNO MATCH  synthetic-clean | No known WAF fingerprint matched\r\nFOUND  synthetic-truncated | Cloudflare (Cloudflare Inc.) | partial scan\r\nWARN  synthetic-truncated | body truncated\r\nSUMMARY  3 targets\r\n  complete 2 | matched 2 | unnamed 1 | incomplete 1 | failed 0\r\n  generic 0 | diagnostics 1\r\n"]
+[4.160796, "o", "/\\_/\\  wafmeow  v0.2.2-0.20241221164140-c974229ac3fe+dirty+c974229ac3fe8d98c0ee78e371cd3646822af0d0.dirty\r\n  HTTP evidence fingerprinting | active, baseline or saved capture\r\n\r\nFOUND  synthetic-cloudflare | Cloudflare (Cloudflare Inc.)\r\nNO MATCH  synthetic-clean | No known WAF fingerprint matched\r\nFOUND  synthetic-truncated | Cloudflare (Cloudflare Inc.) | partial scan\r\nWARN  synthetic-truncated | body truncated\r\nSUMMARY  3 targets\r\n  complete 2 | matched 2 | unnamed 1 | incomplete 1 | failed 0\r\n  generic 0 | diagnostics 1\r\n"]
 [14.161145, "o", "\r\n$ w"]
 [14.186204, "o", "a"]
 [14.211464, "o", "f"]
