@@ -525,8 +525,10 @@ transport retry on a reused connection is counted against `--max-requests` and
 request pacing; when either limit would be exceeded, the probe is aborted instead
 of sending the retry. TLS session resumption can reduce handshake cost when the
 origin supports it.
-Library callers supplying a transport (including a replacement
-`http.DefaultTransport`) own any retries or network effects inside its
+An owned clone of `http.DefaultTransport` with a custom TLS dialer uses fresh
+connections to preserve the request ceiling. Library callers supplying an
+explicit transport, or replacing `http.DefaultTransport` with an implementation
+other than `*http.Transport`, own any retries or network effects inside its
 `RoundTrip` calls; the runner cannot enforce a wire-request ceiling inside that
 opaque implementation.
 

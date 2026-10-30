@@ -304,7 +304,9 @@ curve.
 
 Owned HTTP/TLS loopback fixtures, full catalogue, four workers, 200 iterations per
 count and three counts per configuration. The baseline is commit `d518b19`; the
-reuse column is that tree plus this change.
+reuse column is that tree plus the initial connection-reuse implementation,
+before the retry write guard and cancellation-evidence review fixes. These
+historical measurements have not been rerun for those fixes.
 
 | Workload | Fresh (µs/op) | Reused (µs/op) | Change | Connections/target |
 | --- | ---: | ---: | ---: | ---: |
@@ -314,7 +316,7 @@ reuse column is that tree plus this change.
 | TLS, 32 KiB bodies | 1,997.1 | 665.3 | 3.00× faster | 9.00 → 1.59–1.73 |
 
 Median allocations fell from 10,557 to 3,595 per TLS small-body target and from
-2,064 to 1,648 per HTTP small-body target; retained bytes fell from 1,482,862 to
+2,064 to 1,648 per HTTP small-body target; allocated bytes fell from 1,482,862 to
 442,590 B/op and from 239,081 to 148,053 B/op. Connections per target above one
 reflect the four-worker pool on one fixture host; a scan of distinct origins
 reuses one connection per target sequence.

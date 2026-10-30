@@ -41,9 +41,10 @@ const (
 // The built-in transport reuses verified HTTP/1 connections between a target's
 // probes and uses a bounded run-local TLS session cache. Transparent transport
 // retries are counted against request budgets and pacing, and abort the probe
-// before either limit is exceeded. Caller-supplied transports retain their own
-// connection/retry behavior; their internal network effects cannot be bounded by
-// Run's limits on RoundTrip calls.
+// before either limit is exceeded. An owned clone with a custom TLS dialer uses
+// fresh connections to preserve that ceiling. Caller-supplied transports retain
+// their own connection/retry behavior; their internal network effects cannot be
+// bounded by Run's limits on RoundTrip calls.
 // MaxResponseHeaderBytes bounds wire headers on owned stdlib transports and
 // parsed headers at the retention boundary for every transport. Injected
 // transports still own their wire-level allocation and retry policies.

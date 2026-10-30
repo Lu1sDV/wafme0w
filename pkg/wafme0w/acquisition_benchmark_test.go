@@ -151,12 +151,18 @@ func benchmarkAcquisitionPipeline(b *testing.B, engine *Engine, useTLS, baseline
 		b.Fatal(err)
 	}
 	wantRequests := int64(b.N) * int64(len(roles))
-	if completed != b.N || requests.Load() != wantRequests || connections.Load() >= wantRequests || serverErrors.Load() != 0 {
-		b.Fatalf("work changed: targets=%d/%d requests=%d/%d connections=%d server_errors=%d (want fewer connections than requests)",
-			completed, b.N, requests.Load(), wantRequests, connections.Load(), serverErrors.Load())
+	gotRequests, gotConnections, gotServerErrors := requests.Load(), connections.Load(), serverErrors.Load()
+	if completed != b.N || gotRequests != wantRequests || gotConnections < 1 || gotConnections > wantRequests || gotServerErrors != 0 {
+		b.Fatalf("work changed: targets=%d/%d requests=%d/%d connections=%d server_errors=%d",
+			completed, b.N, gotRequests, wantRequests, gotConnections, gotServerErrors)
 	}
-	b.ReportMetric(float64(requests.Load())/float64(completed), "requests/target")
-	b.ReportMetric(float64(connections.Load())/float64(completed), "connections/target")
+	// Calibration starts at one target, whose baseline has no reuse opportunity.
+	// Full mode has multiple sequential probes even at that initial count.
+	if !baseline && gotConnections == wantRequests {
+		b.Fatalf("full probes did not reuse connections: requests=%d connections=%d", gotRequests, gotConnections)
+	}
+	b.ReportMetric(float64(gotRequests)/float64(completed), "requests/target")
+	b.ReportMetric(float64(gotConnections)/float64(completed), "connections/target")
 	b.ReportMetric(float64(completed)/b.Elapsed().Seconds(), "targets/s")
 }
 

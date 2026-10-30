@@ -31,6 +31,13 @@ cache. Make transparent retries visible: every `httptrace.GetConn` attempt after
 the first is charged to the target request budget and passes through the same
 global and per-origin pacing admissions as a first attempt. If the budget is
 exhausted, cancel that probe and report `request_budget`; do not send the retry.
+Cancellation alone can race with selecting another idle connection. The owned
+dialer therefore wraps sockets with a write guard: `GotConn` records a refusal
+before HTTP/1 can enqueue a write, and the wrapper rejects that write without
+sending bytes. The transport retains ownership of connection closure. TLS
+handshakes and verification remain in the standard transport, above the guard.
+An owned clone with a custom TLS dialer retains fresh connections because that
+dialer does not expose a socket the runner can safely wrap below TLS.
 Close run-owned idle connections when `Run` returns; caller-supplied transports
 remain caller-owned and are neither inspected nor closed.
 

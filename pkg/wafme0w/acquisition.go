@@ -136,8 +136,10 @@ func newOutboundPolicy(config Config) *outboundPolicy {
 			// Keep-alive reuses verified HTTP/1 connections between a target's
 			// probes. Transparent transport retries are still visible: the
 			// wrapper counts each GetConn attempt against the target budget and
-			// paces it, cancelling the probe rather than exceeding either limit.
+			// paces it. Guarded writes prevent a refused retry from being sent
+			// even if cancellation races with selecting an idle connection.
 			transport.DisableKeepAlives = false
+			guardOwnedConnections(transport)
 			transport.MaxResponseHeaderBytes = config.MaxResponseHeaderBytes
 			transport.Protocols = new(http.Protocols)
 			transport.Protocols.SetHTTP1(true)
@@ -426,20 +428,12 @@ func (t *targetTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 					trace.abort(err)
 				}
 			},
+			GotConn: func(info httptrace.GotConnInfo) {
+				rejectConnectionWrite(info.Conn, context.Cause(req.Context()))
+			},
 		}))
 	}
 	response, err := p.base.Transport.RoundTrip(baseReq)
-	if cause := context.Cause(req.Context()); cause != nil {
-		if response != nil && response.Body != nil {
-			response.Body.Close()
-		}
-		release()
-		var policyErr *acquisitionError
-		if errors.As(cause, &policyErr) {
-			return nil, policyErr
-		}
-		return nil, cause
-	}
 	if response != nil && !responseHeadersWithinLimit(response, p.config.MaxResponseHeaderBytes) {
 		if response.Body != nil {
 			response.Body.Close()
@@ -461,6 +455,12 @@ func (t *targetTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 	} else {
 		release()
+	}
+	// A response can race with cancellation. Keep its bounded metadata in the
+	// trace before reporting the cause; sendHTTP must not lose received evidence
+	// or treat the unread body as complete. The shared error path closes it once.
+	if cause := context.Cause(req.Context()); cause != nil {
+		err = cause
 	}
 	if err != nil || response == nil {
 		if response != nil && response.Body != nil {
