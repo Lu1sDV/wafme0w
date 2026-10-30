@@ -22,7 +22,7 @@ SOFTWARE.
 
 ## Third-party dependency notices
 
-### MIT-licensed browser dependencies
+### MIT-licensed dependencies
 
 The following dependencies are distributed under the MIT permission and
 disclaimer above, with their respective copyright notices:
@@ -32,6 +32,7 @@ disclaimer above, with their respective copyright notices:
 - github.com/ysmood/gson v0.7.3 and github.com/ysmood/got v0.40.0:
   Copyright 2020 Yad Smood
 - github.com/ysmood/fetchup v0.2.3: Copyright (c) 2023 Yad Smood
+- github.com/rivo/uniseg v0.4.7: Copyright (c) 2019 Oliver Kuederle
 
 ### github.com/jessevdk/go-flags v1.6.1
 
