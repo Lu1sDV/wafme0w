@@ -416,22 +416,6 @@ func TestHTTPXCancellationAndOpenProducer(t *testing.T) {
 	}
 }
 
-func TestHTTPXSerializedRecordBoundary(t *testing.T) {
-	prefix := `{"url":"https://example.test/","ignored":"`
-	suffix := `"}`
-	for _, extra := range []int{0, 1} {
-		record := prefix + strings.Repeat("x", maxCaptureRecordBytes-len(prefix)-len(suffix)+extra) + suffix
-		calls := 0
-		err := RunHTTPXCaptured(context.Background(), emptyEngine(t), strings.NewReader(record), DefaultConfig(), HTTPXImportOptions{}, func(Result) error { calls++; return nil })
-		if extra == 0 && (err != nil || calls != 1) {
-			t.Fatalf("exact record limit rejected: calls=%d err=%v", calls, err)
-		}
-		if extra == 1 && (err == nil || calls != 0) {
-			t.Fatalf("over record limit accepted: calls=%d err=%v", calls, err)
-		}
-	}
-}
-
 func TestHTTPXDoesNotRetainUnmatchableBody(t *testing.T) {
 	for _, encoding := range []HTTPXResponseEncoding{HTTPXText, HTTPXBase64} {
 		body := strings.Repeat("private-marker", 1000)

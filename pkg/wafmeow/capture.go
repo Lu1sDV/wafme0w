@@ -87,19 +87,21 @@ func runCaptured(ctx context.Context, engine *Engine, inputs io.Reader, config C
 		return err
 	}
 	scanner := bufio.NewScanner(inputs)
-	scanner.Buffer(make([]byte, bufio.MaxScanTokenSize), maxCaptureRecordBytes+1)
+	// ScanLines needs space for both bytes of a CRLF record terminator.
+	scanner.Buffer(make([]byte, bufio.MaxScanTokenSize), maxCaptureRecordBytes+2)
 	line, occurrence := 0, 0
 	for ctx.Err() == nil && scanner.Scan() {
 		line++
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		record := bytes.TrimSpace(scanner.Bytes())
-		if len(record) == 0 {
-			continue
-		}
+		record := scanner.Bytes()
 		if len(record) > maxCaptureRecordBytes {
 			return fmt.Errorf("capture line %d exceeds %d bytes", line, maxCaptureRecordBytes)
+		}
+		record = bytes.TrimSpace(record)
+		if len(record) == 0 {
+			continue
 		}
 		occurrence++
 		decoded, err := decode(record, config, line, occurrence)
@@ -213,7 +215,8 @@ func runCapturePipeline(ctx context.Context, inputs io.Reader, concurrency int, 
 		defer pipeline.Done()
 		defer close(jobs)
 		scanner := bufio.NewScanner(inputs)
-		scanner.Buffer(make([]byte, bufio.MaxScanTokenSize), maxCaptureRecordBytes+1)
+		// ScanLines needs space for both bytes of a CRLF record terminator.
+		scanner.Buffer(make([]byte, bufio.MaxScanTokenSize), maxCaptureRecordBytes+2)
 		line, index := 0, 0
 		for scanCtx.Err() == nil {
 			select {
@@ -240,8 +243,10 @@ func runCapturePipeline(ctx context.Context, inputs io.Reader, concurrency int, 
 				return
 			}
 			line++
-			record := bytes.TrimSpace(scanner.Bytes())
-			if len(record) == 0 {
+			// Preserve serialized whitespace for the byte budget and the worker's
+			// record-limit check; oversized blank lines must fail that check too.
+			record := scanner.Bytes()
+			if len(record) <= maxCaptureRecordBytes && len(bytes.TrimSpace(record)) == 0 {
 				<-slots
 				continue
 			}
@@ -331,7 +336,7 @@ func classifyCapture(ctx context.Context, engine *Engine, record []byte, line in
 	if len(record) > maxCaptureRecordBytes {
 		return Result{}, fmt.Errorf("capture line %d exceeds %d bytes", line, maxCaptureRecordBytes)
 	}
-	capture, err := decodeNativeCapture(ctx, record)
+	capture, err := decodeNativeCapture(ctx, bytes.TrimSpace(record))
 	if err != nil {
 		return Result{}, fmt.Errorf("decode capture line %d: %w", line, err)
 	}
