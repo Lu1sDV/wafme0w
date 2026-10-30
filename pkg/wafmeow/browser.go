@@ -133,7 +133,7 @@ func captureBrowser(parent context.Context, target, id string, occurrence uint64
 			<-eventsDone
 		}
 		if acquiredIdentity.token != "" && !s.sameDocument(acquiredIdentity) {
-			capture.dom, capture.image, capture.secrets, capture.geometryOK = "", nil, nil, false
+			capture.dom, capture.domSnapshot, capture.image, capture.secrets, capture.geometryOK = "", "", nil, nil, false
 			capture.report.DOM = BrowserAsset{State: "failed"}
 			if selected.Mode == "screenshot" {
 				capture.report.Screenshot = BrowserAsset{State: "failed"}
@@ -775,7 +775,11 @@ func (s *browserSession) acquire(capture *browserCapture, identity browserIdenti
 		return err
 	}
 	var document browserDOM
-	if err := s.evaluate(identity, browserDOMScript, &document); err != nil {
+	expression := "(" + browserDOMScript + ")(false)"
+	if s.config.Browser.SaveText != nil {
+		expression = "(" + browserDOMScript + ")(true)"
+	}
+	if err := s.evaluate(identity, expression, &document); err != nil {
 		return err
 	}
 	if !s.sameDocument(identity) || document.Identity != identity.token {
@@ -786,6 +790,15 @@ func (s *browserSession) acquire(capture *browserCapture, identity browserIdenti
 	}
 	capture.dom = document.HTML
 	capture.report.DOM = BrowserAsset{State: "acquired", Bytes: len(capture.dom), Truncated: document.Truncated}
+	if s.config.Browser.SaveText != nil {
+		if len(document.Snapshot) != 0 && len(document.Snapshot) <= browserMaxDOM && utf8.ValidString(document.Snapshot) {
+			capture.domSnapshot = document.Snapshot
+		} else {
+			s.mu.Lock()
+			s.limitLocked("A structural DOM snapshot could not be acquired within the 1 MiB/16384-node/128-depth export limits; text export is unavailable.")
+			s.mu.Unlock()
+		}
+	}
 	if s.config.Browser.Mode != "screenshot" {
 		return nil
 	}

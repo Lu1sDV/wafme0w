@@ -179,6 +179,14 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 		err = errors.Join(err, artifacts.close())
 		return fail(err)
 	}
+	if journal != nil {
+		// Two absent names can identify the same destination on a
+		// case-insensitive filesystem. Once the journal exists, SameFile can
+		// detect that alias before acquisition or any journal/result writes.
+		if err := checkFileCollisions(opts, stdin, piped, stdout, stderr); err != nil {
+			return fail(errors.Join(err, journal.close(), artifacts.close()))
+		}
+	}
 	var report *humanReportSpool
 	finish := func(runErr error) int {
 		runErr = errors.Join(runErr, ctx.Err(), report.close())

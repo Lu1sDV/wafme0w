@@ -1,5 +1,7 @@
 import base64
+import builtins
 import hashlib
+import io
 import json
 from pathlib import Path
 import sys
@@ -9,10 +11,48 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import wafw00f_adapter
 from wafw00f_adapter import ReplayResponse, ReplayViolation, classify, python_provenance
 
 
 class EvidenceReplayTest(unittest.TestCase):
+    def test_oversized_worker_input_is_rejected_before_loading_detector(self):
+        request = json.dumps({"schema_version": 3, "profile": "shared-products",
+                              "iterations": 1, "products": [], "cases": []}).encode()
+        request += b" " * ((8 << 20) + 1 - len(request))
+        original_import = builtins.__import__
+
+        def guarded_import(name, *args, **kwargs):
+            if name == "wafw00f":
+                raise AssertionError("detector imported before input-size rejection")
+            return original_import(name, *args, **kwargs)
+
+        with patch.object(sys, "stdin", io.TextIOWrapper(io.BytesIO(request))), \
+                patch.object(builtins, "__import__", guarded_import):
+            with self.assertRaisesRegex(ValueError, "worker input exceeds"):
+                wafw00f_adapter.main()
+
+    def test_worker_input_limit_counts_utf8_bytes_and_trailing_whitespace(self):
+        value = {"marker": "\u00e9"}
+        data = json.dumps(value, ensure_ascii=False).encode("utf-8")
+        limit = 64
+        with patch.object(wafw00f_adapter, "MAX_WORKER_INPUT_BYTES", limit):
+            for size in (len(data), limit, limit + 1, limit + 2):
+                with self.subTest(size=size):
+                    stream = io.BytesIO(data + b" " * (size - len(data)))
+                    if size <= limit:
+                        self.assertEqual(wafw00f_adapter.read_worker_input(stream), value)
+                    else:
+                        with self.assertRaisesRegex(ValueError, "worker input exceeds 64 bytes"):
+                            wafw00f_adapter.read_worker_input(stream)
+                    self.assertLessEqual(stream.tell(), limit + 1)
+                    self.assertFalse(stream.closed)
+
+    def test_worker_input_rejects_trailing_json_and_invalid_utf8(self):
+        for data in (b"{}\n{}", b'"\xff"'):
+            with self.subTest(data=data), self.assertRaises(ValueError):
+                wafw00f_adapter.read_worker_input(io.BytesIO(data))
+
     def test_incomplete_body_preserves_metadata_but_never_matches_content(self):
         for uncertainty in ({"body_truncated": True}, {"transport_error": "unexpected EOF"}):
             with self.subTest(uncertainty=uncertainty):

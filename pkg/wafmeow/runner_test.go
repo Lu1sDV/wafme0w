@@ -373,14 +373,15 @@ func browserStageConfig(t *testing.T) Config {
 	return config
 }
 
-func savedBrowserCapture(target, id string, occurrence uint64, config Config) browserCapture {
+func savedBrowserCapture(t *testing.T, target, id string, occurrence uint64, config Config) browserCapture {
+	t.Helper()
 	dom := fmt.Sprintf("<!doctype html><h1>browser-marker-%d</h1><input name=password value=browser-secret>", occurrence)
 	return browserCapture{
 		report: BrowserReport{ID: id, Occurrence: occurrence, Mode: config.Browser.Mode, State: "complete",
 			StartedAt: time.Now().UTC(), FinishedAt: time.Now().UTC(),
 			URL: target + "?token=browser-query-secret", DOM: BrowserAsset{State: "acquired", Bytes: len(dom)},
 			Screenshot: BrowserAsset{State: "not_selected"}, Headers: []Header{{Name: "Authorization", Value: "browser-header-secret"}}},
-		dom: dom,
+		dom: dom, domSnapshot: browserDOMSnapshotFixture(t, dom),
 	}
 }
 
@@ -424,7 +425,7 @@ func TestRunBrowserStageFreesHTTPWorkersAndBoundsQueue(t *testing.T) {
 				if occurrence == 1 {
 					<-release
 				}
-				return savedBrowserCapture(target, id, occurrence, config)
+				return savedBrowserCapture(t, target, id, occurrence, config)
 			})
 		}()
 		synctest.Wait()
@@ -517,7 +518,7 @@ func TestRunBrowserStageAssociatesOccurrencesAndOverlapsSanitizedExports(t *test
 			if len(captureOrder) == 1 {
 				close(firstBrowser)
 			}
-			return savedBrowserCapture(target, id, occurrence, config)
+			return savedBrowserCapture(t, target, id, occurrence, config)
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -582,7 +583,7 @@ func TestRunBrowserStageSerializesResultCallbacks(t *testing.T) {
 				}
 				return nil
 			}, func(_ context.Context, target, id string, occurrence uint64, config Config) browserCapture {
-				return savedBrowserCapture(target, id, occurrence, config)
+				return savedBrowserCapture(t, target, id, occurrence, config)
 			})
 		}()
 		<-started
@@ -680,7 +681,7 @@ func TestRunBrowserStageCancellationAndSinkFailureJoinAllOwners(t *testing.T) {
 							<-ctx.Done()
 							close(browserStopped)
 						}
-						return savedBrowserCapture(target, id, occurrence, config)
+						return savedBrowserCapture(t, target, id, occurrence, config)
 					})
 				}()
 				if _, err := io.WriteString(writer, "http://fixture.invalid/first\nhttp://fixture.invalid/export-active\nhttp://fixture.invalid/browser-active\nhttp://fixture.invalid/http-active\n"); err != nil {
@@ -731,7 +732,7 @@ func TestRunBrowserStageDrainsCompletedWorkAfterInputFailure(t *testing.T) {
 		results = append(results, result)
 		return nil
 	}, func(ctx context.Context, target, id string, occurrence uint64, config Config) browserCapture {
-		return savedBrowserCapture(target, id, occurrence, config)
+		return savedBrowserCapture(t, target, id, occurrence, config)
 	})
 	if !errors.Is(err, sentinel) || len(results) != 2 || input.closed {
 		t.Fatalf("input failure discarded browser work or closed caller input: err=%v results=%d closed=%v", err, len(results), input.closed)

@@ -1,0 +1,30 @@
+[
+  {
+    "name": "CacheWall (Varnish)",
+    "schemas": [
+      {
+        "fingerprints": [
+          {
+            "type": "Header",
+            "header_key": "X-Cachewall-Action",
+            "header_value": "(?i).+?"
+          },
+          {
+            "type": "Header",
+            "header_key": "X-Cachewall-Reason",
+            "header_value": "(?i).+?"
+          },
+          {
+            "type": "Content",
+            "pattern": "(?i)security by cachewall"
+          },
+          {
+            "type": "Content",
+            "pattern": "(?i)403 naughty.{0,10}?not nice!"
+          }
+        ],
+        "any": true
+      }
+    ]
+  }
+]

@@ -82,14 +82,13 @@ func Execute(ctx context.Context, corpus Corpus, corpusPath string, config Confi
 	if err := newRunDestination(config.OutputDir); err != nil {
 		return nil, Summary{}, RunManifest{}, err
 	}
-	if err := networkIsolationCanary(ctx, config); err != nil {
+	input := WorkerInput{SchemaVersion: SchemaVersion, Profile: "shared-products", Iterations: config.Iterations, Products: corpus.Products, Cases: corpus.Cases}
+	payload, err := marshalWorkerInput(input)
+	if err != nil {
 		return nil, Summary{}, RunManifest{}, err
 	}
-
-	input := WorkerInput{SchemaVersion: SchemaVersion, Profile: "shared-products", Iterations: config.Iterations, Products: corpus.Products, Cases: corpus.Cases}
-	payload, err := json.Marshal(input)
-	if err != nil {
-		return nil, Summary{}, RunManifest{}, fmt.Errorf("encode worker input: %w", err)
+	if err := networkIsolationCanary(ctx, config); err != nil {
+		return nil, Summary{}, RunManifest{}, err
 	}
 	pattern := []string{"wafmeow", "wafw00f", "wafw00f", "wafmeow"}
 	order := make([]string, config.Blocks)
@@ -112,7 +111,7 @@ func Execute(ctx context.Context, corpus Corpus, corpusPath string, config Confi
 		return nil, Summary{}, RunManifest{}, err
 	}
 	input.Profile = "full-native"
-	fullPayload, err := json.Marshal(input)
+	fullPayload, err := marshalWorkerInput(input)
 	if err != nil {
 		return nil, Summary{}, RunManifest{}, err
 	}
@@ -132,6 +131,19 @@ func Execute(ctx context.Context, corpus Corpus, corpusPath string, config Confi
 		return nil, Summary{}, RunManifest{}, err
 	}
 	return results, summary, manifest, checkGates(summary, config)
+}
+
+func marshalWorkerInput(input WorkerInput) ([]byte, error) {
+	payload, err := json.Marshal(input)
+	if err != nil {
+		return nil, fmt.Errorf("encode worker input: %w", err)
+	}
+	// Corpus manifests omit external body bytes. Their separate limits do not
+	// bound the expanded wire format, including base64 and JSON string escapes.
+	if len(payload) > maxWorkerInputSize {
+		return nil, fmt.Errorf("expanded worker input exceeds %d bytes (%d encoded); split the corpus into smaller runs", maxWorkerInputSize, len(payload))
+	}
+	return payload, nil
 }
 
 func checkGates(summary Summary, config Config) error {

@@ -65,11 +65,11 @@ func TestWafme0wWorkerRejectsOversizedTrailingWhitespace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, size := range []int{maxCorpusSize, maxCorpusSize + 1, maxCorpusSize + 2} {
+	for _, size := range []int{maxWorkerInputSize, maxWorkerInputSize + 1, maxWorkerInputSize + 2} {
 		input := append(append([]byte(nil), request...), bytes.Repeat([]byte(" "), size-len(request))...)
 		var output bytes.Buffer
 		err := RunWafme0wWorker(bytes.NewReader(input), &output, catalogue)
-		if size == maxCorpusSize {
+		if size == maxWorkerInputSize {
 			if err != nil || output.Len() == 0 {
 				t.Fatalf("exact-limit request rejected: %v", err)
 			}

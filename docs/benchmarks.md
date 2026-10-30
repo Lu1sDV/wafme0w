@@ -381,9 +381,13 @@ together must fit within 4 MiB; repeated references count again because worker
 JSON expands each response. Hash-verified repeated bodies share immutable
 storage during loading. Split larger corpora into separate runs. These limits
 are checked before workers start, and input-limit errors abort the run. The
-whole-run timeout includes corpus loading, and manifest/body inputs must be
-regular files. Worker input is limited to 8 MiB, including whitespace and
-base64-encoded bodies.
+coordinator also checks the complete encoded worker request against a separate
+8 MiB limit before starting isolation or either detector. Base64 body encoding
+and JSON string escaping count toward this limit, so a manifest and its bodies
+can each pass their own limits while their combined request requires splitting
+the corpus. Both adapters enforce the same 8 MiB byte limit, including trailing
+whitespace, before decoding their input. The whole-run timeout includes corpus
+loading, and manifest/body inputs must be regular files.
 
 Manifest structure is checked before allocating typed records: arrays hold at
 most 4,096 entries, narrowed to 64 responses per case and 256 headers per

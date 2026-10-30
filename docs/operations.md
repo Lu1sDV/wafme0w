@@ -35,6 +35,9 @@ Enable a body-free result and diagnostics journal when durable records are neede
 ```
 
 The journal appends and syncs each result before another sink sees it by default.
+The report and journal must identify different files. The CLI checks again after
+creating the journal so that initially absent names which differ only by casing
+on a case-insensitive filesystem are rejected before reading scan input.
 `--journal-batch-size` above 1 uses group sync: pending results are not published
 to reports or output until their whole batch is synced. Partial batches flush
 within 25 ms. A crash may lose a pending batch, but those results have not yet
