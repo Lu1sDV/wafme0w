@@ -326,20 +326,80 @@ func TestSignalDiagnosticsRetainDistinctObservations(t *testing.T) {
 	if err := printResult(io.Discard, &stderr, result, false, aurora.New(aurora.WithColors(false)), aurora.New(aurora.WithColors(false))); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []struct{ role, text string }{
-		{"Normal", "same recorded cause"},
-		{"Probe", "same recorded cause"},
-		{"Normal", "HTTP export cause"},
+	want := "WARN  https://fixture.invalid/ | 3 diagnostics\n" +
+		"  [Normal] same recorded cause\n" +
+		"  [Probe]  same recorded cause\n" +
+		"  [Normal] HTTP export cause\n" +
+		"WARN  https://fixture.invalid/ | browser browser_capture_failed: browser only cause\n"
+	if stderr.String() != want {
+		t.Fatalf("diagnostic layout, order or attribution changed:\n got %q\nwant %q", stderr.String(), want)
+	}
+}
+
+func TestSignalDiagnosticRoleAlignment(t *testing.T) {
+	for _, test := range []struct {
+		name, role, tag                        string
+		afterTag, afterNormal, anonymousIndent int
+	}{
+		{"ASCII", "Probe", "[Probe]", 2, 1, 11},
+		{"escaped newline", "A\n", `[A\n]`, 4, 1, 11},
+		{"multibyte", "é", "[é]", 6, 1, 11},
+		{"combining mark", "e\u0301", "[e\u0301]", 6, 1, 11},
+		{"wide character", "猫", "[猫]", 5, 1, 11},
+		{"emoji", "😀", "[😀]", 5, 1, 11},
+		{"flag cluster", "🇩🇪", "[🇩🇪]", 5, 1, 11},
+		{"escaped ANSI is widest", "\x1b[31m", `[\x1b[31m]`, 1, 3, 13},
+		{"invalid UTF-8", string([]byte{0xff}), `[\xff]`, 3, 1, 11},
 	} {
-		if !diagnosticRow(stderr.String(), want.role, want.text) {
-			t.Fatalf("lost attribution for [%s] %q: %q", want.role, want.text, stderr.String())
+		for _, colors := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/colors=%t", test.name, colors), func(t *testing.T) {
+				result := signalResult(wafme0w.Incomplete)
+				result.Evidence = []wafme0w.EvidenceSummary{{Role: test.role}, {Role: "Normal"}, {}}
+				result.Outcome.Diagnostics = []wafme0w.Diagnostic{
+					{Evidence: 0, Code: "fixture_error", Message: "first cause"},
+					{Evidence: 1, Code: "fixture_error", Message: "second cause"},
+					{Evidence: -1, Code: "fixture_error", Message: "unattributed cause"},
+					{Evidence: 3, Code: "fixture_error", Message: "invalid reference"},
+					{Evidence: 2, Code: "fixture_error", Message: "empty role"},
+				}
+				au := aurora.New(aurora.WithColors(colors))
+				var stderr bytes.Buffer
+				if err := printResultDiagnostics(&stderr, result, au); err != nil {
+					t.Fatal(err)
+				}
+				// Expected spacing is specified independently of the renderer's width calculation.
+				want := fmt.Sprintf("%s  https://fixture.invalid/ | 5 diagnostics\n", au.Bold(au.Yellow("WARN"))) +
+					fmt.Sprintf("  %s%sfirst cause\n", au.Bold(test.tag), strings.Repeat(" ", test.afterTag)) +
+					fmt.Sprintf("  %s%ssecond cause\n", au.Cyan("[Normal]"), strings.Repeat(" ", test.afterNormal)) +
+					strings.Repeat(" ", test.anonymousIndent) + "unattributed cause\n" +
+					strings.Repeat(" ", test.anonymousIndent) + "invalid reference\n" +
+					strings.Repeat(" ", test.anonymousIndent) + "empty role\n"
+				if stderr.String() != want {
+					t.Fatalf("diagnostic columns changed:\n got %q\nwant %q", stderr.String(), want)
+				}
+			})
 		}
 	}
-	if !strings.Contains(stderr.String(), "browser browser_capture_failed: browser only cause") {
-		t.Fatalf("lost browser diagnostic: %q", stderr.String())
+}
+
+func TestSignalDiagnosticsWithoutRoles(t *testing.T) {
+	result := signalResult(wafme0w.Incomplete)
+	result.Evidence = []wafme0w.EvidenceSummary{{}}
+	result.Outcome.Diagnostics = []wafme0w.Diagnostic{
+		{Evidence: -1, Code: "fixture_error", Message: "unattributed cause"},
+		{Evidence: 1, Code: "fixture_error", Message: "invalid reference"},
+		{Evidence: 0, Code: "fixture_error", Message: "empty role"},
 	}
-	if count := strings.Count(stderr.String(), "same recorded cause"); count != 2 {
-		t.Fatalf("retained duplicate diagnostics (%d rows): %q", count, stderr.String())
+	var stderr bytes.Buffer
+	if err := printResultDiagnostics(&stderr, result, aurora.New(aurora.WithColors(false))); err != nil {
+		t.Fatal(err)
+	}
+	want := "WARN  https://fixture.invalid/ | 3 diagnostics\n" +
+		"     unattributed cause\n" +
+		"     invalid reference\n" +
+		"     empty role\n"
+	if stderr.String() != want {
+		t.Fatalf("unattributed diagnostic layout changed:\n got %q\nwant %q", stderr.String(), want)
 	}
 }
 

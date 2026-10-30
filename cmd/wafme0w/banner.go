@@ -12,6 +12,7 @@ import (
 
 	"github.com/Lu1sDV/wafme0w/v2/pkg/wafme0w"
 	"github.com/logrusorgru/aurora/v4"
+	"github.com/rivo/uniseg"
 )
 
 func colorizer(writer io.Writer, disabled bool) *aurora.Aurora {
@@ -323,31 +324,33 @@ func diagnosticText(result wafme0w.Result, diagnostic wafme0w.Diagnostic) string
 func printResultDiagnostics(writer io.Writer, result wafme0w.Result, au *aurora.Aurora) error {
 	var group strings.Builder
 	if len(result.Outcome.Diagnostics) != 0 {
-		type row struct{ role, text string }
+		type row struct {
+			tag   aurora.Value
+			width int
+			text  string
+		}
 		rows := make([]row, 0, len(result.Outcome.Diagnostics))
 		seen := make(map[wafme0w.Diagnostic]bool, len(result.Outcome.Diagnostics))
-		width := 0
+		width := 2 // Retain the empty tag column for diagnostics without a role.
 		for _, diagnostic := range result.Outcome.Diagnostics {
 			if seen[diagnostic] {
 				continue
 			}
 			seen[diagnostic] = true
-			role := ""
+			tag := au.Colorize("", 0)
 			if diagnostic.Evidence >= 0 && diagnostic.Evidence < len(result.Evidence) {
-				role = result.Evidence[diagnostic.Evidence].Role
+				if role := result.Evidence[diagnostic.Evidence].Role; role != "" {
+					tag = probeTag(role, au)
+				}
 			}
-			rows = append(rows, row{role: role, text: diagnosticText(result, diagnostic)})
-			if len(role)+2 > width {
-				width = len(role) + 2
-			}
+			// Measure the escaped tag in terminal cells, excluding ANSI styling.
+			tagWidth := uniseg.StringWidth(tag.Reset().String())
+			rows = append(rows, row{tag: tag, width: tagWidth, text: diagnosticText(result, diagnostic)})
+			width = max(width, tagWidth)
 		}
 		fmt.Fprintf(&group, "%s  %s | %d diagnostics\n", au.Bold(au.Yellow("WARN")), terminalText(result.Target), len(rows))
 		for _, row := range rows {
-			if row.role == "" {
-				fmt.Fprintf(&group, "  %s %s\n", strings.Repeat(" ", width), row.text)
-				continue
-			}
-			fmt.Fprintf(&group, "  %s%s %s\n", probeTag(row.role, au), strings.Repeat(" ", width-len(row.role)-2), row.text)
+			fmt.Fprintf(&group, "  %s%s %s\n", row.tag, strings.Repeat(" ", width-row.width), row.text)
 		}
 	}
 	if browser := result.Browser; browser != nil {
