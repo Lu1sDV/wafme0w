@@ -194,7 +194,7 @@ recommended setting or a process memory limit.
 
 `Config.ProbeConcurrency` defaults to 1; values up to 8 parallelize later
 full-mode probes after the normal response. `Config.MaxConnections == 0`
-follows the larger of `Config.Concurrency` and `Config.ProbeConcurrency`;
+follows the larger of `Config.Concurrency`, `Config.ProbeConcurrency`, and the three fast-mode probes;
 `DefaultConfig()` retains its explicit limit of 20. Set it to zero when changing
 library target or probe concurrency should also resize the connection limit. The
 CLI selects zero by default.

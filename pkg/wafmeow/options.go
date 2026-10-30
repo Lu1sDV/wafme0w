@@ -17,6 +17,7 @@ const (
 	// MaxConcurrency bounds worker fan-out before allocation and keeps counts
 	// below sync.WaitGroup's signed 32-bit limit. It is not a memory-use limit.
 	MaxConcurrency                      = 65536
+	fastProbeCount                      = 3
 	DefaultMaxBodyBytes           int64 = 1 << 20
 	DefaultMaxResponseHeaderBytes int64 = 64 << 10
 	DefaultMaxTargetEvidenceBytes int64 = 16 << 20
@@ -25,8 +26,8 @@ const (
 // Config is copied by Run. Concurrency must be 1..MaxConcurrency and
 // MaxBodyBytes must be positive.
 // Zero timeouts, header/evidence limits and request budgets use finite defaults.
-// Zero MaxConnections follows the larger of Concurrency and ProbeConcurrency;
-// DefaultConfig retains an explicit 20.
+// Zero MaxConnections follows the larger of Concurrency, ProbeConcurrency, and
+// the three fast-mode probes; DefaultConfig retains an explicit 20.
 // ProbeConcurrency bounds full-mode probes after Normal (1..8, zero uses 1).
 // Normal completes before full-mode fan-out; fast mode keeps its three probes.
 // Parallel probes share budgets, so allocation of a tight budget can vary.
@@ -117,6 +118,9 @@ func (c Config) normalized() Config {
 	}
 	if c.MaxConnections == 0 {
 		c.MaxConnections = max(c.Concurrency, c.ProbeConcurrency)
+		if c.FastMode {
+			c.MaxConnections = max(c.MaxConnections, fastProbeCount)
+		}
 	}
 	if c.RedirectPolicy == "" {
 		c.RedirectPolicy = defaults.RedirectPolicy

@@ -31,21 +31,24 @@ func TestDefaultConnectionLimitFollowsTargetAndProbeConcurrency(t *testing.T) {
 		probe       int
 		explicit    int
 		want        int
+		fast        bool
 	}{
-		{1, 1, 0, 1},
-		{1, 8, 0, 8},
-		{20, 8, 0, 20},
-		{1, 8, 1, 1},
+		{1, 1, 0, 1, false},
+		{1, 8, 0, 8, false},
+		{20, 8, 0, 20, false},
+		{1, 8, 1, 1, false},
+		{1, 1, 0, 3, true},
+		{1, 1, 1, 1, true},
 	} {
 		config := DefaultConfig()
-		config.Concurrency, config.ProbeConcurrency, config.MaxConnections = test.concurrency, test.probe, test.explicit
+		config.Concurrency, config.ProbeConcurrency, config.MaxConnections, config.FastMode = test.concurrency, test.probe, test.explicit, test.fast
 		normalized := config.normalized()
 		if err := normalized.validate(); err != nil {
-			t.Fatalf("concurrency=%d probe=%d explicit=%d: %v", test.concurrency, test.probe, test.explicit, err)
+			t.Fatalf("concurrency=%d probe=%d explicit=%d fast=%t: %v", test.concurrency, test.probe, test.explicit, test.fast, err)
 		}
 		if normalized.MaxConnections != test.want {
-			t.Fatalf("concurrency=%d probe=%d explicit=%d: connections=%d, want %d",
-				test.concurrency, test.probe, test.explicit, normalized.MaxConnections, test.want)
+			t.Fatalf("concurrency=%d probe=%d explicit=%d fast=%t: connections=%d, want %d",
+				test.concurrency, test.probe, test.explicit, test.fast, normalized.MaxConnections, test.want)
 		}
 	}
 }
