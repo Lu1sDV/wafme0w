@@ -139,27 +139,32 @@ Configuration, input and output failures exit **1**; cancellation exits **130**.
 
 ### Recorded live CLI comparison
 
-The **500-target live run on 29 October 2026** recorded a **4.61× elapsed-time
-ratio at 50 workers in fast mode**: 24.06 seconds for wafme0w versus 110.93 seconds
-for wafw00f 2.4.2. Each configuration has one observation.
+The **2,000-target run completed on 30 October 2026** recorded a **5.90× median
+elapsed-time ratio at 100 workers in fast mode**: 28 seconds for wafme0w versus
+2m 45s for wafw00f 2.4.2. Each configuration ran three complete blocks over the
+first 2,000 Tranco `ZJ8PG` domains, scanned under explicit authorization.
 
-| Workers / processes | wafme0w mode | wafw00f 2.4.2 elapsed | wafme0w elapsed | Elapsed ratio, wafw00f / wafme0w |
-| ---: | --- | ---: | ---: | ---: |
-| 1 | Fast | 14m 38.21s | 6m 49.44s | 2.14× |
-| 1 | Full | 14m 38.21s | 15m 51.93s | 0.92× |
-| 10 | Fast | 2m 53.39s | 52.89s | 3.28× |
-| 10 | Full | 2m 53.39s | 1m 45.62s | 1.64× |
-| 50 | Fast | 1m 50.93s | 24.06s | 4.61× |
-| 50 | Full | 1m 50.93s | 44.26s | 2.51× |
+| Workers / processes | Mode | wafw00f 2.4.2 median elapsed | wafme0w median elapsed | wafw00f returned / attempted | wafme0w returned / complete / attempted | Median elapsed ratio |
+| ---: | --- | --- | --- | --- | --- | --- |
+| 1 | Fast | 70m 27s | 29m 29s | 1542–1544 / 2000 | 2000 / 1390–1415 / 2000 | 2.39× |
+| 1 | Full | 70m 27s | 78m 05s | 1542–1544 / 2000 | 2000 / 1442–1452 / 2000 | 0.90× |
+| 5 | Fast | 15m 26s | 7m 27s | 1539–1541 / 2000 | 2000 / 1431–1437 / 2000 | 2.07× |
+| 5 | Full | 15m 26s | 14m 30s | 1539–1541 / 2000 | 2000 / 1448–1450 / 2000 | 1.06× |
+| 10 | Fast | 7m 46s | 3m 48s | 1539–1541 / 2000 | 2000 / 1446–1454 / 2000 | 2.04× |
+| 10 | Full | 7m 46s | 7m 18s | 1539–1541 / 2000 | 2000 / 1436–1452 / 2000 | 1.07× |
+| 50 | Fast | 3m 45s | 49s | 1537–1538 / 2000 | 2000 / 1449–1455 / 2000 | 4.55× |
+| 50 | Full | 3m 45s | 1m 40s | 1537–1538 / 2000 | 2000 / 1433–1446 / 2000 | 2.24× |
+| 100 | Fast | 2m 45s | 28s | 1534–1545 / 2000 | 2000 / 1437–1460 / 2000 | 5.90× |
+| 100 | Full | 2m 45s | 1m 02s | 1534–1545 / 2000 | 2000 / 1368–1410 / 2000 | 2.66× |
 
-Ratios above 1 mean wafme0w took less wall time in that configuration. The saved
-native build was `347f547` with a modified working tree, before the v2 evidence
-API and httpx importer. Probes, TLS behavior and evidence completeness differed.
-At 50 workers, fast mode returned 500 records with 206 marked complete; wafw00f
-returned 341 records without an equivalent completeness field. These are
-observed end-to-end timings for the recorded configurations.
-[Full methodology and accounting](docs/benchmarks.md#live-cli-comparison) ·
-[Protocol for a fresh 2,000-target run](docs/benchmarks.md#a-new-2000-target-run).
+Ratios above 1 mean wafme0w took less wall time in that configuration; full mode
+at one worker was slower. The measured binary came from clean commit `836252b`
+(Go `1.26.10`, `vcs.modified=false`), SHA-256
+`3278f85f1a8134ef75d6181846f0841d0f8402008f90ad8a39ffab446f844319`. Probes, TLS
+behavior and evidence completeness differ between the tools: wafw00f returned
+about 1,540 of 2,000 targets, and full mode at 100 workers dropped to 1,368–1,410
+complete. These are observed end-to-end timings, not proof of equal work.
+[Full methodology and accounting](docs/benchmarks.md#live-cli-comparison).
 
 ### Reproducible offline comparison
 

@@ -59,13 +59,15 @@ verified artifacts with a benchmark claim. Do not rerun the unpatched v1.0.0
 binary to market the current v2 candidate.
 
 A ratio can be reported as “wafw00f/wafme0w median classification latency on this
-saved synthetic corpus,” with the exact workload and environment. The historical
-live table completes different amounts of work and does not support an
-unqualified “× faster” headline. The README retains the recorded live comparison
-with explicit mode, date, build and accounting links. Its **4.61× observed
-elapsed ratio at 50 workers in fast mode** is valid for that saved run; keep the
-fresh release candidate's measurements separately identified. Use the
-[2,000-target protocol](benchmarks.md#a-new-2000-target-run) for the next live run.
+saved synthetic corpus,” with the exact workload and environment. The live table
+completes different amounts of work and does not support an unqualified “× faster”
+headline. The README carries the recorded live comparison with explicit mode,
+date, build and accounting links: on the 2,000-target run from clean commit
+`836252b`, the **median elapsed ratio was 5.90× at 100 workers in fast mode and
+0.90× at one worker in full mode**, so slower cells must stay visible beside faster
+ones. Report per-block returned and complete counts with any live claim, and keep
+offline conformance results attached to their own workload. The
+[2,000-target protocol](benchmarks.md#a-new-2000-target-run) governs the next run.
 
 The README already has a mascot, animated demo, source build/install commands,
 structured-output examples and an authorized discovery pipeline. Keep the first
