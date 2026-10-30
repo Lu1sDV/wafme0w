@@ -214,12 +214,28 @@ func VerifyArtifacts(directory string) (RunManifest, error) {
 	if err := validatePythonProvenance(manifest.Python); err != nil {
 		return RunManifest{}, err
 	}
-	for _, name := range []string{"corpus", "coverage_contract", "wafmeow_executable", "wafmeow_catalogue", "wafw00f_adapter"} {
+	// Schema 3 generations saved before the rename retain their original
+	// identity keys. Select one complete naming family without rewriting any
+	// saved bytes or accepting a mixture of old and new source identities.
+	nativeTool := "wafmeow"
+	hasNativeIdentity := func(tool string) bool {
+		_, executable := manifest.Digests[tool+"_executable"]
+		_, catalogue := manifest.Digests[tool+"_catalogue"]
+		_, version := manifest.Tools[tool]
+		return executable || catalogue || version
+	}
+	if hasNativeIdentity("wafme0w") {
+		if hasNativeIdentity(nativeTool) {
+			return RunManifest{}, errors.New("completion manifest mixes native tool identities")
+		}
+		nativeTool = "wafme0w"
+	}
+	for _, name := range []string{"corpus", "coverage_contract", nativeTool + "_executable", nativeTool + "_catalogue", "wafw00f_adapter"} {
 		if !validDigest(manifest.Digests[name]) {
 			return RunManifest{}, fmt.Errorf("missing source identity: %s", name)
 		}
 	}
-	if manifest.Python.RequestedExecutable == "" || manifest.Python.WorkerSHA256 != manifest.Digests["wafw00f_adapter"] || manifest.Tools["wafw00f"] != manifest.Python.Packages["wafw00f"] || manifest.Tools["wafmeow"] == "" {
+	if manifest.Python.RequestedExecutable == "" || manifest.Python.WorkerSHA256 != manifest.Digests["wafw00f_adapter"] || manifest.Tools["wafw00f"] != manifest.Python.Packages["wafw00f"] || manifest.Tools[nativeTool] == "" {
 		return RunManifest{}, errors.New("completion manifest sources disagree with observed workers")
 	}
 	entries, err := os.ReadDir(directory)

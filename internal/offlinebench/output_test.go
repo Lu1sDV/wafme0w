@@ -207,3 +207,80 @@ func TestGenerationConsumersRequireCompletionAndIntegrity(t *testing.T) {
 		})
 	}
 }
+
+func TestGenerationVerificationSupportsLegacyNativeIdentity(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("offline benchmark publication requires directory fsync; the runner requires Linux")
+	}
+	for _, tool := range []string{"wafmeow", "wafme0w"} {
+		t.Run(tool, func(t *testing.T) {
+			other := "wafme0w"
+			if tool == other {
+				other = "wafmeow"
+			}
+			for _, test := range []struct {
+				name   string
+				mutate func(*RunManifest)
+				tamper bool
+				want   string
+			}{
+				{name: "complete"},
+				{name: "tampered artifact", tamper: true, want: "artifact integrity mismatch: results.jsonl"},
+				{name: "incomplete", mutate: func(m *RunManifest) { m.Complete = false }, want: "missing supported completion manifest"},
+				{name: "missing executable", mutate: func(m *RunManifest) { delete(m.Digests, tool+"_executable") }, want: "missing source identity: " + tool + "_executable"},
+				{name: "invalid catalogue", mutate: func(m *RunManifest) { m.Digests[tool+"_catalogue"] = "invalid" }, want: "missing source identity: " + tool + "_catalogue"},
+				{name: "missing tool version", mutate: func(m *RunManifest) { delete(m.Tools, tool) }, want: "completion manifest sources disagree"},
+				{name: "worker provenance mismatch", mutate: func(m *RunManifest) { m.Python.WorkerSHA256 = strings.Repeat("1", 64) }, want: "completion manifest sources disagree"},
+				{name: "mixed executable", mutate: func(m *RunManifest) {
+					m.Digests[other+"_executable"] = m.Digests[tool+"_executable"]
+					delete(m.Digests, tool+"_executable")
+				}, want: "completion manifest mixes native tool identities"},
+				{name: "duplicate catalogue", mutate: func(m *RunManifest) { m.Digests[other+"_catalogue"] = m.Digests[tool+"_catalogue"] }, want: "completion manifest mixes native tool identities"},
+				{name: "empty alternate tool", mutate: func(m *RunManifest) { m.Tools[other] = "" }, want: "completion manifest mixes native tool identities"},
+			} {
+				t.Run(test.name, func(t *testing.T) {
+					directory := filepath.Join(t.TempDir(), "run")
+					manifest, err := WriteArtifacts(directory, testManifest(t), []Result{{CaseID: "saved"}}, Summary{})
+					if err != nil {
+						t.Fatal(err)
+					}
+					if tool == "wafme0w" {
+						// Re-create the identity keys written before the rename without
+						// changing the saved artifacts or their integrity metadata.
+						for _, suffix := range []string{"_executable", "_catalogue"} {
+							manifest.Digests[tool+suffix] = manifest.Digests["wafmeow"+suffix]
+							delete(manifest.Digests, "wafmeow"+suffix)
+						}
+						manifest.Tools[tool] = manifest.Tools["wafmeow"]
+						delete(manifest.Tools, "wafmeow")
+					}
+					if test.mutate != nil {
+						test.mutate(&manifest)
+					}
+					if err := atomicfile.Write(filepath.Join(directory, "run-manifest.json"), func(writer io.Writer) error {
+						return json.NewEncoder(writer).Encode(manifest)
+					}); err != nil {
+						t.Fatal(err)
+					}
+					if test.tamper {
+						if err := os.WriteFile(filepath.Join(directory, "results.jsonl"), []byte("tampered\n"), 0o600); err != nil {
+							t.Fatal(err)
+						}
+					}
+					before := generationSnapshot(t, directory)
+					verified, err := VerifyArtifacts(directory)
+					if test.want == "" {
+						if err != nil || !reflect.DeepEqual(verified, manifest) {
+							t.Fatalf("complete generation changed or rejected: %v", err)
+						}
+					} else if err == nil || !strings.Contains(err.Error(), test.want) {
+						t.Fatalf("verification error = %v, want %q", err, test.want)
+					}
+					if !reflect.DeepEqual(before, generationSnapshot(t, directory)) {
+						t.Fatal("verification modified saved generation")
+					}
+				})
+			}
+		})
+	}
+}

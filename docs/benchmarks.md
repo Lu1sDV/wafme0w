@@ -292,6 +292,11 @@ publication removes staging; it cannot roll back an already committed rename.
 Statement coverage, synthetic conformance, cross-detector agreement, and
 real-world accuracy are separate measurements.
 
+Schema 3 generations saved before the project rename remain verifiable with
+their original `wafme0w` source and tool identities. Verification preserves the
+saved manifest and artifact bytes and rejects mixed old/new native identities.
+New runs use `wafmeow` identities.
+
 ## Historical measurements
 
 These records are retained for context, not as performance claims about a
