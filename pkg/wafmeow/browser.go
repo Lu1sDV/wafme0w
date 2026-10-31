@@ -16,9 +16,9 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Lu1sDV/wafmeow/v2/internal/browserruntime"
-	"github.com/Lu1sDV/wafmeow/v2/internal/httpmeta"
-	httputil "github.com/Lu1sDV/wafmeow/v2/pkg/utils/http"
+	"github.com/Lu1sDV/wafmeow/v3/internal/browserruntime"
+	"github.com/Lu1sDV/wafmeow/v3/internal/httpmeta"
+	httputil "github.com/Lu1sDV/wafmeow/v3/pkg/utils/http"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/cdp"
 	"github.com/go-rod/rod/lib/proto"

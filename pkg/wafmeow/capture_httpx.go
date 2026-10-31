@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Lu1sDV/wafmeow/v2/internal/httpmeta"
+	"github.com/Lu1sDV/wafmeow/v3/internal/httpmeta"
 )
 
 // HTTPXResponseEncoding declares serialization of httpx raw_header and body.

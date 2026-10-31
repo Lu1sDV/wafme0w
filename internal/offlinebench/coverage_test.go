@@ -3,7 +3,7 @@ package offlinebench
 import (
 	"testing"
 
-	"github.com/Lu1sDV/wafmeow/v2/pkg/wafmeow"
+	"github.com/Lu1sDV/wafmeow/v3/pkg/wafmeow"
 )
 
 func TestCoverageKeepsFullDenominatorAndRejectsUnreviewedChanges(t *testing.T) {

@@ -84,6 +84,6 @@ publication. Result JSON uses schema 1 and omits browser metadata when capture i
 off. CSV always ends with a `browser` JSON cell (`null` when off).
 `--evidence` rejects live browser selection and remains zero-network.
 
-The Go library uses the v2 module path. See [library versioning](library.md#versioning)
+The Go library uses the v3 module path. See [library versioning](library.md#versioning)
 for API and report-schema compatibility.
 

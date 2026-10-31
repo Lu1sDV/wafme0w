@@ -17,8 +17,8 @@ completed by merging documentation alone.
   Intel to workflow YAML does not automatically add them to required checks.
 - [ ] Packaged notices in `LICENSE.md` are current, complete and present in every
   archive/image.
-- [ ] Release under a **v2** tag consistent with `go.mod`. Explain the `/v2`
-  import-path change with the [v2 API guide](library.md#v2-evidence-api), and link
+- [ ] Release under a **v3** tag consistent with `go.mod`. Explain the `/v3`
+  import-path change with the [Go library guide](library.md#module-path), and link
   the [wafw00f migration guide](migrating-from-wafw00f.md) for CLI users.
 - [ ] Verify the actual release hashes, binary identities, manifest and
   attestations; confirm immutable releases are enabled in repository settings.
@@ -100,7 +100,7 @@ it is not needed to justify the description.
 Use the [reproducible offline comparison](benchmarks.md#reproduce-the-current-checkout)
 and retain its source, hardware, dependency and corpus identities. Publish the
 verified artifacts with a benchmark claim. Do not rerun the unpatched v1.0.0
-binary to market the current v2 candidate.
+binary to market the current v3 candidate.
 
 A ratio can be reported as “wafw00f/wafmeow median classification latency on this
 saved synthetic corpus,” with the exact workload and environment. The live table

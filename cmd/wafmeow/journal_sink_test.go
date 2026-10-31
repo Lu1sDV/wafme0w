@@ -15,8 +15,8 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/Lu1sDV/wafmeow/v2/internal/atomicfile"
-	"github.com/Lu1sDV/wafmeow/v2/pkg/wafmeow"
+	"github.com/Lu1sDV/wafmeow/v3/internal/atomicfile"
+	"github.com/Lu1sDV/wafmeow/v3/pkg/wafmeow"
 )
 
 type durableJournalFile struct {
