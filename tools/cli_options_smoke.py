@@ -114,7 +114,7 @@ for flag in value_flags:
     case(f'option as missing value {flag}', [flag, '--strict'], expected=1)
     case(f'delimiter as missing value {flag}', [flag, '--'], expected=1)
 
-for flag in ['--fast', '--baseline', '--no-generic', '--jsonl', '--strict', '--silent', '--no-colors', '--no-warning', '--debug', '--list', '--version']:
+for flag in ['--fast', '--deep', '--baseline', '--no-generic', '--jsonl', '--strict', '--silent', '--no-colors', '--no-warning', '--debug', '--list', '--version']:
     for value in ['true', 'false', '']:
         case(f'bool argument {flag}={value}', [f'{flag}={value}'], expected=1)
 
@@ -180,7 +180,8 @@ for flag, value in [('--browser', 'wrong'), ('--redirect-policy', 'wrong'), ('--
 for args in [
     ['--browser-path=missing'], ['--browser-timeout=30s'], ['--browser-settle=2s'], ['--save-screenshots=images'],
     ['--browser-allow-origin=https://fixture.invalid'], ['--journal-batch-size=1'], ['--fast', '--probe-concurrency=2'],
-    ['--baseline', '--probe-concurrency=2'], ['--fast', '--baseline'], ['--evidence-format=native'],
+    ['--baseline', '--probe-concurrency=2'], ['--fast', '--baseline'], ['--fast', '--deep'],
+    ['--deep', '--baseline'], ['--evidence=-', '--deep'], ['--deep', '--version'], ['--evidence-format=native'],
     ['--httpx-response-encoding=text'], ['--allow-origin=not-an-origin'],
 ]:
     case('invalid dependency ' + repr(args), ['--target=invalid://one', *args], expected=1)

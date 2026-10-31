@@ -207,7 +207,7 @@ func (b *baselineCompletionBody) Close() error {
 	return nil
 }
 
-func TestFullProbeConcurrencyIsBoundedAndKeepsEvidenceOrder(t *testing.T) {
+func TestDeepProbeConcurrencyIsBoundedAndKeepsEvidenceOrder(t *testing.T) {
 	for _, workers := range []int{1, 2, 7} {
 		t.Run(strconv.Itoa(workers), func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
@@ -249,7 +249,7 @@ func TestFullProbeConcurrencyIsBoundedAndKeepsEvidenceOrder(t *testing.T) {
 	}
 }
 
-func TestFullProbeFanoutStopsWithoutBaselineMetadata(t *testing.T) {
+func TestDeepProbeFanoutStopsWithoutBaselineMetadata(t *testing.T) {
 	for _, budgetFailure := range []bool{false, true} {
 		config := DefaultConfig()
 		config.ProbeConcurrency = 8
@@ -271,7 +271,7 @@ func TestFullProbeFanoutStopsWithoutBaselineMetadata(t *testing.T) {
 	}
 }
 
-func TestFullProbeFanoutHonorsSharedRequestBudget(t *testing.T) {
+func TestDeepProbeFanoutHonorsSharedRequestBudget(t *testing.T) {
 	for _, budget := range []int{1, 2, 8, 9, 10} {
 		config := DefaultConfig()
 		config.ProbeConcurrency, config.MaxRequests = 8, budget
@@ -296,7 +296,7 @@ func TestFullProbeFanoutHonorsSharedRequestBudget(t *testing.T) {
 	}
 }
 
-func TestFullProbeFanoutCountsRedirectsAgainstSharedRequestBudget(t *testing.T) {
+func TestDeepProbeFanoutCountsRedirectsAgainstSharedRequestBudget(t *testing.T) {
 	for _, budget := range []int{2, 3, 10, 15} {
 		config := DefaultConfig()
 		config.ProbeConcurrency, config.MaxRequests = 8, budget
@@ -319,7 +319,7 @@ func TestFullProbeFanoutCountsRedirectsAgainstSharedRequestBudget(t *testing.T) 
 	}
 }
 
-func TestFullProbeFanoutPreservesUsableBaselineWithBodyFailure(t *testing.T) {
+func TestDeepProbeFanoutPreservesUsableBaselineWithBodyFailure(t *testing.T) {
 	config := DefaultConfig()
 	config.ProbeConcurrency = 8
 	var requests atomic.Int32
@@ -335,7 +335,7 @@ func TestFullProbeFanoutPreservesUsableBaselineWithBodyFailure(t *testing.T) {
 	}
 }
 
-func TestFullProbeFanoutCancellationJoinsConnectionWaiters(t *testing.T) {
+func TestDeepProbeFanoutCancellationJoinsConnectionWaiters(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		config := DefaultConfig()
 		config.ProbeConcurrency, config.MaxConnections = 2, 1
@@ -369,7 +369,7 @@ func TestFullProbeFanoutCancellationJoinsConnectionWaiters(t *testing.T) {
 	})
 }
 
-func TestFullProbeFanoutRetainedEvidenceBudgetBoundary(t *testing.T) {
+func TestDeepProbeFanoutRetainedEvidenceBudgetBoundary(t *testing.T) {
 	config := DefaultConfig()
 	config.ProbeConcurrency = 8
 	config.Client = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {

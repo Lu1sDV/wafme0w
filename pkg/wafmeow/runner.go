@@ -74,7 +74,7 @@ type ScanSettings struct {
 type ResultProvenance struct {
 	ProgramVersion  string            `json:"program_version"`
 	CatalogueSHA256 string            `json:"catalogue_sha256"`
-	ScanMode        string            `json:"scan_mode"`
+	ScanMode        string            `json:"scan_mode"` // "deep", "fast", "baseline", or "passive"
 	Settings        ScanSettings      `json:"settings"`
 	Import          *ImportProvenance `json:"import,omitempty"`
 }
@@ -91,7 +91,7 @@ type Result struct {
 }
 
 func makeResult(engine *Engine, target, origin string, evidence []Evidence, config Config) Result {
-	mode := "active"
+	mode := "deep"
 	if config.Passive {
 		mode = "passive"
 	} else if config.BaselineOnly {

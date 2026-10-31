@@ -37,7 +37,8 @@ type InputOptions struct {
 }
 
 type ModeOptions struct {
-	FastMode       bool `long:"fast" description:"Use the reduced three-request set (active); full mode uses up to eight before redirects"`
+	FastMode       bool `long:"fast" description:"Use three active requests (normal, no-user-agent, combined probe)"`
+	DeepMode       bool `long:"deep" description:"Use up to eight active requests (default), including standalone probes"`
 	BaselineOnly   bool `long:"baseline" description:"Send only the normal request, plus allowed redirects; no active probes"`
 	ExcludeGeneric bool `long:"no-generic" description:"Skip generic anomaly checks; keep named WAF fingerprint matching"`
 }
@@ -49,7 +50,7 @@ type HTTPOptions struct {
 	MaxRedirects     int           `long:"max-redirects" value-name:"N" description:"Redirects per HTTP request; 0 follows none"`
 	RedirectPolicy   string        `long:"redirect-policy" value-name:"POLICY" unquote:"false" description:"canonical-host (www/non-www), same-origin, none or allowlist"`
 	AllowedOrigins   []string      `long:"allow-origin" value-name:"ORIGIN" unquote:"false" description:"Allowed exact HTTP(S) origin, including starting URLs; repeatable"`
-	ProbeConcurrency int           `long:"probe-concurrency" value-name:"N" description:"Full-mode active probes in parallel after the normal request (1..8)"`
+	ProbeConcurrency int           `long:"probe-concurrency" value-name:"N" description:"Deep-mode active probes in parallel after the normal request (1..8)"`
 }
 
 type LimitOptions struct {
@@ -165,7 +166,7 @@ func validateOptionDependencies(opts options, parser *flags.Parser) error {
 		return errors.New("--journal-batch-size requires --diagnostics-journal")
 	}
 	if opts.ProbeConcurrency > 1 && (opts.FastMode || opts.BaselineOnly) {
-		return errors.New("--probe-concurrency above 1 applies only to full mode; omit --fast and --baseline")
+		return errors.New("--probe-concurrency above 1 applies only to deep mode; omit --fast and --baseline")
 	}
 	return nil
 }

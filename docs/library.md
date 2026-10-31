@@ -143,8 +143,9 @@ go run . /path/to/waf-fingerprints.json http://127.0.0.1:8080
 ```
 
 `BaselineOnly` sends a normal request rather than active probes; redirects can
-still produce additional requests. Without it, the default mode sends active
-probes. Only scan targets you own or are authorized to test.
+still produce additional requests. Without it, the default deep mode sends active
+probes. The CLI also accepts an explicit `--deep` flag; library `DefaultConfig()`
+already selects that same probe set. Only scan targets you own or are authorized to test.
 
 The first Ctrl-C cancels acquisition; a subsequent Ctrl-C terminates the process
 after default interrupt handling is restored. Context cancellation cannot
@@ -193,7 +194,7 @@ bound prevents excessive worker fan-out and counter overflow; it is not a
 recommended setting or a process memory limit.
 
 `Config.ProbeConcurrency` defaults to 1; values up to 8 parallelize later
-full-mode probes after the normal response. `Config.MaxConnections == 0`
+deep-mode probes after the normal response. `Config.MaxConnections == 0`
 follows the larger of `Config.Concurrency` and `Config.ProbeConcurrency`;
 `DefaultConfig()` retains its explicit limit of 20. Set it to zero when changing
 library target or probe concurrency should also resize the connection limit. The
@@ -249,6 +250,9 @@ not inferred producer identity. See [import policy and limits](usage.md#httpx-re
 ## Versioning
 
 Result JSON uses schema 1 with optional nested import/availability metadata.
+The live `provenance.scan_mode` values are `deep` (formerly `active`, also the
+default), `fast`, or `baseline`; offline imports use `passive`. The JSON
+`settings.fast_mode` boolean and Go `Config.FastMode` remain unchanged.
 Native/live output omits that metadata when unused. CSV columns and TXT keys do
 not depend on whether import metadata is present. Incompatible documented Go API
 or report-schema changes require appropriate versioning.

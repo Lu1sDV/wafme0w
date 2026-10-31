@@ -27,8 +27,8 @@ const (
 // Zero timeouts, header/evidence limits and request budgets use finite defaults.
 // Zero MaxConnections follows the larger of Concurrency and ProbeConcurrency;
 // DefaultConfig retains an explicit 20.
-// ProbeConcurrency bounds full-mode probes after Normal (1..8, zero uses 1).
-// Normal completes before full-mode fan-out; fast mode keeps its three probes.
+// ProbeConcurrency bounds deep-mode probes after Normal (1..8, zero uses 1).
+// Normal completes before deep-mode fan-out; fast mode keeps its three probes.
 // Parallel probes share budgets, so allocation of a tight budget can vary.
 // Zero MaxRedirects means no redirects, and zero rates disable pacing.
 // AllowedOrigins, when nonempty, also restrict starting URLs.
