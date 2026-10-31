@@ -348,7 +348,7 @@ def publish(args):
                      "and structured output for pipelines.\n\n"
                      f"Source: `{args.revision}`. Compiler: `{GO_VERSION}`.\n\n"
                      f"[Migration from wafw00f]({source_url}/docs/migrating-from-wafw00f.md) · "
-                     f"[v2 evidence API]({source_url}/docs/library.md#v2-evidence-api) · "
+                     f"[Evidence API]({source_url}/docs/library.md#evidence-api) · "
                      f"[Security policy]({source_url}/SECURITY.md).\n\n"
                      f"All {len(TARGETS)} native archives passed required CI, native package tests, extracted-archive "
                      "offline smoke and binary vulnerability scans. See manifest.json for exact source, "

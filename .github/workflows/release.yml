@@ -15,7 +15,7 @@ on:
           - minor
           - major
       version:
-        description: Exact NEW version (e.g. v2.0.5 or v2.1.0-rc.1); overrides bump; leave tag empty
+        description: Exact NEW version (e.g. v3.0.5 or v3.1.0-rc.1); overrides bump; leave tag empty
         required: false
         type: string
       tag:

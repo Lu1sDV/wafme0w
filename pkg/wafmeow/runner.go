@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	httputil "github.com/Lu1sDV/wafmeow/v2/pkg/utils/http"
+	httputil "github.com/Lu1sDV/wafmeow/v3/pkg/utils/http"
 )
 
 const ResultSchemaVersion = 1

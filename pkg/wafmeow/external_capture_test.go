@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	waf "github.com/Lu1sDV/wafmeow/v2/pkg/wafmeow"
+	waf "github.com/Lu1sDV/wafmeow/v3/pkg/wafmeow"
 )
 
 // Compile the documented runner signatures from an external consumer package.

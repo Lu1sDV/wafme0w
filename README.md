@@ -55,7 +55,7 @@ structured pipelines for teams that need to detect WAF at scale.
 - **Request, redirect and connection budgets.** Bound acquisition and apply
   explicit scope rules across redirects.
 - **An importable Go library.** Use the same evidence classifier in your own
-  application through the [v2 API](docs/library.md).
+  application through the [v3 API](docs/library.md).
 
 ### From discovery to JSONL
 
@@ -90,9 +90,13 @@ Prebuilt binaries, the Go module and Homebrew install are in
 [Releases and installation](docs/releases.md#build-and-install):
 
 ```sh
-go install github.com/Lu1sDV/wafmeow/v2/cmd/wafmeow@latest
+go install github.com/Lu1sDV/wafmeow/v3/cmd/wafmeow@latest
 brew install Lu1sDV/tap/wafmeow
 ```
+
+The `/v3` Go install command requires a published v3 release. Before that
+release, build from the source checkout above; Homebrew continues installing the
+latest published stable version.
 
 ## 2. Scan an authorized target
 
@@ -138,7 +142,7 @@ match. This is not equivalent to active acquisition or proof of WAF absence.
 Use `set -o pipefail` when upstream process failures must fail the shell pipeline.
 [Encoding, limitations, limits and downstream recipes](docs/usage.md#httpx-response-import).
 
-The Go library uses module **`github.com/Lu1sDV/wafmeow/v2`**. Result JSON uses
+The Go library uses module **`github.com/Lu1sDV/wafmeow/v3`**. Result JSON uses
 schema 1; module and report versions are separate contracts.
 
 ## 3. Automate and save results

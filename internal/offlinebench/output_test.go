@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Lu1sDV/wafmeow/v2/internal/atomicfile"
+	"github.com/Lu1sDV/wafmeow/v3/internal/atomicfile"
 )
 
 // Test-only provenance is never part of the saved benchmark corpus.

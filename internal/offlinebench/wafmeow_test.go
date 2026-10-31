@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Lu1sDV/wafmeow/v2/pkg/wafmeow"
+	"github.com/Lu1sDV/wafmeow/v3/pkg/wafmeow"
 )
 
 func TestWafme0wWorkerPreservesEvidenceState(t *testing.T) {

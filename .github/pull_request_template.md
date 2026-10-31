@@ -6,7 +6,7 @@ after this change. Link a related issue if one exists.
 ## Changes
 
 Describe the relevant implementation and documentation changes. Call out effects
-on the v2 Go API, CLI flags/exit codes, JSON/CSV/TXT contracts, and evidence
+on the v3 Go API, CLI flags/exit codes, JSON/CSV/TXT contracts, and evidence
 completeness. For a proposed incompatible change, explain the versioning plan.
 
 ## Validation

@@ -11,8 +11,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Lu1sDV/wafmeow/v2/internal/httpmeta"
-	httputil "github.com/Lu1sDV/wafmeow/v2/pkg/utils/http"
+	"github.com/Lu1sDV/wafmeow/v3/internal/httpmeta"
+	httputil "github.com/Lu1sDV/wafmeow/v3/pkg/utils/http"
 )
 
 const (
