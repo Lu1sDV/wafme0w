@@ -230,7 +230,7 @@ func startScanBannerWithPlan(ctx context.Context, writer io.Writer, opts options
 	animation := &bannerAnimation{
 		requested: make(chan struct{}), done: make(chan struct{}), abort: abort,
 		footerRows: footerRows,
-		settle: func() error { return settleLogo(ctx, writer, au, terminal, footerRows) },
+		settle:     func() error { return settleLogo(ctx, writer, au, terminal, footerRows) },
 	}
 	go func() {
 		defer close(animation.done)

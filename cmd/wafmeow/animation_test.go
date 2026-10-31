@@ -382,7 +382,7 @@ func TestBannerPlanLayoutDisablesUnsafeRedraw(t *testing.T) {
 func TestWarningGroupHasBlankLineBeforeSummary(t *testing.T) {
 	au := aurora.New(aurora.WithColors(false))
 	var stderr bytes.Buffer
-	result := wafmeow.Result{Target: "owned-fixture", Evidence: []wafmeow.Evidence{{Role: "Normal"}},
+	result := wafmeow.Result{Target: "owned-fixture", Evidence: []wafmeow.EvidenceSummary{{Role: "Normal"}},
 		Outcome: wafmeow.Outcome{Diagnostics: []wafmeow.Diagnostic{{Code: "incomplete_body", Evidence: 0, Message: "response body is incomplete"}}}}
 	if err := printResultDiagnostics(&stderr, result, au); err != nil {
 		t.Fatal(err)
