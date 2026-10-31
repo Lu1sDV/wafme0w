@@ -423,11 +423,17 @@ the first result stops it immediately, without waiting for the remaining frames.
 The logo settles before any result, warning, debug line, overview or error is printed,
 including when stdout and stderr share one terminal. It never hides the cursor.
 
+The wider cat-and-brick-wall logo uses 54 columns and 13 rows, with a blank
+line after the bottom course of bricks. The `wafmeow vX.Y.Z` title and
+`WAF fingerprinting` subtitle are centered over the **wall**, not the cat.
+Long development pseudo-versions are abbreviated with an ellipsis in this
+visual header; `--version` and JSON provenance retain the complete identity.
+
 Use `--no-animation` to keep the cat still. Animation requires ANSI-capable
-interactive stdout with room for the logo and any shared-terminal plan lines;
-redirected stdout, small or unknown-size terminals, and `TERM=dumb` use a
-compact static header. Piped target
-input can still animate when stdout is an eligible terminal. `--no-colors` or
+interactive stdout wider than 54 columns, enough rows for the heading, art and
+any shared-terminal plan, and a stable measured terminal size. Redirected
+stdout, narrow or unknown-size terminals, and `TERM=dumb` use the compact
+static header. Piped target input can still animate when stdout is eligible. `--no-colors` or
 `NO_COLOR` gives static, escape-free output. Help, version, product listings,
 `--jsonl` and `--silent` never animate. If a terminal resize is detected between
 frames, startup redraws stop because terminal reflow invalidates their coordinates.
@@ -444,7 +450,10 @@ The HTTP line groups status counts (for example, `200×3 / 403×4 / 404`) rather
 than printing eight separate probes in a long horizontal run. Repeated warnings
 from different probes are grouped by reason and list their contributing roles.
 When several products match, shared HTTP evidence and warnings stay at the
-target level rather than being attributed to one product. On shared interactive
+target level rather than being attributed to one product. In color-capable
+human output, the `[ WAF MATCH ]` label stays **red**, while recognized
+product names are **green** both under the target and in the end-of-run
+results table; redirected output and `--no-colors` remain ANSI-free. On shared interactive
 terminals, warnings appear directly beneath the result; when stdout is redirected,
 stderr keeps standalone target-labeled diagnostics so messages remain attributable.
 The summary is separated from the last warning by a blank line.

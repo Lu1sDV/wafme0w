@@ -23,8 +23,8 @@ func colorizer(writer io.Writer, disabled bool) *aurora.Aurora {
 }
 
 func printBanner(writer io.Writer, au *aurora.Aurora) error {
-	text := fmt.Sprintf("%s  %s  %s\n  HTTP evidence fingerprinting | fast, deep, baseline or saved capture\n\n",
-		au.Cyan("/\\_/\\"), au.Bold("wafmeow"), terminalText(wafmeow.Version()))
+	text := fmt.Sprintf("%s  %s  %s\n  WAF fingerprinting\n\n",
+		au.Cyan("/\\_/\\"), au.Bold("wafmeow"), logoDisplayVersion())
 	return writeLogo(writer, text)
 }
 
@@ -149,7 +149,7 @@ func printResult(stdout, stderr io.Writer, result wafmeow.Result, suppressWarnin
 		detailIndent = "    "
 	}
 	for _, match := range result.Outcome.Matches {
-		fmt.Fprintf(&group, "  %s\n", au.Bold(au.Red(terminalText(match.Product))))
+		fmt.Fprintf(&group, "  %s\n", au.Bold(au.Green(terminalText(match.Product))))
 		indices := supportingEvidence(match, len(result.Evidence))
 		if len(indices) == 0 {
 			group.WriteString("    matched  supporting observation unavailable\n")

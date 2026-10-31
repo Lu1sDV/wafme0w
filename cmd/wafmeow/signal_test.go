@@ -193,6 +193,28 @@ func TestSignalOutcomeColors(t *testing.T) {
 	}
 }
 
+func TestHumanMatchedProductGreenWhileOutcomeRemainsRed(t *testing.T) {
+	result := signalResult(wafmeow.Complete)
+	result.Outcome.Matches = []wafmeow.Match{{
+		Product: "Cloudflare (Cloudflare Inc.)",
+		Fingerprints: []wafmeow.FingerprintMatch{{Evidence: 0}},
+	}}
+	var out bytes.Buffer
+	au := aurora.New(aurora.WithColors(true))
+	if err := printResult(&out, io.Discard, result, true, au, au); err != nil {
+		t.Fatal(err)
+	}
+	text := out.String()
+	outcome := fmt.Sprint(au.Bold(au.Red("[ WAF MATCH ]")))
+	name := fmt.Sprint(au.Bold(au.Green("Cloudflare (Cloudflare Inc.)")))
+	if !strings.HasPrefix(text, outcome+"  ") || !strings.Contains(text, "  "+name+"\n") {
+		t.Fatalf("WAF outcome should remain red while the detected name is green: %q", text)
+	}
+	if strings.Contains(text, fmt.Sprint(au.Bold(au.Red("Cloudflare (Cloudflare Inc.)")))) {
+		t.Fatalf("detected WAF name was still red: %q", text)
+	}
+}
+
 func TestSignalMatchedObservationsAreAttributedPerProduct(t *testing.T) {
 	result := signalResult(wafmeow.Incomplete)
 	result.Evidence = []wafmeow.EvidenceSummary{

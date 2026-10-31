@@ -220,7 +220,7 @@ func runContextWithTerminal(ctx context.Context, args []string, stdin io.Reader,
 		}
 		return 0
 	}
-	report, err = openHumanReport(opts)
+	report, err = openHumanReport(opts, diagnostics)
 	if err != nil {
 		return finish(err)
 	}

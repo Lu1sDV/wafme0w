@@ -333,7 +333,7 @@ def run_suite(binary, output):
             position = out.index(first.encode())
             require(not motion(out[position:]), 'animation redrew after the first result')
             if shared:
-                require(out.index(b'wafmeow') < out.index(b'RUN PLAN') < out.index(b'\x1b[11A'),
+                require(out.index(b'wafmeow') < out.index(b'RUN PLAN') < out.index(b'\x1b[15A'),
                         'logo must precede the two-line plan and first redraw')
                 require(b'\x1b[2B' in out, 'shared redraw did not restore cursor below the plan')
             terminal_cleanup(process)
@@ -361,6 +361,40 @@ def run_suite(binary, output):
             require('\n\nSUMMARY' in out, 'warning and summary are not separated')
             require('   product  ' not in out and 'matched on  ' not in out,
                     'verbose legacy product formatting resurfaced')
+            raw = bytes(process.streams['stdout'])
+            green_name = b'\x1b[1;32mFixture WAF\x1b[0m'
+            require(raw.count(green_name) == 2,
+                    'WAF name is not green in both result and final table')
+            require(b'\x1b[1;31m[ WAF MATCH ]\x1b[0m' in raw,
+                    'WAF outcome lost its red status')
+            terminal_cleanup(process)
+
+        def rich_static(start, target, _directory):
+            url, gate = target('wide')
+            process = start([*base, '--target', url, '--no-animation'])
+            process.wait_for(gate.received.is_set, 'owned wide-logo request')
+            gate.release.set()
+            process.finish()
+            output = plain(process.streams['stdout'])
+            lines = output.splitlines()
+            require('WAF fingerprinting' in output and 'HTTP evidence fingerprinting' not in output,
+                    'wide banner has the wrong subtitle')
+            title = next(line for line in lines if 'wafmeow ' in line)
+            subtitle = next(line for line in lines if 'WAF fingerprinting' in line)
+            brick = '+-------+-------+-------+-------+'
+            borders = [i for i, line in enumerate(lines) if line.endswith(brick)]
+            require(borders and borders[-1]+1 < len(lines) and lines[borders[-1]+1] == '',
+                    'no blank line after the bottom wall border')
+            wall_center = lines[borders[0]].index(brick) + len(brick)/2
+            for line, label in [(title, 'wafmeow '), (subtitle, 'WAF fingerprinting')]:
+                col = line.index(label)
+                width = len(line[col:].rstrip())
+                require(abs(col + width/2 - wall_center) <= 1,
+                        f'{label!r} is not centered over the brick wall')
+            require('=( o.o )=' in output and '>^<' in output,
+                    'final cat lost the richer ASCII detail')
+            require(not motion(bytes(process.streams['stdout'])),
+                    'explicit static banner used terminal redraw controls')
             terminal_cleanup(process)
 
         def disabled(start, target, directory, *, flags=(), environment=None, stdout_tty=True,
@@ -417,6 +451,7 @@ def run_suite(binary, output):
             case('combined stdout/stderr PTY preserves the plan below the cat',
                  lambda *args: animated(*args, shared=True))
             case('human WAF evidence and warning stay nested on a shared terminal', nested_match)
+            case('wide static ASCII logo is centered and ends with whitespace', rich_static)
             for name, kwargs in [
                 ('--no-animation', {'flags': ['--no-animation']}),
                 ('--no-colors', {'flags': ['--no-colors']}),
@@ -425,6 +460,7 @@ def run_suite(binary, output):
                 ('TERM=dumb', {'environment': {'TERM': 'dumb'}}),
                 ('TERM empty', {'environment': {'TERM': ''}}),
                 ('narrow stdout', {'width': 30, 'stdin_kind': 'tty'}),
+                ('wide ASCII width gate', {'width': 54}),
                 ('short stdout', {'height': 4}),
                 ('redirected stdout with terminal stdin', {'stdout_tty': False, 'stdin_kind': 'tty'}),
                 ('JSONL on a terminal', {'flags': ['--jsonl'], 'kind': 'jsonl'}),
