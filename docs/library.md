@@ -1,27 +1,27 @@
 # Go library
 
-[Quick start](../README.md) · [API reference](https://pkg.go.dev/github.com/Lu1sDV/wafmeow/v2/pkg/wafmeow)
+[Quick start](../README.md) · [API reference](https://pkg.go.dev/github.com/Lu1sDV/wafmeow/v3/pkg/wafmeow)
 
-The module path is `github.com/Lu1sDV/wafmeow/v2`. Use keyed literals for exported
+The module path is `github.com/Lu1sDV/wafmeow/v3`. Use keyed literals for exported
 structs. Go module versions and result JSON schema versions are separate contracts;
 see [versioning](#versioning).
 
 ## Add the module
 
-Use Go 1.26 or newer. In your application's module, select a reviewed v2
-tag or commit:
+Use Go 1.26 or newer. In your application's module, select a reviewed v3
+tag or commit after the first v3 release is published:
 
 ```sh
 go mod init example.com/waf-client # Skip if go.mod already exists.
-go get 'github.com/Lu1sDV/wafmeow/v2@<v2-tag-or-commit>'
+go get 'github.com/Lu1sDV/wafmeow/v3@<v3-tag-or-commit>'
 ```
 
-Replace the placeholder with an actual revision; do not use a v1 release with
-the `/v2` import path. To develop against a local source checkout instead:
+Replace the placeholder with an actual revision; do not use a v2 release with
+the `/v3` import path. To develop against a local source checkout instead:
 
 ```sh
-go mod edit -replace github.com/Lu1sDV/wafmeow/v2=/absolute/path/to/wafmeow
-go get github.com/Lu1sDV/wafmeow/v2
+go mod edit -replace github.com/Lu1sDV/wafmeow/v3=/absolute/path/to/wafmeow
+go get github.com/Lu1sDV/wafmeow/v3
 ```
 
 ## Classify a saved response
@@ -35,7 +35,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/Lu1sDV/wafmeow/v2/pkg/wafmeow"
+	"github.com/Lu1sDV/wafmeow/v3/pkg/wafmeow"
 )
 
 func main() {
@@ -85,7 +85,7 @@ import (
 	"os/signal"
 	"strings"
 
-	"github.com/Lu1sDV/wafmeow/v2/pkg/wafmeow"
+	"github.com/Lu1sDV/wafmeow/v3/pkg/wafmeow"
 )
 
 func main() {
@@ -200,11 +200,11 @@ follows the larger of `Config.Concurrency` and `Config.ProbeConcurrency`;
 library target or probe concurrency should also resize the connection limit. The
 CLI selects zero by default.
 
-## v2 evidence API
+## Evidence API
 
-v2 adds explicit channel availability and import provenance to the evidence API.
-Applications migrating from v1 must update their import paths and use keyed
-struct literals.
+v2 introduced explicit channel availability and import provenance to the evidence
+API; v3 retains these semantics. Applications migrating from an earlier module
+major must update their import paths and use keyed struct literals.
 
 `Evidence.Availability` and `EvidenceSummary.Availability` are optional
 `*EvidenceAvailability` values containing `Status`, `Headers`, `Reason`, and
@@ -270,23 +270,26 @@ the current schema number or add a CLI alias.
 
 ### Module path
 
-Earlier releases were published from the `github.com/Lu1sDV/wafme0w` repository
-path, including `github.com/Lu1sDV/wafme0w/v2` for the v2 line. The repository
-and module path are now `github.com/Lu1sDV/wafmeow`, so update imports, `go.mod`
-requirements and `replace` directives to `github.com/Lu1sDV/wafmeow/v2`:
+The v3 module is `github.com/Lu1sDV/wafmeow/v3`. Migrate applications using
+`github.com/Lu1sDV/wafmeow/v2` by updating their Go imports, `go.mod`
+requirements, and `replace` directives. Once v3.0.0 is published:
 
 ```sh
-go get 'github.com/Lu1sDV/wafmeow/v2@<v2-tag-or-commit>'
+go get github.com/Lu1sDV/wafmeow/v3@v3.0.0
 ```
 
-The documented Go API and result schema 1 are unchanged by the move; only the
-module identity changed. Module resolution compares the path declared in
-`go.mod`, so the new path resolves by version only after the first release is
-tagged from it; until then `@latest` selects the last old-path tag and fails
-with a module path mismatch. Conversely, a requirement that still names
-`wafme0w` keeps resolving to the last release published under that path and
-never observes later versions, even though GitHub redirects the old repository
-URL. The CLI binary and container entrypoint are named `wafmeow`.
+Before the first v3 tag is published, test an unreleased checkout with a local
+`replace` directive as shown above. `@latest` may otherwise resolve a v2 tag
+whose declared module path does not match `/v3`. The v2 and v3 paths are distinct
+Go modules: leaving `/v2` in a requirement or import keeps consumers on v2.
+The major-version migration does not itself change the public evidence API,
+CLI contract, or result JSON schema 1.
+
+Historical releases also used the former `github.com/Lu1sDV/wafme0w`
+repository path, including `github.com/Lu1sDV/wafme0w/v2`. GitHub redirects
+the old repository URL, but Go module requirements do not automatically migrate
+to the renamed `wafmeow` path. The CLI binary and container entrypoint remain
+named `wafmeow`.
 
 See [CLI limits](usage.md#inputs-and-limits), [browser capture](browser.md), and
 [deployment boundaries](operations.md#deployment-boundaries) for the remaining

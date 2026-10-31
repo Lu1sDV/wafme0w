@@ -138,7 +138,7 @@ its separate dependencies, scope and resource limits.
 `--evidence` reads response captures, not wafmeow result reports. Native JSONL
 records contain `target` and `evidence` observations with the response channels
 needed for classification; see the [example captures](../assets/demo/captures.jsonl)
-and [evidence contract](library.md#v2-evidence-api). `--jsonl`, `--output` and
+and [evidence contract](library.md#evidence-api). `--jsonl`, `--output` and
 diagnostics journals contain results and evidence summaries, not the original
 response bodies, and cannot be replayed as native captures. Use
 `--evidence-format httpx` for supported httpx response exports.

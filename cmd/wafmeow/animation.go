@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Lu1sDV/wafmeow/v2/pkg/wafmeow"
+	"github.com/Lu1sDV/wafmeow/v3/pkg/wafmeow"
 	"github.com/logrusorgru/aurora/v4"
 )
 

@@ -2,13 +2,13 @@
 
 [Quick start](../README.md) · [CLI usage](usage.md) · [Result semantics](operations.md)
 
-This guide compares **wafw00f 2.4.2** with the wafmeow v2 CLI. Flag spellings and
+This guide compares **wafw00f 2.4.2** with the wafmeow v3 CLI. Flag spellings and
 input/output schemas differ; wafmeow is not a drop-in replacement. The upstream
 reference is the [2.4.2 CLI source](https://github.com/EnableSecurity/wafw00f/blob/v2.4.2/wafw00f/main.py).
 
 ## Common commands
 
-| Intent | wafw00f 2.4.2 | wafmeow v2 |
+| Intent | wafw00f 2.4.2 | wafmeow v3 |
 | --- | --- | --- |
 | Scan one URL | `wafw00f URL` | `wafmeow --target URL --fast` or `wafmeow -t URL --fast` |
 | Scan several direct URLs | `wafw00f URL1 URL2` | Repeat `--target URL`; one URL per flag occurrence |
@@ -91,6 +91,6 @@ together when limiting traffic.
 machine-readable; human summaries and debug messages go to stderr. See
 [operations](operations.md) for publication and journal recovery details.
 
-For Go integrations, import `github.com/Lu1sDV/wafmeow/v2/pkg/wafmeow` and use
+For Go integrations, import `github.com/Lu1sDV/wafmeow/v3/pkg/wafmeow` and use
 keyed public struct literals. The module major and result JSON schema 1 are
 separate contracts.

@@ -9,7 +9,7 @@ on `main`. Leave **bump** as `patch` and both **version** and **tag** empty for 
 normal fix release.
 The workflow chooses the next version, creates its annotated tag, runs all release
 gates, publishes the GitHub archives and GHCR images, and updates the Homebrew tap.
-For example, after `v2.0.0`, the default selection is `v2.0.1`.
+For example, after `v3.0.0`, the default selection is `v3.0.1`.
 
 The same action is available from an authenticated GitHub CLI:
 
@@ -17,29 +17,32 @@ The same action is available from an authenticated GitHub CLI:
 gh workflow run release.yml --repo Lu1sDV/wafmeow --ref main -f bump=patch
 ```
 
-Choose `minor` for compatible features or `major` for an incompatible release;
-the numbers are calculated from the highest published stable version. Drafts
+For the initial v3 release after this migration merges, select **major** from
+the latest published v2 stable version (or set **version** to `v3.0.0`).
+This starts the release workflow; merging the PR alone does not publish v3.
+Choose `minor` for later compatible features or `major` for another incompatible
+release; increments are calculated from the highest published stable version. Drafts
 and prereleases do not change that baseline. A major bump must already agree
 with the candidate's Go module path. This is an explicit release policy, not
 an attempt to infer compatibility from commit messages.
 
 ### Choose an exact version
 
-To choose the number yourself, enter a **new** version such as `v2.0.5` in
+To choose the number yourself, enter a **new** version such as `v3.0.5` in
 **version**, leave **tag** empty, and click **Run workflow** on `main`.
 **version** overrides **bump**. The workflow creates that exact tag and runs the
 same validation, GitHub release, GHCR and stable Homebrew delivery steps; there
 is no release PR, version-file commit, or local tag command.
 
 ```sh
-gh workflow run release.yml --repo Lu1sDV/wafmeow --ref main -f version=v2.0.5
+gh workflow run release.yml --repo Lu1sDV/wafmeow --ref main -f version=v3.0.5
 ```
 
 | Intent | bump | version | tag |
 | --- | --- | --- | --- |
 | Next patch automatically | `patch` | empty | empty |
-| Choose a new stable version | ignored | `v2.0.5` | empty |
-| Choose a new prerelease | ignored | `v2.1.0-rc.1` | empty |
+| Choose a new stable version | ignored | `v3.0.5` | empty |
+| Choose a new prerelease | ignored | `v3.1.0-rc.1` | empty |
 | Recover an existing candidate | ignored | empty | existing tag |
 
 Use canonical `vMAJOR.MINOR.PATCH[-PRERELEASE]` syntax, including the leading `v`,
@@ -47,12 +50,13 @@ without whitespace or build metadata. A new version must be greater than the
 highest published stable release, agree with the source's Go module major, and
 have no existing tag or release (including a draft). Selecting both **version**
 and **tag** is rejected before credential preflight or tag creation. With the
-current `/v2` module, `v3.0.0` requires a module migration first.
+current `/v3` module, only `v3.*` candidates are valid; tags from v2 cannot
+be released from this source.
 
 An exact prerelease publishes its archives and the configured GHCR channel but
 does not become latest or update the stable Homebrew formula. After a custom
-stable version such as `v2.0.5` is published, the next automatic patch is
-`v2.0.6`, not `v2.0.1`. A rerun recovers only the exact version and source owned
+stable version such as `v3.0.5` is published, the next automatic patch is
+`v3.0.6`, not `v3.0.1`. A rerun recovers only the exact version and source owned
 by its original workflow run; it never substitutes another version.
 
 The source SHA is fixed when you click **Run workflow**. A new release requires
@@ -163,10 +167,10 @@ production deployment requires a newly built, scanned release that passes the
 
 ### Install a published Go module
 
-The library and CLI use the v2 module path. Once a v2 release is published:
+The library and CLI use the v3 module path. Once a v3 release is published:
 
 ```sh
-go install github.com/Lu1sDV/wafmeow/v2/cmd/wafmeow@latest
+go install github.com/Lu1sDV/wafmeow/v3/cmd/wafmeow@latest
 ```
 
 This command installs published module versions, not unreleased source. Use the
@@ -358,8 +362,8 @@ committed candidate; local cross-builds do not establish native runtime behavior
 
 Tags use `vMAJOR.MINOR.PATCH[-PRERELEASE]` without build metadata. The tag's major
 version must agree with `go.mod` at the frozen candidate SHA, including when a
-manual dispatch runs from another checkout. This source uses `/v2`, so its
-release tags must be `v2.*`; CI derives its synthetic smoke tag from the module.
+manual dispatch runs from another checkout. This source uses `/v3`, so its
+release tags must be `v3.*`; CI derives its synthetic smoke tag from the module.
 Prereleases do not become latest, and older stable releases cannot replace a higher stable
 release as latest. Cross-tag publication is serialized without cancelling
 in-progress publication.
@@ -400,8 +404,9 @@ Findings and audit errors fail validation, and reports are retained for review.
 
 A source fix does not clear findings in an already published binary. Rebuild,
 scan, validate, and publish a new release; deploy the new artifact rather than
-assuming a source update repairs existing downloads. The current `/v2` source
-must supersede v1.0.0 through a new validated `v2.*` release. Do not replace or
-overwrite the old tag or its assets. Until that release is published, use a
-reviewed source revision built with the patched toolchain above.
+assuming a source update repairs existing downloads. The `/v3` source must be
+published as a newly validated `v3.*` release; existing v1 and v2 archives remain
+historical, and their tags or assets must not be overwritten. Until the new
+release is published, use a reviewed source revision built with the patched
+toolchain above.
 

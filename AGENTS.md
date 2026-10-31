@@ -53,7 +53,7 @@ The scoped formatting check excludes local skills and archived worktrees; `gofmt
 
 ## Code Conventions & Common Patterns
 
-- The current Go module is `github.com/Lu1sDV/wafmeow/v2`; result JSON remains schema 1. Use keyed public struct literals. Preserve documented Go APIs, CLI flags/exit codes, and JSON/CSV/TXT contracts; incompatible changes require deliberate versioning, not silent drift or compatibility aliases. See [library contracts](docs/library.md#v2-evidence-api).
+- The current Go module is `github.com/Lu1sDV/wafmeow/v3`; result JSON remains schema 1. Use keyed public struct literals. Preserve documented Go APIs, CLI flags/exit codes, and JSON/CSV/TXT contracts; incompatible changes require deliberate versioning, not silent drift or compatibility aliases. See [library contracts](docs/library.md#evidence-api).
 - Follow `gofmt`, existing package-local helpers, and table-driven `TestXxx`/`BenchmarkXxx` naming. Prefer standard-library primitives and existing dependencies over new abstractions.
 - Wrap contextual errors with `%w` and inspect causes with `errors.Is`. Target failures belong in results; configuration, input, context, and sink failures abort the runner.
 - Inject dependencies through `Config.Client`, `io.Reader`/`io.Writer`, and callbacks. Propagate contexts into transports; use `Config.CancelInput` to wake blocking readers. Preserve bounded queues and serial result emission.

@@ -24,12 +24,22 @@ import smoke
 class ReleasePolicyTests(unittest.TestCase):
     def test_tag_major_must_match_the_candidate_module(self):
         for tag, module in (("v0.9.0", "example.test/tool"), ("v1.2.0", "example.test/tool"),
-                            ("v2.0.0-rc.1", "example.test/tool/v2"), ("v12.1.0", "example.test/tool/v12")):
+                            ("v2.0.0-rc.1", "example.test/tool/v2"), ("v3.0.0", "example.test/tool/v3"),
+                            ("v12.1.0", "example.test/tool/v12")):
             release.require_module_version(tag, module)
         for tag, module in (("v1.1.0", "example.test/tool/v2"), ("v3.0.0", "example.test/tool/v2"),
-                            ("v2.0.0", "example.test/tool"), ("v1.0.0", "example.test/tool/v1")):
+                            ("v2.0.0", "example.test/tool"), ("v2.0.1", "example.test/tool/v3"),
+                            ("v1.0.0", "example.test/tool/v1")):
             with self.subTest(tag=tag, module=module), self.assertRaises(ValueError):
                 release.require_module_version(tag, module)
+
+    def test_repository_module_accepts_v3_and_rejects_v2_tags(self):
+        module_file = Path(__file__).resolve().parents[1] / "go.mod"
+        module = release.module_path(module_file.read_text(encoding="utf-8"))
+        self.assertEqual(module, "github.com/Lu1sDV/wafmeow/v3")
+        release.require_module_version("v3.0.0", module)
+        with self.assertRaisesRegex(ValueError, "major"):
+            release.require_module_version("v2.0.1", module)
 
     def test_candidate_module_is_read_from_commit_not_dispatch_checkout(self):
         with tempfile.TemporaryDirectory() as temporary:

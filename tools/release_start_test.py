@@ -101,6 +101,13 @@ class ManualReleaseTests(unittest.TestCase):
         self.validate.assert_called_once_with("v2.0.1", REVISION)
         self.prepare.assert_called_once_with("v2.0.1", expected_revision=REVISION)
 
+    def test_first_v3_release_from_published_v2_major_bump(self):
+        self.releases.return_value = [published("v2.0.0"), published("v2.0.1")]
+        self.assertEqual(release_start.start("major", REVISION), "v3.0.0")
+        self.assertIn("refs/tags/v3.0.0", self.github.refs)
+        self.validate.assert_called_once_with("v3.0.0", REVISION)
+        self.prepare.assert_called_once_with("v3.0.0", expected_revision=REVISION)
+
     def test_exact_version_overrides_each_increment_without_calculating_a_bump(self):
         for bump in ("patch", "minor", "major"):
             with self.subTest(bump=bump):
