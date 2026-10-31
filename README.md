@@ -148,43 +148,34 @@ Configuration, input and output failures exit **1**; cancellation exits **130**.
 
 ## Benchmarks
 
-### Recorded live CLI comparison
+Median elapsed time for **600 live HTTP/HTTPS targets** — 500 non-CDN plus 100
+known-CDN targets sampled from Tranco top 10,000 — with **three runs per
+configuration** on a **Hetzner Helsinki VPS** (4 vCPU, 7.6 GiB RAM), completed
+31 October 2026. Lower is better.
 
-Median elapsed time for **2,000 authorized HTTPS targets**, with **three runs per
-configuration**, completed on 30 October 2026. Lower is better.
-
-**CPU:** Intel Core Ultra 9 275HX (4 logical CPUs allowed) · **RAM:** 32 GB.
+[Target selection, full VPS specifications, methodology, historical runs and
+offline conformance checks](docs/benchmarks.md).
 
 | Workers / processes | wafw00f 2.4.2 | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow fast | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow full | Speedup fast | Speedup full |
 | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | 70m 27s | 29m 29s | 78m 05s | **2.39×** | 0.90× |
-| 5 | 15m 26s | 7m 27s | 14m 30s | **2.07×** | **1.06×** |
-| 10 | 7m 46s | 3m 48s | 7m 18s | **2.04×** | **1.07×** |
-| 50 | 3m 45s | 49s | 1m 40s | **4.55×** | **2.24×** |
-| 100 | 2m 45s | 28s | 1m 02s | **5.90×** | **2.66×** |
+| 1 | 31m 38s | 7m 49s | 15m 50s | **4.04×** | **2.00×** |
+| 5 | 6m 53s | 2m 18s | 3m 10s | **2.99×** | **2.17×** |
+| 10 | 4m 47s | 1m 16s | 1m 35s | **3.79×** | **3.03×** |
+| 50 | 1m 59s | 16.1s | 26.6s | **7.40×** | **4.49×** |
+| 100 | 1m 52s | 9.0s | 21.9s | **12.45×** | **5.12×** |
 
-**Detection results at 100 workers/processes** — targets out of 2,000, shown as
-the range across three runs.
+**Detection compared at 100 workers/processes** — targets out of 600, range
+across three runs.
 
 | Targets with… | wafw00f 2.4.2 | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow fast | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow full |
 | --- | ---: | ---: | ---: |
-| Named WAF match | 856–858 | 853–858 | 845–852 |
-| Generic WAF signal | 411–423 | 424–430 | 492–504 |
-| Returned result | 1,534–1,545 | 2,000 | 2,000 |
-| Complete evidence | Not reported | 1,437–1,460 | 1,368–1,410 |
+| Named WAF match | 155–157 | 157–158 | 157–160 |
+| Generic WAF signal | 121–126 | 118–120 | 145–146 |
+| Returned result | 580–581 | 600 | 600 |
+| Complete evidence | Not reported | 529–531 | 523–528 |
 
-Named matches and generic signals can overlap, including on incomplete results.
-Different probes, TLS policies and evidence completeness prevent an accuracy
-comparison. [Full results, methodology and build details](docs/benchmarks.md#live-cli-comparison).
-
-The 2,000-target table predates HTTP/1 probe reuse
-([ADR 0002](adrs/0002-http1-connection-reuse-for-probes.md)). At one worker, the
-reused-connection full build completed a **500-target median of 580.9 s** versus
-**874.6 s** for wafw00f 2.4.2 (1.51×); on the first 100 entries it was 96.4 s
-versus 143.3 s (1.49×) and 173.4 s for the fresh-connection build (44% less
-time). See the
-[connection-reuse comparison](docs/benchmarks.md#connection-reuse-comparison)
-for per-block accounting, paired A/B, scaling and controlled loopback results.
+Named and generic signals can overlap; these counts are not an accuracy comparison.
+[Detection semantics, transport checks and per-block accounting](docs/benchmarks.md#600-target-vps-comparison).
 
 ### Reproducible offline comparison
 
