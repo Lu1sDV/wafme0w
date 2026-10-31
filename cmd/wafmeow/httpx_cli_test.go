@@ -322,7 +322,7 @@ func TestCLICompleteClassificationDoesNotImplyCompleteChannels(t *testing.T) {
 		t.Fatalf("native classification exit=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
 	for _, output := range []string{stdout, stderr} {
-		if !strings.Contains(output, "classification complete") || !strings.Contains(output, "body unknown") ||
+		if !(strings.Contains(output, "classification complete") || strings.Contains(output, "classification  complete")) || !strings.Contains(output, "body unknown") ||
 			strings.Contains(output, "[ NO WAF MATCH ]") || strings.Contains(output, "NO WAF MATCH | 1") {
 			t.Errorf("channel availability hidden by classification completeness: %q", output)
 		}
