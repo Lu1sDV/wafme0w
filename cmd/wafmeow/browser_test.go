@@ -83,7 +83,7 @@ func TestBrowserArtifactsRejectAliasesAndCancellation(t *testing.T) {
 		}
 	}
 	for _, opts := range []options{
-		{BrowserOptions: BrowserOptions{SaveScreenshots: real}, OutputOptions: OutputOptions{JournalFile: alias}},
+		{BrowserOptions: BrowserOptions{SaveScreenshots: real}, DiagnosticOptions: DiagnosticOptions{JournalFile: alias}},
 		{BrowserOptions: BrowserOptions{Browser: "navigate", BrowserPath: alias}, OutputOptions: OutputOptions{OutputFile: real}},
 	} {
 		if err := checkFileCollisions(opts, nil, false, io.Discard, io.Discard); err == nil {

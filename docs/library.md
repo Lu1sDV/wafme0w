@@ -250,12 +250,23 @@ not inferred producer identity. See [import policy and limits](usage.md#httpx-re
 ## Versioning
 
 Result JSON uses schema 1 with optional nested import/availability metadata.
+Native/live output omits import metadata when unused. CSV columns and TXT keys
+do not depend on whether that metadata is present.
+
 The live `provenance.scan_mode` values are `deep` (formerly `active`, also the
 default), `fast`, or `baseline`; offline imports use `passive`. The JSON
 `settings.fast_mode` boolean and Go `Config.FastMode` remain unchanged.
-Native/live output omits that metadata when unused. CSV columns and TXT keys do
-not depend on whether import metadata is present. Incompatible documented Go API
-or report-schema changes require appropriate versioning.
+Historical schema-1 reports can contain `active`. Consumers supporting both old
+and current builds must handle both values and preserve the recorded provenance;
+current builds emit `deep` for that mode. Use `provenance.program_version` and the
+evidence roles when the exact probe inventory matters; schema 1 alone does not
+identify the producer's supported mode values.
+
+Changes to documented enum values are consumer-visible contract changes even
+when the JSON structure is unchanged. They require an explicit migration and
+release/versioning decision, as do other incompatible documented Go API or
+report-schema changes. The existing `active` to `deep` migration does not change
+the current schema number or add a CLI alias.
 
 ### Module path
 

@@ -17,7 +17,10 @@ generic anomalies are separate from product matches.
 | 130 | Cancellation |
 
 Treat nonzero exit codes as a reason to inspect both the results and stderr, not
-as evidence that no output was produced.
+as evidence that no output was produced. `--strict` checks evidence and capture
+quality: a complete named match can exit 0, while an incomplete no-match can exit
+2. A policy that fails on a named finding must inspect `outcome.matches`
+separately; generic signals are not named matches.
 
 ## Reports and durable journals
 
@@ -27,10 +30,22 @@ the previous report. Later summary or journal-close errors can return exit 1
 after the new report has been published. Streamed results and journal entries may
 also exist after a failed or cancelled run.
 
+Empty or blank-only target input is a successful zero-target run, even with
+`--strict`. It publishes an empty-result report, replacing any previous report;
+JSON uses `[]`, JSONL and TXT contain no result records, and CSV retains its
+header. Jobs that require targets must validate the upstream producer's exit
+status and result count separately. Shell `pipefail` catches upstream failures,
+but cannot turn an upstream success with zero URLs into an error.
+
+Use `.json`, `.jsonl`, `.csv` or `.txt` filenames explicitly. Other extensions
+(including misspellings) select TXT, and `--output -` names a literal file.
+Result reports and journals are not replayable response captures; use the
+[documented capture formats](usage.md#offline-captures) for `--evidence`.
+
 Enable a body-free result and diagnostics journal when durable records are needed:
 
 ```sh
-./wafmeow --input authorized-targets.txt --baseline --jsonl \
+./wafmeow --target-file authorized-targets.txt --fast --jsonl \
   --output results.json --diagnostics-journal results.journal.jsonl --strict
 ```
 
@@ -62,6 +77,8 @@ rates for the deployment. Active mode sends exploit-shaped payloads, including a
 JNDI canary that can make a vulnerable target attempt a loopback LDAP connection;
 see [active probe payloads](usage.md#active-probe-payloads). Size worker concurrency and memory limits together;
 the retained-evidence budget is not a process RSS cap.
+Rate/connection-slot waits consume the HTTP deadlines, so tune rates and worker
+counts together; see [rate and deadline tuning](usage.md#rate-and-deadline-tuning).
 
 A hosted service accepting arbitrary targets additionally needs independently
 enforced egress and DNS/IP destination policies, isolated jobs, CPU/memory limits,

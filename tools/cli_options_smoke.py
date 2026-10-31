@@ -218,14 +218,19 @@ help_result = subprocess.run([str(BINARY), '--help'], capture_output=True, text=
 help_text = help_result.stdout
 help_normalized = ' '.join(help_text.split())
 help_checks = {
-    'groups': all(word+':' in help_text for word in ['Input', 'Detection', 'HTTP requests', 'Limits', 'Output', 'Browser', 'Information']),
+    'groups': all(word+':' in help_text for word in ['Input', 'Scan modes', 'Output', 'HTTP requests', 'Rate and concurrency', 'Evidence limits', 'Offline import and matching', 'Diagnostics and journals', 'Browser', 'Information']),
     'canonical_and_alias': '--target-file=FILE' in help_text and '--input=FILE' in help_text,
     'short_flags': all('-'+flag+',' in help_text for flag in ['t', 'I', 'O', 'H', 'c']),
     'machine_output_boundary': '--jsonl' in help_text and '- is a literal file' in help_normalized,
     'default_timeout': '(default: 5s)' in help_text,
     'default_concurrency': '(default: 20)' in help_text,
-    'explicit_stdin': 'piped stdin supplies target URLs' in help_text,
+    'explicit_stdin': 'piped stdin supplies target URLs' in help_normalized,
     'exit_codes': all(code in help_text for code in ['Exit codes:', '  0 ', '  1 ', '  2 ', '  130 ']),
+    'tasks_before_reference': 0 <= help_text.find('wafmeow --target URL --fast') < help_text.find('--target=URL'),
+    'accurate_import_limit': 'live responses and httpx imports' in help_normalized,
+    'deadline_waits': 'including local rate/connection waits' in help_normalized,
+    'empty_and_strict_contracts': 'Empty input succeeds' in help_normalized and 'Matches alone do not fail' in help_normalized,
+    'capture_report_distinction': 'captures, not result reports' in help_normalized,
 }
 (ROOT/'help.txt').write_text(help_text)
 summary = {

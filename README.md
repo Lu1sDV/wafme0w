@@ -64,12 +64,12 @@ structured pipelines for teams that need to detect WAF at scale.
 set -o pipefail
 subfinder -d "${AUTHORIZED_DOMAIN:?set an authorized domain}" -silent |
   httpx -silent |
-  wafmeow --target-file - --baseline --jsonl --silent
+  wafmeow --target-file - --fast --jsonl --silent
 ```
 
-This pipeline sends normal HTTP requests with `--baseline`. Remove that flag
-only when the active probes are within your testing scope. For existing httpx
-response exports, use the [offline import pipeline](#projectdiscovery-httpx-pipelines).
+This pipeline uses `--fast` for a quick active scan of each discovered URL.
+For existing httpx response exports, use the
+[offline import pipeline](#projectdiscovery-httpx-pipelines).
 
 ## 1. Build
 
@@ -98,20 +98,27 @@ brew install Lu1sDV/tap/wafmeow
 
 ```sh
 # Use your own local HTTP server on port 8080.
-./wafmeow --target http://127.0.0.1:8080 --fast --jsonl
+./wafmeow --target http://127.0.0.1:8080 --fast
 ```
 
-Use `--target` / `-t` for a URL and repeat it for several URLs. Use
-`--target-file PATH` for a file of URL lines, or `--target-file -` for stdin.
+This prints a human-readable result. Use `--target` / `-t` for a URL and repeat
+it for several URLs. Use `--target-file PATH` for a file of URL lines, or
+`--target-file -` for stdin.
 `--input PATH` and `-I PATH` remain equivalent spellings of `--target-file PATH`.
 Choose one input source; saved responses use `--evidence` for offline analysis.
 
-`--baseline` sends a normal request; `--deep` (the default) sends up to eight
-active requests, while `--fast` sends three (normal, no-user-agent and the combined
-probe). `--fast`, `--deep` and `--baseline` are mutually exclusive.
-Redirects remain subject to scope and request budgets. See
-[active probe payloads](docs/usage.md#active-probe-payloads) before enabling
-active mode against a target you do not own.
+| Goal | Choose | Collection |
+| --- | --- | --- |
+| Quick active fingerprinting | `--fast` | Normal, no-user-agent and combined probe |
+| Broader active probing | `--deep` | Eight selected request types; also the default when no mode is given |
+| Inspect normal responses only | `--baseline` | One normal request, without active probes |
+| Reuse saved responses | `--evidence FILE` | Offline classification, without new requests |
+
+`--baseline` can find fingerprints already present in an ordinary response. Use
+it when you want normal HTTP inspection without active probes; it is not a setup
+step for `--fast` or `--deep`. The three live modes are mutually exclusive, and
+redirects and budgets affect actual request counts. See
+[collection modes and payloads](docs/usage.md#collection-modes) for the trade-offs.
 
 ### ProjectDiscovery httpx pipelines
 
@@ -138,14 +145,17 @@ schema 1; module and report versions are separate contracts.
 
 ```sh
 # targets.txt: one authorized URL per line.
-./wafmeow --target-file targets.txt --jsonl --output results.json --strict --rate 5
+./wafmeow --target-file targets.txt --fast --jsonl --output results.json --strict
 ```
 
-`--jsonl` streams results on stdout; `--output` / `-O` writes an atomic report
-whose extension selects JSON, JSONL, CSV or TXT. They can be used together.
-Human diagnostics go to stderr. `--strict` exits **2** after
-publishing results when evidence or browser capture is incomplete/failed/diagnosed.
-Configuration, input and output failures exit **1**; cancellation exits **130**.
+`--jsonl` streams results on stdout; `--output` / `-O` writes an atomic report.
+Use `.json`, `.jsonl`, `.csv` or `.txt` to choose its format; other filenames
+produce TXT. Human diagnostics go to stderr. `--strict` checks evidence quality:
+it exits **2** after publishing incomplete, failed or diagnosed results, not
+merely because a WAF matched. Configuration, input and output failures exit **1**;
+cancellation exits **130**. Reports contain results, not replayable response
+captures. See [output contracts](docs/usage.md#save-and-stream-results) and
+[rate and deadline tuning](docs/usage.md#rate-and-deadline-tuning).
 
 ## Benchmarks
 
