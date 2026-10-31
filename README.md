@@ -156,7 +156,7 @@ Tranco ZJ8PG's top 10,000 (seeds `20261030` and `20261031`), with **three runs
 per configuration**, completed on 31 October 2026. Dead candidates were
 replaced during selection. Lower is better.
 
-**Host:** Debian 13 VPS · AMD EPYC-Rome, 4 vCPU · 7 GB RAM · `GOMAXPROCS=4`.
+**Host:** Hetzner vServer, Helsinki, Finland (AS24940) · KVM · Debian 13 · AMD EPYC-Rome, 4 vCPU @ ~2.5 GHz · 7.6 GiB RAM · measured ~1.17 Gbit/s down / ~392 Mbit/s up (Vienna Speedtest, 41.5 ms).
 
 | Workers / processes | wafw00f 2.4.2 | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow fast | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow full | Speedup fast | Speedup full |
 | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -172,13 +172,14 @@ the range across three runs.
 | Targets with… | wafw00f 2.4.2 | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow fast | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow full |
 | --- | ---: | ---: | ---: |
 | Named WAF match | 155–157 | 157–158 | 157–160 |
-| Generic WAF signal | 66–69 | 118–120 | 145–146 |
+| Generic WAF signal | 121–126 | 118–120 | 145–146 |
 | Returned result | 580–581 | 600 | 600 |
 | Complete evidence | Not reported | 529–531 | 523–528 |
 
 Named matches and generic signals can overlap, including on incomplete results.
-Different probes, TLS policies, CDN composition and evidence completeness prevent
-an accuracy comparison. [Full results, methodology and build identities](docs/benchmarks.md#600-target-vps-comparison).
+wafw00f emits a Generic record alongside a named product for some targets; its
+Generic-only subset at 100 workers was 66–69. Different probes, TLS policies, CDN
+composition and evidence completeness prevent an accuracy comparison. [Full results, methodology and build identities](docs/benchmarks.md#600-target-vps-comparison).
 
 The current build reuses verified HTTP/1 connections between a target's probes
 ([ADR 0002](adrs/0002-http1-connection-reuse-for-probes.md)); this run replaces

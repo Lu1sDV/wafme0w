@@ -87,8 +87,20 @@ laptop run is retained below as historical evidence.
 
 ### Measurement setup
 
-- Host: Debian GNU/Linux 13 (trixie) VPS, AMD EPYC-Rome, four vCPUs, 7 GB RAM,
-  Linux 6.12.101. `GOMAXPROCS=4`; inherited proxy variables cleared.
+- Host: Hetzner Online GmbH vServer (AS24940), Helsinki, Finland; KVM
+  virtualization. Debian GNU/Linux 13 (trixie), Linux
+  `6.12.101+deb13-cloud-amd64`, x86-64.
+- CPU: AMD EPYC-Rome, four vCPUs, one socket/four cores, one thread per core,
+  reported at 2,495 MHz; 16 MiB L3 cache, 2 MiB L2 per core. `GOMAXPROCS=4`;
+  inherited proxy variables cleared.
+- Memory and storage: 7.6 GiB RAM, 2 GiB swap, 76.3 GB QEMU virtual disk.
+  A 512 MiB `fdatasync` write measured about 1.5 GB/s; cached read measured
+  about 8.0 GB/s.
+- Network: Speedtest CLI against FDCservers Vienna (server 6070) measured
+  **1.17 Gbit/s download, 392 Mbit/s upload and 41.5 ms latency** after the run.
+  ICMP to `1.1.1.1` averaged 1.51 ms over four probes. These are shared virtual
+  host measurements, not guaranteed bandwidth; the benchmark traffic is mostly
+  many short TLS/HTTP exchanges rather than bulk transfer.
 - wafmeow: commit `c12e7c5` (Go 1.26.10); only `.gitignore` was modified locally
   (`vcs.modified=true`), not application source. Binary SHA-256
   `f4cc7f61fa24f5e251688670ff6d4704eff4f8039cd3fa51d705116599db5274`.
@@ -143,25 +155,61 @@ equivalent evidence-completion states; its unreturned targets remain unknown.
 | ---: | --- | ---: | ---: | ---: | ---: | ---: |
 | 1 | wafmeow fast | 600 | 154–158 | 115–123 | 519–521 | 79–81 |
 | 1 | wafmeow full | 600 | 158–159 | 142–146 | 521–525 | 75–79 |
-| 1 | wafw00f 2.4.2 | 580–582 | 156–157 | 65–72 | — | — |
+| 1 | wafw00f 2.4.2 | 580–582 | 156–157 | 122–128 | — | — |
 | 5 | wafmeow fast | 600 | 157–158 | 115–123 | 524–527 | 73–76 |
 | 5 | wafmeow full | 600 | 158–159 | 141–143 | 521–525 | 75–79 |
-| 5 | wafw00f 2.4.2 | 578–580 | 154–157 | 65–67 | — | — |
+| 5 | wafw00f 2.4.2 | 578–580 | 154–157 | 121–125 | — | — |
 | 10 | wafmeow fast | 600 | 154–155 | 114–116 | 522–524 | 76–78 |
 | 10 | wafmeow full | 600 | 154–157 | 139–144 | 518–525 | 75–82 |
-| 10 | wafw00f 2.4.2 | 577–580 | 155 | 61–70 | — | — |
+| 10 | wafw00f 2.4.2 | 577–580 | 155 | 118–126 | — | — |
 | 50 | wafmeow fast | 600 | 156–159 | 115–117 | 529–531 | 69–71 |
 | 50 | wafmeow full | 600 | 158 | 144 | 525–526 | 74–75 |
-| 50 | wafw00f 2.4.2 | 575–578 | 154–158 | 62–66 | — | — |
+| 50 | wafw00f 2.4.2 | 575–578 | 154–158 | 116–126 | — | — |
 | 100 | wafmeow fast | 600 | 157–158 | 118–120 | 529–531 | 69–71 |
 | 100 | wafmeow full | 600 | 157–160 | 145–146 | 523–528 | 72–77 |
-| 100 | wafw00f 2.4.2 | 580–581 | 155–157 | 66–69 | — | — |
+| 100 | wafw00f 2.4.2 | 580–581 | 155–157 | 121–126 | — | — |
 
 For wafmeow, `complete` describes the evidence supplied to the classifier, not
 WAF absence or active enforcement. At 100 workers, fast mode returned
 529–531 complete targets and full mode 523–528; higher
 concurrency can still change evidence completeness, so shorter wall time alone
 does not establish equal completed work.
+
+#### Interpreting the Generic WAF signal
+
+Generic signals are target-level heuristics, not WAF product identities, and they
+are not mutually exclusive with named matches. wafw00f can emit a named record
+and a `Generic` record for the same target under `--findall`; the table counts
+**any** Generic record, while its **Generic-only** subset at 100 workers was
+66–69. At that concurrency, 55–57 wafw00f targets had both a named and generic
+result. The earlier 66–69 figure was a generic-only count accidentally produced
+by collapsing multiple wafw00f records per URL; it is not the total generic
+signal count.
+
+wafw00f's generic detector checks for a changed response to a missing
+User-Agent, XSS, LFI or SQLi request, a changed Server header, or a
+connection-level block. wafmeow's separate detector checks status and Server
+changes across its probes, plus explicit WAF marker headers. Fast mode sends
+three request roles; full mode sends eight, giving full mode more opportunities
+to observe a status change and explaining why its generic count is higher
+(145–146 versus 118–120 at 100 workers). The counts differ because the probe
+sets, trigger rules, CDN targets and evidence completeness differ; they do not
+rank detection accuracy or prove enforcement.
+
+#### Named detections compared
+
+Using the union of the three 100-worker runs, wafw00f returned 585 of the 600
+targets; the other 15 are unknown, not clean misses. Of the returned targets,
+156 had named matches from both wafw00f and fast mode, and 155 from both wafw00f
+and full mode; wafw00f alone named
+three targets against fast and four against full, while wafmeow alone named
+three and five respectively. The only named product family observed by wafmeow
+and not wafw00f was Reflected Networks (one full-mode target); wafw00f more often
+named Instart DX. Common detections were stable: Cloudflare 53/53/53, AWS Elastic
+Load Balancer 22/22/22 and CacheWall 22/22/22 (wafw00f/fast/full), with 24 named
+product families observed overall. These differences are not an accuracy score:
+the tools use different probe sets, product-name knowledge, TLS policies, body
+limits and generic/named reporting contracts.
 
 ### Build and input identity
 
@@ -172,7 +220,9 @@ does not establish equal completed work.
 | Targets | 600 live root URLs: 500 known-non-CDN plus 100 known-CDN, sampled from Tranco ZJ8PG top 10,000; seeds `20261030`/`20261031` |
 | Target file | SHA-256 `fbd8a3bbdd5903b7d53ab6f2ffe95c37b900f5728abb76b38ce7508863c09cf5` |
 | Binary | SHA-256 `f4cc7f61fa24f5e251688670ff6d4704eff4f8039cd3fa51d705116599db5274` |
-| Host | Debian 13, AMD EPYC-Rome, four vCPUs, 7 GB RAM |
+| Host | Hetzner vServer, Helsinki, Finland (AS24940), KVM; Debian 13, kernel `6.12.101+deb13-cloud-amd64` |
+| CPU / RAM | AMD EPYC-Rome, 4 vCPU at 2,495 MHz; 7.6 GiB RAM, 2 GiB swap |
+| Storage / network | 76.3 GB QEMU disk; ~1.5 GB/s fdatasync write, ~8.0 GB/s cached read; ~1.17 Gbit/s down / ~392 Mbit/s up, 41.5 ms Speedtest server |
 
 Raw captures, process logs and the target list are local measurement artifacts;
 the tables and identities above are the published record.
