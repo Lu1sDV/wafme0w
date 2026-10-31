@@ -11,67 +11,81 @@ import (
 	"github.com/Lu1sDV/wafmeow/v3/pkg/wafmeow"
 )
 
-// printRunPlan describes a validated CLI configuration before acquisition. It
-// deliberately omits targets, origin values, headers, and local paths. The
-// caller supplies stderr and owns cancellation and the returned output error.
-func printRunPlan(writer io.Writer, opts options, config wafmeow.Config) error {
+// The default plan fits one line. Only customized safety controls need extra
+// lines. Never print targets, header values, origin values, or local paths.
+func runPlanText(opts options, config wafmeow.Config) string {
 	if opts.Silent {
-		return nil
+		return ""
 	}
 	var plan strings.Builder
+	var details []string
+	defaults := wafmeow.DefaultConfig()
 	if opts.EvidenceFile != "" {
-		fmt.Fprintf(&plan, "RUN PLAN  offline %s | no network requests\n", terminalText(opts.EvidenceFormat))
 		if opts.EvidenceFormat == "httpx" {
-			plan.WriteString("  1 classification worker (httpx import is serial)\n")
+			plan.WriteString("RUN PLAN  offline httpx | serial import | no network\n")
 		} else {
-			cpuCap := runtime.GOMAXPROCS(0)
-			fmt.Fprintf(&plan, "  classification workers: %d (requested %d; CPU cap %d)\n", min(config.Concurrency, cpuCap), config.Concurrency, cpuCap)
+			fmt.Fprintf(&plan, "RUN PLAN  offline %s | %d workers | no network\n",
+				terminalText(opts.EvidenceFormat), min(config.Concurrency, runtime.GOMAXPROCS(0)))
 		}
-		fmt.Fprintf(&plan, "  saved-response limit: %d bytes/body\n", config.MaxBodyBytes)
-		plan.WriteString("  live HTTP timeouts, rate, redirects and connection controls: inactive\n")
+		if config.MaxBodyBytes != defaults.MaxBodyBytes {
+			details = append(details, fmt.Sprintf("body limit %dB", config.MaxBodyBytes))
+		}
 	} else {
-		// CLI parsing already supplies nonzero timeout, request and probe defaults.
-		// A zero connection limit is normalized by Run itself.
 		connections := config.MaxConnections
 		if connections == 0 {
 			connections = max(config.Concurrency, config.ProbeConcurrency)
 		}
-		mode, requests := "deep", "normal request, then up to 7 probes"
-		scheduling := fmt.Sprintf("probe concurrency: %d after normal", min(config.ProbeConcurrency, connections, 7))
+		mode := "deep (7 probes)"
+		parallelism := fmt.Sprintf("%d at a time", min(config.ProbeConcurrency, connections, 7))
 		if config.BaselineOnly {
-			mode, requests, scheduling = "baseline", "normal request only", "1 request/target"
+			mode, parallelism = "baseline (normal only)", ""
 		} else if config.FastMode {
-			mode, requests = "fast", "normal, no-user-agent and combined probe"
-			scheduling = fmt.Sprintf("per-target parallel request limit: %d", min(3, connections))
+			mode = "fast (3 requests)"
+			parallelism = fmt.Sprintf("%d at a time", min(3, connections))
 		}
-		fmt.Fprintf(&plan, "RUN PLAN  %s | %s (before redirects/retries)\n", mode, requests)
+		if parallelism == "" {
+			fmt.Fprintf(&plan, "RUN PLAN  %s | %d workers | %s/req | %s/target\n",
+				mode, config.Concurrency, config.RequestTimeout, config.TargetTimeout)
+		} else {
+			fmt.Fprintf(&plan, "RUN PLAN  %s | %d workers | %s | %s/req | %s/target\n",
+				mode, config.Concurrency, parallelism, config.RequestTimeout, config.TargetTimeout)
+		}
+		if config.MaxConnections != 0 || connections != config.Concurrency {
+			details = append(details, fmt.Sprintf("%d in flight", connections))
+		}
+		if config.MaxRequests != defaults.MaxRequests {
+			details = append(details, fmt.Sprintf("%d attempts/target", config.MaxRequests))
+		}
+		if config.MaxRedirects != defaults.MaxRedirects || config.RedirectPolicy != defaults.RedirectPolicy {
+			if config.RedirectPolicy == "none" {
+				details = append(details, "redirects off")
+			} else {
+				details = append(details, fmt.Sprintf("%d redirects (%s)", config.MaxRedirects, terminalText(config.RedirectPolicy)))
+			}
+		}
+		if len(config.AllowedOrigins) != 0 {
+			details = append(details, "origin allowlist on")
+		}
+		if config.RequestsPerSecond != 0 {
+			details = append(details, planRate(config.RequestsPerSecond)+" global")
+		}
+		if config.PerOriginRequestsPerSecond != 0 {
+			details = append(details, planRate(config.PerOriginRequestsPerSecond)+" per origin")
+		}
 		if !config.BaselineOnly {
 			for _, header := range config.Headers {
 				if strings.EqualFold(header.Name, "User-Agent") {
-					plan.WriteString("  custom User-Agent overrides every probe, including no-user-agent\n")
+					details = append(details, "custom User-Agent overrides every probe")
 					break
 				}
 			}
 		}
-		fmt.Fprintf(&plan, "  target workers: %d | %s | global in-flight request limit: %d\n", config.Concurrency, scheduling, connections)
-		redirects := config.MaxRedirects
-		if config.RedirectPolicy == "none" {
-			redirects = 0
-		}
-		originScope := "off"
-		if len(config.AllowedOrigins) != 0 {
-			originScope = "on"
-		}
-		fmt.Fprintf(&plan, "  HTTP limits: %d attempts/target | %d redirects/request (%s) | origin allowlist: %s\n", config.MaxRequests, redirects, terminalText(config.RedirectPolicy), originScope)
-		fmt.Fprintf(&plan, "  rate: %s global | %s per origin\n", planRate(config.RequestsPerSecond), planRate(config.PerOriginRequestsPerSecond))
-		fmt.Fprintf(&plan, "  deadlines: %s/request | %s/target; include local rate/connection waits\n", config.RequestTimeout, config.TargetTimeout)
 		if config.Browser != nil && config.Browser.Mode != "off" {
-			fmt.Fprintf(&plan, "  browser: %s | %s deadline, separate from HTTP\n", terminalText(config.Browser.Mode), config.Browser.Timeout)
+			details = append(details, fmt.Sprintf("browser %s (%s)", terminalText(config.Browser.Mode), config.Browser.Timeout))
 		}
 	}
-	outputs := []string{"human stdout"}
 	if opts.JSONL {
-		outputs[0] = "JSONL stdout"
+		details = append(details, "JSONL")
 	}
 	if opts.OutputFile != "" {
 		format := "TXT"
@@ -79,18 +93,48 @@ func printRunPlan(writer io.Writer, opts options, config wafmeow.Config) error {
 		case ".json", ".jsonl", ".csv":
 			format = strings.ToUpper(extension[1:])
 		}
-		outputs = append(outputs, "atomic "+format+" report")
+		details = append(details, format+" report")
 	}
 	if opts.JournalFile != "" {
-		outputs = append(outputs, "durable JSONL journal")
+		details = append(details, "journal")
 	}
-	strict := "off"
 	if opts.Strict {
-		strict = "on (exit 2 for incomplete/failed/diagnosed results)"
+		details = append(details, "strict")
 	}
-	fmt.Fprintf(&plan, "  output: %s | strict %s\n", strings.Join(outputs, "; "), strict)
-	n, err := io.WriteString(writer, plan.String())
-	if err == nil && n != plan.Len() {
+	// Bound optional detail lines to avoid accidental 80-column wrapping.
+	const limit = 76
+	const prefix = "  settings  "
+	line := prefix
+	for _, detail := range details {
+		separator := ""
+		if line != prefix {
+			separator = " | "
+		}
+		if line != prefix && len(line)+len(separator)+len(detail) >= limit {
+			plan.WriteString(line)
+			plan.WriteByte('\n')
+			line, separator = prefix, ""
+		}
+		line += separator + detail
+	}
+	if line != prefix {
+		plan.WriteString(line)
+		plan.WriteByte('\n')
+	}
+	return plan.String()
+}
+
+// Keep run-plan content on stderr, including human scans.
+func printRunPlan(writer io.Writer, opts options, config wafmeow.Config) error {
+	return writeRunPlan(writer, runPlanText(opts, config))
+}
+
+func writeRunPlan(writer io.Writer, plan string) error {
+	if plan == "" {
+		return nil
+	}
+	n, err := io.WriteString(writer, plan)
+	if err == nil && n != len(plan) {
 		return io.ErrShortWrite
 	}
 	return err

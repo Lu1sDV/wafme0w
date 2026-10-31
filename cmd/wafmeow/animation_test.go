@@ -49,7 +49,7 @@ func animationEnvironment(t *testing.T) {
 }
 
 func animationTerminal() bannerTerminal {
-	return bannerTerminal{interactive: true, ansi: true, columns: 80, rows: 24}
+	return bannerTerminal{interactive: true, ansi: true, sharedOutput: true, columns: 80, rows: 24}
 }
 
 type logoTestWriter struct {
@@ -310,6 +310,91 @@ func TestLogoAnimationWriterFailures(t *testing.T) {
 	}
 }
 
+func TestScanBannerKeepsPlanBelowAnimatedLogo(t *testing.T) {
+	animationEnvironment(t)
+	synctest.Test(t, func(t *testing.T) {
+		writer := &logoTestWriter{}
+		terminal := animationTerminal()
+		opts := newOptions(wafmeow.DefaultConfig())
+		plan := runPlanText(opts, wafmeow.DefaultConfig())
+		footerRows := scanBannerPlanRows(terminal, writer, writer, plan)
+		if footerRows != 1 {
+			t.Fatalf("single shared run-plan line should offset redraw by 1: %d", footerRows)
+		}
+		animation, err := startScanBannerWithPlan(context.Background(), writer, opts,
+			aurora.New(aurora.WithColors(false)), terminal, func() { t.Error("unexpected abort") },
+			func() error { return writeRunPlan(writer, plan) }, footerRows)
+		if err != nil || animation == nil {
+			t.Fatalf("startup failed: animation=%v err=%v", animation, err)
+		}
+		initial, writes := writer.snapshot()
+		if writes != 2 || !strings.HasPrefix(initial, "wafmeow") ||
+			strings.Index(initial, "RUN PLAN") <= strings.Index(initial, "+-----+") || strings.Count(initial, "RUN PLAN") != 1 {
+			t.Fatalf("banner did not precede plan: %q", initial)
+		}
+		time.Sleep(logoInterval)
+		synctest.Wait()
+		redraw, _ := writer.snapshot()
+		if !strings.Contains(redraw, "\x1b[10A") || !strings.Contains(redraw, "\x1b[1B") {
+			t.Fatalf("redraw did not preserve the plan's cursor rows: %q", redraw)
+		}
+		if err := animation.stop(); err != nil {
+			t.Fatal(err)
+		}
+		_, _ = io.WriteString(writer, "RESULT\n")
+		finished, count := writer.snapshot()
+		time.Sleep(time.Second)
+		synctest.Wait()
+		if next, writes := writer.snapshot(); next != finished || writes != count || strings.Count(next, "RUN PLAN") != 1 {
+			t.Fatalf("redraw interleaved after result: %q", next)
+		}
+	})
+}
+
+func TestBannerPlanLayoutDisablesUnsafeRedraw(t *testing.T) {
+	config := wafmeow.DefaultConfig()
+	opts := newOptions(config)
+	plan := runPlanText(opts, config)
+	terminal := animationTerminal()
+	var stdout, stderr bytes.Buffer
+	if rows := scanBannerPlanRows(terminal, &stdout, &stderr, plan); rows != 1 {
+		t.Fatalf("injected shared terminal missed plan rows: %d", rows)
+	}
+	terminal.sharedOutput = false
+	if rows := scanBannerPlanRows(terminal, &stdout, &stderr, plan); rows != 0 {
+		t.Fatalf("separate stderr should not offset stdout: %d", rows)
+	}
+	terminal.sharedOutput = true
+	terminal.columns = 60
+	if rows := scanBannerPlanRows(terminal, &stdout, &stderr, plan); rows != -1 {
+		t.Fatalf("wrapped plan must disable animation: %d", rows)
+	}
+	var output bytes.Buffer
+	animation, err := startScanBannerWithPlan(context.Background(), &output, opts,
+		aurora.New(aurora.WithColors(false)), terminal, func() { t.Error("unexpected abort") },
+		func() error { return writeRunPlan(&output, plan) }, -1)
+	if animation != nil || err != nil || strings.Contains(output.String(), "\x1b") ||
+		strings.Index(output.String(), "wafmeow") >= strings.Index(output.String(), "RUN PLAN") {
+		t.Fatalf("wrapped plan should use static logo before plan: %q %v", output.String(), err)
+	}
+}
+
+func TestWarningGroupHasBlankLineBeforeSummary(t *testing.T) {
+	au := aurora.New(aurora.WithColors(false))
+	var stderr bytes.Buffer
+	result := wafmeow.Result{Target: "owned-fixture", Evidence: []wafmeow.Evidence{{Role: "Normal"}},
+		Outcome: wafmeow.Outcome{Diagnostics: []wafmeow.Diagnostic{{Code: "incomplete_body", Evidence: 0, Message: "response body is incomplete"}}}}
+	if err := printResultDiagnostics(&stderr, result, au); err != nil {
+		t.Fatal(err)
+	}
+	if err := printSummary(&stderr, resultCounts{Total: 1, Diagnostics: 1}, true, au); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stderr.String(), "response body is incomplete\n\nSUMMARY") {
+		t.Fatalf("WARN and SUMMARY need two line feeds: %q", stderr.String())
+	}
+}
+
 func TestCLIBannerStopsBeforeSharedConsoleResultsAndDiagnostics(t *testing.T) {
 	animationEnvironment(t)
 	catalogue := fixtureCatalogue(t)
@@ -326,7 +411,10 @@ func TestCLIBannerStopsBeforeSharedConsoleResultsAndDiagnostics(t *testing.T) {
 					t.Fatalf("result waited for animation: exit=%d elapsed=%v output=%q", code, time.Since(started), text)
 				}
 				first := strings.Index(text, "DEBUG")
-				if first < 0 || !strings.Contains(text[:first], "\x1b[9A") || strings.Contains(text[first:], "\x1b[9A") || !strings.Contains(text, "SUMMARY") {
+				if first < 0 || !strings.Contains(text[:first], "\x1b[11A") || strings.Contains(text[first:], "\x1b[11A") || !strings.Contains(text, "SUMMARY") {
+					t.Fatalf("shared terminal redraw interleaved with diagnostics/results: %q", text)
+				}
+				if logo, plan := strings.Index(text, "wafmeow"), strings.Index(text, "RUN PLAN"); logo < 0 || plan <= logo {
 					t.Fatalf("shared terminal redraw interleaved with diagnostics/results: %q", text)
 				}
 				data, err := os.ReadFile(journal)
@@ -364,7 +452,8 @@ func TestCLIBannerEarlyEndAndModeExclusions(t *testing.T) {
 				started := time.Now()
 				code := runContextWithTerminal(context.Background(), args, strings.NewReader(test.input), true, writer, writer, animationTerminal())
 				text, _ := writer.snapshot()
-				if code != test.code || time.Since(started) >= logoInterval || strings.Contains(text, "\x1b[9A") != test.animated {
+				redraw := strings.Contains(text, "\x1b[10A") || strings.Contains(text, "\x1b[11A")
+				if code != test.code || time.Since(started) >= logoInterval || redraw != test.animated {
 					t.Fatalf("early end/exclusion: code=%d elapsed=%v text=%q", code, time.Since(started), text)
 				}
 				for _, marker := range []string{"PARTIAL SUMMARY", "SUMMARY", "ERROR render", "ERROR open"} {

@@ -76,6 +76,7 @@ var logoFrames = [...][logoRows]string{
 type bannerTerminal struct {
 	interactive   bool
 	ansi          bool
+	sharedOutput  bool // Injected tests only; real streams use file identity.
 	columns, rows int
 	size          func() (columns, rows int)
 }
@@ -94,6 +95,33 @@ func inspectBannerTerminal(writer io.Writer) bannerTerminal {
 		columns: columns, rows: rows,
 		size: func() (int, int) { return terminalSize(file) },
 	}
+}
+
+// Plan lines advance the same cursor only when both outputs share a TTY.
+// A wrapped plan invalidates its fixed redraw coordinates; use a static logo.
+func scanBannerPlanRows(terminal bannerTerminal, stdout, stderr io.Writer, plan string) int {
+	if plan == "" || (!terminal.sharedOutput && !writersShareTerminal(stdout, stderr)) {
+		return 0
+	}
+	for _, line := range strings.Split(strings.TrimSuffix(plan, "\n"), "\n") {
+		if terminal.columns <= 0 || len(line) >= terminal.columns {
+			return -1
+		}
+	}
+	return strings.Count(plan, "\n")
+}
+
+func writersShareTerminal(stdout, stderr io.Writer) bool {
+	left, okLeft := stdout.(*os.File)
+	right, okRight := stderr.(*os.File)
+	if !okLeft || !okRight {
+		return false
+	}
+	leftInfo, leftErr := left.Stat()
+	rightInfo, rightErr := right.Stat()
+	return leftErr == nil && rightErr == nil &&
+		leftInfo.Mode()&os.ModeCharDevice != 0 && rightInfo.Mode()&os.ModeCharDevice != 0 &&
+		os.SameFile(leftInfo, rightInfo)
 }
 
 func (terminal bannerTerminal) fitsLogo() bool {
@@ -122,6 +150,7 @@ type bannerAnimation struct {
 	frame       int   // Owner writes until done closes; stop reads after joining.
 	err         error // Owner, then settled.Do; readers join both owners.
 	invalidated bool  // Observed reflow cannot be undone by restoring dimensions.
+	footerRows  int   // Plan lines occupying the same physical terminal.
 }
 
 func (animation *bannerAnimation) requestStop() {
@@ -156,8 +185,19 @@ func (animation *bannerAnimation) join(err error) error {
 }
 
 func startScanBanner(ctx context.Context, writer io.Writer, opts options, au *aurora.Aurora, terminal bannerTerminal, abort func()) (*bannerAnimation, error) {
+	return startScanBannerWithPlan(ctx, writer, opts, au, terminal, abort, nil, 0)
+}
+
+// Paint the first frame and plan synchronously, before any timer starts.
+func startScanBannerWithPlan(ctx context.Context, writer io.Writer, opts options, au *aurora.Aurora, terminal bannerTerminal, abort func(), afterLogo func() error, footerRows int) (*bannerAnimation, error) {
+	printPlan := func() error {
+		if afterLogo != nil {
+			return afterLogo()
+		}
+		return nil
+	}
 	if opts.Silent || opts.JSONL || opts.ListWAFS || opts.Version {
-		return nil, nil
+		return nil, printPlan()
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -166,8 +206,11 @@ func startScanBanner(ctx context.Context, writer io.Writer, opts options, au *au
 	if opts.NoColors || noColor || !terminal.ansi {
 		au = aurora.New(aurora.WithColors(false))
 	}
-	if !terminal.fitsLogo() || !terminal.ansi {
-		return nil, printBanner(writer, au)
+	if !terminal.fitsLogo() || !terminal.ansi || footerRows < 0 || terminal.rows <= logoRows+footerRows {
+		if err := printBanner(writer, au); err != nil {
+			return nil, err
+		}
+		return nil, printPlan()
 	}
 	animated := terminal.ansi && !opts.NoAnimation && !opts.NoColors && !noColor
 	frame := len(logoFrames) - 1
@@ -178,12 +221,16 @@ func startScanBanner(ctx context.Context, writer io.Writer, opts options, au *au
 	if err := writeLogo(writer, first); err != nil {
 		return nil, err
 	}
+	if err := printPlan(); err != nil {
+		return nil, err
+	}
 	if !animated {
 		return nil, nil
 	}
 	animation := &bannerAnimation{
 		requested: make(chan struct{}), done: make(chan struct{}), abort: abort,
-		settle: func() error { return settleLogo(ctx, writer, au, terminal) },
+		footerRows: footerRows,
+		settle: func() error { return settleLogo(ctx, writer, au, terminal, footerRows) },
 	}
 	go func() {
 		defer close(animation.done)
@@ -221,7 +268,7 @@ func (animation *bannerAnimation) play(ctx context.Context, writer io.Writer, au
 			animation.invalidated = true
 			return nil
 		}
-		if err := writeLogo(writer, logoFrame(frame, true, au)); err != nil {
+		if err := writeLogo(writer, logoFrameOffset(frame, true, au, animation.footerRows)); err != nil {
 			return err
 		}
 		animation.frame = frame
@@ -230,17 +277,21 @@ func (animation *bannerAnimation) play(ctx context.Context, writer io.Writer, au
 	return nil
 }
 
-func settleLogo(ctx context.Context, writer io.Writer, au *aurora.Aurora, terminal bannerTerminal) error {
+func settleLogo(ctx context.Context, writer io.Writer, au *aurora.Aurora, terminal bannerTerminal, footerRows int) error {
 	if ctx.Err() != nil || !terminal.unchanged() {
 		return nil
 	}
-	return writeLogo(writer, logoFrame(len(logoFrames)-1, true, au))
+	return writeLogo(writer, logoFrameOffset(len(logoFrames)-1, true, au, footerRows))
 }
 
 func logoFrame(index int, redraw bool, au *aurora.Aurora) string {
+	return logoFrameOffset(index, redraw, au, 0)
+}
+
+func logoFrameOffset(index int, redraw bool, au *aurora.Aurora, footerRows int) string {
 	var text strings.Builder
 	if redraw {
-		fmt.Fprintf(&text, "\x1b[%dA", logoRows)
+		fmt.Fprintf(&text, "\x1b[%dA", logoRows+footerRows)
 	}
 	for _, row := range logoFrames[index] {
 		if redraw {
@@ -252,6 +303,10 @@ func logoFrame(index int, redraw bool, au *aurora.Aurora) string {
 			cat, wall = row[:16], row[16:]
 		}
 		fmt.Fprintf(&text, "%s%s\n", au.Gray(16, cat), au.Index(208, wall))
+	}
+	// Return the cursor below the plan; never overwrite its lines.
+	if redraw && footerRows > 0 {
+		fmt.Fprintf(&text, "\x1b[%dB", footerRows)
 	}
 	return text.String()
 }

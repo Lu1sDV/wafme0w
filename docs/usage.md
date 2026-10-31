@@ -409,23 +409,24 @@ wafmeow --evidence assets/demo/captures.jsonl --jsonl --silent \
 
 ## Human results and final overview
 
-Before acquisition, stderr shows a `RUN PLAN` with the selected mode, effective
-worker/request limits, pacing, deadlines and output formats. It identifies local
-rate/connection waits as part of HTTP deadlines. Offline plans state that no
-requests are sent and distinguish native worker limits from serial httpx import.
-The plan omits target URLs, header values, origin values and file paths;
-`--silent` suppresses it. A custom User-Agent is called out because it overrides
-the no-user-agent probe too, without displaying its value.
+Interactive human scans show the cat climbing an orange brick wall **first**.
+After the first frame, stderr shows a compact `RUN PLAN`: normally one line
+with the scan mode, effective worker/parallelism counts and deadlines. Only
+non-default controls (such as a rate cap, origin allowlist, report or browser)
+add short settings lines. Offline plans state that no network requests are sent.
+The plan omits target URLs, header values, origin values and file paths, and
+`--silent` suppresses it. A custom User-Agent is noted without revealing its
+value. The run plan remains on stderr, even for human scans.
 
-Interactive human scans show the cat climbing an orange brick wall at startup.
 The animation normally finishes in about 540 ms and runs alongside acquisition;
 the first result stops it immediately, without waiting for the remaining frames.
 The logo settles before any result, warning, debug line, overview or error is printed,
 including when stdout and stderr share one terminal. It never hides the cursor.
 
 Use `--no-animation` to keep the cat still. Animation requires ANSI-capable
-interactive stdout with room for the logo; redirected stdout, a small or
-unknown-size terminal, and `TERM=dumb` use a compact static header. Piped target
+interactive stdout with room for the logo and any shared-terminal plan lines;
+redirected stdout, small or unknown-size terminals, and `TERM=dumb` use a
+compact static header. Piped target
 input can still animate when stdout is an eligible terminal. `--no-colors` or
 `NO_COLOR` gives static, escape-free output. Help, version, product listings,
 `--jsonl` and `--silent` never animate. If a terminal resize is detected between
@@ -477,6 +478,7 @@ outcome and completeness. Color is disabled for redirected output, `NO_COLOR`,
 `TERM=dumb`, or `--no-colors`. Diagnostics use stderr's own terminal status for
 color, independently of stdout. HTTP diagnostics appear one per row under a
 single warning header, with descriptions aligned after the escaped role tags.
+A blank line separates the last warning from the summary or next warning group.
 
 ### Certificate verification failures
 

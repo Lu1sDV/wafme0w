@@ -107,14 +107,14 @@ class Process:
     """Drain both outputs continuously and own every process/PTY we create."""
 
     def __init__(self, command, directory, *, stdout_tty=True, stdin_kind='null',
-                 input_data=None, width=80, height=24, environment=None):
+                 input_data=None, width=80, height=24, environment=None, stderr_tty=False):
         # Keep --help usable on unsupported hosts; these modules are Unix-only.
         import fcntl
         import pty
         import termios
 
         self.command = command
-        self.presentation = {'stdout_tty': stdout_tty, 'stdin_kind': stdin_kind,
+        self.presentation = {'stdout_tty': stdout_tty, 'stderr_tty': stderr_tty, 'stdin_kind': stdin_kind,
                              'columns': width, 'rows': height,
                              'environment_overrides': environment or {}}
         self.process = None
@@ -133,6 +133,7 @@ class Process:
             fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack('HHHH', rows, columns, 0, 0))
             return master, slave
 
+        require(not stderr_tty or stdout_tty, 'shared stderr requires terminal stdout')
         try:
             master, slave = terminal(width, height) if stdout_tty else (None, None)
             stdin = subprocess.DEVNULL
@@ -144,15 +145,18 @@ class Process:
                 stdin = stdin_slave
             self.process = subprocess.Popen(
                 command, cwd=directory, env=env, stdin=stdin,
-                stdout=slave if stdout_tty else subprocess.PIPE, stderr=subprocess.PIPE,
+                stdout=slave if stdout_tty else subprocess.PIPE,
+                stderr=slave if stderr_tty else subprocess.PIPE,
                 start_new_session=True,
             )
             for parent_copy in [slave, stdin_slave]:
                 if parent_copy is not None:
                     os.close(parent_copy)
                     self.handles.remove(parent_copy)
-            for name, source in [('stdout', master if stdout_tty else self.process.stdout),
-                                 ('stderr', self.process.stderr)]:
+            sources = [('stdout', master if stdout_tty else self.process.stdout)]
+            if not stderr_tty:
+                sources.append(('stderr', self.process.stderr))
+            for name, source in sources:
                 descriptor = source if isinstance(source, int) else source.fileno()
                 os.set_blocking(descriptor, False)
                 self.ready.register(descriptor, selectors.EVENT_READ, name)
@@ -303,11 +307,13 @@ def run_suite(binary, output):
         base = ['--baseline', '--no-generic', '--fingerprints=catalogue.json', '--concurrency=2',
                 '--max-connections=2', '--request-timeout=10s', '--target-timeout=12s', '--max-redirects=0']
 
-        def animated(start, target, _directory, piped=False):
+        def animated(start, target, _directory, piped=False, shared=False):
             first, first_gate = target('first')
             second, second_gate = target('second')
             source = ['--target-file=-'] if piped else ['--target', first, '--target', second]
             kwargs = {'stdin_kind': 'pipe', 'input_data': (first + '\n' + second + '\n').encode()} if piped else {}
+            if shared:
+                kwargs['stderr_tty'] = True
             process = start([*base, *source], **kwargs)
             process.wait_for(lambda: first_gate.received.is_set() and second_gate.received.is_set(), 'both owned requests')
             process.wait_for(lambda: REDRAW.search(process.streams['stdout']), 'an animated redraw')
@@ -321,6 +327,10 @@ def run_suite(binary, output):
             out = bytes(process.streams['stdout'])
             position = out.rfind(b'\n', 0, out.index(first.encode())) + 1
             require(not motion(out[position:]), 'animation redrew after the first result')
+            if shared:
+                require(out.index(b'wafmeow') < out.index(b'RUN PLAN') < out.index(b'\x1b[11A'),
+                        'logo must precede the two-line plan and first redraw')
+                require(b'\x1b[2B' in out, 'shared redraw did not restore cursor below the plan')
             terminal_cleanup(process)
             require([first_gate.calls, second_gate.calls] == [1, 1], 'animation changed baseline request accounting')
 
@@ -375,6 +385,8 @@ def run_suite(binary, output):
         try:
             case('human TTY animates and stops before the first result', animated)
             case('piped target input still animates human TTY output', lambda *args: animated(*args, piped=True))
+            case('combined stdout/stderr PTY preserves the plan below the cat',
+                 lambda *args: animated(*args, shared=True))
             for name, kwargs in [
                 ('--no-animation', {'flags': ['--no-animation']}),
                 ('--no-colors', {'flags': ['--no-colors']}),

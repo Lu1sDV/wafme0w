@@ -227,10 +227,12 @@ func runContextWithTerminal(ctx context.Context, args []string, stdin io.Reader,
 	if err := ctx.Err(); err != nil {
 		return finish(err)
 	}
-	if err := printRunPlan(stderr, opts, config); err != nil {
-		return finish(err)
-	}
-	animation, err = startScanBanner(runCtx, stdout, opts, console, terminal, abort)
+	plan := runPlanText(opts, config)
+	// Display the logo first, followed by the compact plan. Starting the
+	// timer only after the plan write avoids cross-stream redraw races.
+	animation, err = startScanBannerWithPlan(runCtx, stdout, opts, console, terminal, abort,
+		func() error { return writeRunPlan(stderr, plan) },
+		scanBannerPlanRows(terminal, stdout, stderr, plan))
 	if err != nil {
 		return finish(err)
 	}

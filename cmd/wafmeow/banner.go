@@ -368,6 +368,8 @@ func printResultDiagnostics(writer io.Writer, result wafmeow.Result, au *aurora.
 	if group.Len() == 0 {
 		return nil
 	}
+	// Two line feeds after the last WARN row leave a blank line before SUMMARY.
+	group.WriteByte('\n')
 	_, err := io.WriteString(writer, group.String())
 	return err
 }
