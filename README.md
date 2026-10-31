@@ -150,41 +150,38 @@ Configuration, input and output failures exit **1**; cancellation exits **130**.
 
 ### Recorded live CLI comparison
 
-Median elapsed time for **2,000 authorized HTTPS targets**, with **three runs per
-configuration**, completed on 30 October 2026. Lower is better.
+Median elapsed time for **500 live, known-non-CDN HTTP/HTTPS root URLs** randomly
+sampled from Tranco ZJ8PG's top 10,000 (seed `20261030`), with **three runs per
+configuration**, completed on 31 October 2026. Dead and known-CDN-fronted
+candidates were replaced during selection. Lower is better.
 
-**CPU:** Intel Core Ultra 9 275HX (4 logical CPUs allowed) · **RAM:** 32 GB.
+**Host:** Debian 13 VPS · AMD EPYC-Rome, 4 vCPU · 7 GB RAM · `GOMAXPROCS=4`.
 
 | Workers / processes | wafw00f 2.4.2 | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow fast | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow full | Speedup fast | Speedup full |
 | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | 70m 27s | 29m 29s | 78m 05s | **2.39×** | 0.90× |
-| 5 | 15m 26s | 7m 27s | 14m 30s | **2.07×** | **1.06×** |
-| 10 | 7m 46s | 3m 48s | 7m 18s | **2.04×** | **1.07×** |
-| 50 | 3m 45s | 49s | 1m 40s | **4.55×** | **2.24×** |
-| 100 | 2m 45s | 28s | 1m 02s | **5.90×** | **2.66×** |
+| 1 | 26m 38s | 6m 41s | 13m 45s | **3.99×** | **1.94×** |
+| 5 | 6m 36s | 2m 02s | 2m 49s | **3.25×** | **2.34×** |
+| 10 | 4m 03s | 1m 03s | 1m 24s | **3.83×** | **2.89×** |
+| 50 | 2m 07s | 14.1s | 24.4s | **8.97×** | **5.20×** |
+| 100 | 1m 44s | 8.1s | 22.3s | **12.86×** | **4.67×** |
 
-**Detection results at 100 workers/processes** — targets out of 2,000, shown as
+**Detection results at 100 workers/processes** — targets out of 500, shown as
 the range across three runs.
 
 | Targets with… | wafw00f 2.4.2 | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow fast | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow full |
 | --- | ---: | ---: | ---: |
-| Named WAF match | 856–858 | 853–858 | 845–852 |
-| Generic WAF signal | 411–423 | 424–430 | 492–504 |
-| Returned result | 1,534–1,545 | 2,000 | 2,000 |
-| Complete evidence | Not reported | 1,437–1,460 | 1,368–1,410 |
+| Named WAF match | 82–85 | 82–85 | 81–88 |
+| Generic WAF signal | 60–70 | 91–94 | 108–116 |
+| Returned result | 481–487 | 500 | 500 |
+| Complete evidence | Not reported | 439–440 | 431–438 |
 
 Named matches and generic signals can overlap, including on incomplete results.
-Different probes, TLS policies and evidence completeness prevent an accuracy
-comparison. [Full results, methodology and build details](docs/benchmarks.md#live-cli-comparison).
+Different probes, TLS policies, CDN exclusions and evidence completeness prevent
+an accuracy comparison. [Full results, methodology and build identities](docs/benchmarks.md#500-target-vps-comparison).
 
-The 2,000-target table predates HTTP/1 probe reuse
-([ADR 0002](adrs/0002-http1-connection-reuse-for-probes.md)). At one worker, the
-reused-connection full build completed a **500-target median of 580.9 s** versus
-**874.6 s** for wafw00f 2.4.2 (1.51×); on the first 100 entries it was 96.4 s
-versus 143.3 s (1.49×) and 173.4 s for the fresh-connection build (44% less
-time). See the
-[connection-reuse comparison](docs/benchmarks.md#connection-reuse-comparison)
-for per-block accounting, paired A/B, scaling and controlled loopback results.
+The current build reuses verified HTTP/1 connections between a target's probes
+([ADR 0002](adrs/0002-http1-connection-reuse-for-probes.md)); this run replaces
+the older 2,000-target laptop table and the separate connection-reuse paragraph.
 
 ### Reproducible offline comparison
 

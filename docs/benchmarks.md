@@ -57,7 +57,154 @@ and preparation. It is not a number of Internet hosts per minute. Keep the
 full-native-catalogue profile distinct and retain the bootstrap interval and
 paired-case count. Do not substitute this ratio for a live CLI speedup.
 
-## Live CLI comparison
+## 500-target VPS comparison
+
+Recorded 30–31 October 2026. This run measured a reproducible 500-target sample
+on a dedicated Debian 13 VPS rather than a laptop, with three complete blocks
+per configuration. It is the primary live CLI comparison; the older 2,000-target
+laptop run is retained below as historical evidence.
+
+### Target selection
+
+- Source: [Tranco ZJ8PG, 28 October 2026](https://tranco-list.eu/list/ZJ8PG/1000000),
+  top 10,000 ranked domains.
+- Selection: deterministic shuffle with seed `20261030`; candidates were
+  resolved and checked for known CDN fronting by CNAME suffix and ASN. Non-CDN
+  candidates were fetched over HTTPS and then HTTP; any response below status
+  600 counted as alive. Dead and known-CDN candidates were discarded and the
+  next shuffled candidate was tried until 500 remained.
+- Result: 500 unique targets (472 HTTPS, 28 HTTP), Tranco ranks 31–9,944, all
+  alive at selection. The target-file SHA-256 is
+  `b9b770a70928e4ec2d4db98d03254ef8859d5f73389f734a6ec3f65c970fd6ff`.
+- This excludes well-known CDN-fronted hosts to avoid concentrating the sample
+  on shared edge infrastructure. The exclusion is heuristic, not an exhaustive
+  CDN inventory, and it changes the product mix relative to an unfiltered Tranco
+  sample.
+- Scanning was explicitly requested for this benchmark. A public target list is
+  not permission to scan its entries.
+
+### Measurement setup
+
+- Host: Debian GNU/Linux 13 (trixie) VPS, AMD EPYC-Rome, four vCPUs, 7 GB RAM,
+  Linux 6.12.101. `GOMAXPROCS=4`; inherited proxy variables cleared.
+- wafmeow: commit `c12e7c5` (Go 1.26.10); only `.gitignore` was modified locally
+  (`vcs.modified=true`), not application source. Binary SHA-256
+  `f4cc7f61fa24f5e251688670ff6d4704eff4f8039cd3fa51d705116599db5274`.
+- wafw00f: stock 2.4.2 on Python 3.13.5.
+- Both tools used a 3-second request timeout and disabled redirects. wafmeow
+  used verified TLS, a 30-second target deadline, a 54-request budget, a 1 MiB
+  decoded-body limit, fast mode or default serial-probe full mode, target
+  workers and the global connection cap equal to the table concurrency, and
+  probe concurrency one. Browser capture and journaling were off.
+- wafw00f used `--findall`, `-r` (no redirects), and `-T 3`. At concurrency N,
+  N stock CLI processes consumed round-robin shards. It disables certificate
+  verification and uses a 100 KiB body-read threshold; probe sets and headers
+  differ, so detection counts are not an accuracy comparison.
+- Three blocks ran sequentially. Within each block the concurrency order was
+  100, 50, 10, 5, and 1; tool order rotated as fast/full/wafw00f, then
+  wafw00f/fast/full, then full/wafw00f/fast. Cells never overlapped.
+- Timing covered process start through final output flush, excluding compilation
+  and shard partitioning. Every cell had a 3,600-second watchdog. All recorded
+  cells exited zero; no cell was retried or re-rolled after a completed timer.
+
+### Wall-clock results
+
+Times are **medians of three runs**; parentheses show the shortest–longest run.
+Lower is better.
+
+| Workers / processes | wafw00f 2.4.2 | <img src="../assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow fast | <img src="../assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow full |
+| ---: | ---: | ---: | ---: |
+| 1 | 26m 38.3s (26m 23.6s–27m 22.8s) | 6m 40.8s (6m 24.6s–6m 48.8s) | 13m 44.7s (13m 36.8s–13m 53.9s) |
+| 5 | 6m 35.5s (6m 29.7s–6m 37.8s) | 2m 1.6s (2m 0.6s–2m 3.3s) | 2m 49.0s (2m 46.9s–2m 50.2s) |
+| 10 | 4m 3.3s (4m 2.4s–4m 4.5s) | 1m 3.5s (1m 3.3s–1m 6.6s) | 1m 24.2s (1m 22.7s–1m 24.7s) |
+| 50 | 2m 6.7s (2m 4.4s–2m 6.7s) | 14.1s (13.9s–14.5s) | 24.4s (23.8s–28.8s) |
+| 100 | 1m 43.8s (1m 43.7s–1m 44.2s) | 8.1s (7.9s–8.7s) | 22.3s (19.2s–25.2s) |
+
+Each recorded ratio divides wafw00f's median elapsed time by wafmeow's for the
+same concurrency. **Above 1 favors wafmeow; below 1 favors wafw00f.**
+
+| Workers / processes | <img src="../assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow fast | <img src="../assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow full |
+| ---: | ---: | ---: |
+| 1 | 3.99× | 1.94× |
+| 5 | 3.25× | 2.34× |
+| 10 | 3.83× | 2.89× |
+| 50 | 8.97× | 5.20× |
+| 100 | 12.86× | 4.67× |
+
+### Result accounting
+
+Counts are targets, not fingerprint matches or HTTP requests. Each count is the
+range across the three blocks when the blocks differ. wafw00f does not report
+equivalent evidence-completion states; its unreturned targets remain unknown.
+
+| Workers / processes | Tool and mode | Returned | Named | Generic | Complete | Incomplete |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | wafmeow fast | 500 | 82–83 | 90–95 | 430–436 | 64–70 |
+| 1 | wafmeow full | 500 | 83–85 | 104–107 | 427–432 | 68–73 |
+| 1 | wafw00f 2.4.2 | 481–485 | 81–82 | 66–70 | — | — |
+| 5 | wafmeow fast | 500 | 82–85 | 87–91 | 427–429 | 71–73 |
+| 5 | wafmeow full | 500 | 83–85 | 106–108 | 425–432 | 68–75 |
+| 5 | wafw00f 2.4.2 | 478–482 | 80–81 | 63–67 | — | — |
+| 10 | wafmeow fast | 500 | 81–84 | 88–92 | 431–436 | 64–69 |
+| 10 | wafmeow full | 500 | 81–84 | 104–106 | 429 | 71 |
+| 10 | wafw00f 2.4.2 | 479–482 | 81–82 | 61–66 | — | — |
+| 50 | wafmeow fast | 500 | 82–85 | 87–93 | 436–443 | 57–64 |
+| 50 | wafmeow full | 500 | 81–86 | 105–109 | 426–432 | 68–74 |
+| 50 | wafw00f 2.4.2 | 480–483 | 79–82 | 64–72 | — | — |
+| 100 | wafmeow fast | 500 | 82–85 | 91–94 | 439–440 | 60–61 |
+| 100 | wafmeow full | 500 | 81–88 | 108–116 | 431–438 | 62–69 |
+| 100 | wafw00f 2.4.2 | 481–487 | 82–85 | 60–70 | — | — |
+
+For wafmeow, `complete` describes the evidence supplied to the classifier, not
+WAF absence or active enforcement. At 100 workers, fast mode returned
+439–440 complete targets and full mode 431–438; higher
+concurrency can still change evidence completeness, so shorter wall time alone
+does not establish equal completed work.
+
+### Build and input identity
+
+| Component | Recorded identity |
+| --- | --- |
+| wafmeow | Commit `c12e7c5`, Go `1.26.10-X:nodwarf5`, `vcs.modified=true` (only `.gitignore`) |
+| wafw00f | Unmodified 2.4.2, Python 3.13.5 |
+| Targets | 500 live, known-non-CDN root URLs sampled from Tranco ZJ8PG top 10,000; seed `20261030` |
+| Target file | SHA-256 `b9b770a70928e4ec2d4db98d03254ef8859d5f73389f734a6ec3f65c970fd6ff` |
+| Binary | SHA-256 `f4cc7f61fa24f5e251688670ff6d4704eff4f8039cd3fa51d705116599db5274` |
+| Host | Debian 13, AMD EPYC-Rome, four vCPUs, 7 GB RAM |
+
+Raw captures, process logs and the target list are local measurement artifacts;
+the tables and identities above are the published record.
+
+### Reproduce the VPS comparison
+
+Use an independently authorized target file and retain every attempted target,
+process exit status, command, build identity and raw output. Clear inherited
+proxy settings and keep the same CPU affinity for both tools.
+
+```sh
+# Choose 1, 5, 10, 50, or 100; add --fast for the fast-mode configuration.
+N=10
+GOMAXPROCS=4 ./wafmeow --input targets.txt --jsonl --silent --no-colors \
+  --concurrency="$N" --max-connections="$N" --probe-concurrency=1 \
+  --request-timeout=3s --target-timeout=30s --max-requests=54 \
+  --max-body-bytes=1048576 --redirect-policy=none --max-redirects=0
+```
+
+For wafw00f 2.4.2, divide the same input into N round-robin shards and run N
+copies of this command, one per shard:
+
+```sh
+python -m wafw00f.main -i shard.txt -a -r -T 3 --no-colors \
+  -f json -o shard.json
+```
+
+Start the timer before launching processes and stop it after every process
+exits. A watchdog-aborted configuration is not a completed timing. Account for
+missing upstream records as unknown, never negative. Hold the input, timeouts,
+limits, TLS policy, block count and accounting method fixed when comparing
+builds.
+
+## Historical 2,000-target live comparison
 
 The **2,000-target run completed on 30 October 2026** measured every configuration
 in three complete blocks and reports median elapsed time with its observed

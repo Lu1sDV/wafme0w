@@ -106,16 +106,15 @@ A ratio can be reported as “wafw00f/wafmeow median classification latency on t
 saved synthetic corpus,” with the exact workload and environment. The live table
 completes different amounts of work and does not support an unqualified “× faster”
 headline. The README carries the recorded live comparison with explicit mode,
-date, build and accounting links: on the 2,000-target run from clean commit
-`836252b`, before HTTP/1 connection reuse
-([ADR 0002](../adrs/0002-http1-connection-reuse-for-probes.md)), the **median
-elapsed ratio was 5.90× at 100 workers in fast mode and 0.90× at one worker in
-full mode**. The reused-connection build's one-worker result is recorded in the
-[connection-reuse comparison](benchmarks.md#connection-reuse-comparison); do not
-merge it into the older table. Slower cells must stay visible beside faster ones.
-Report per-block returned and complete counts with any live claim, and keep
-offline conformance results attached to their own workload. The
-[2,000-target protocol](benchmarks.md#a-new-2000-target-run) governs the next run.
+date, build and accounting links: on the 500-target VPS run completed 30–31
+October 2026, with a 500-target non-CDN Tranco sample, the **median elapsed ratio
+was 12.86× at 100 workers in fast mode and 3.99× at one worker in fast mode; full
+mode was 4.67× and 1.94× respectively**. Slower cells must stay visible beside
+faster ones. Report per-block returned and complete counts with any live claim,
+and keep offline conformance results attached to their own workload. The
+[VPS comparison protocol](benchmarks.md#reproduce-the-vps-comparison) governs the
+next run. The older 2,000-target laptop table and connection-reuse measurements
+remain as historical evidence, not current primary numbers.
 
 The README already has a mascot, animated demo, source build/install commands,
 structured-output examples and an authorized discovery pipeline. Keep the first
