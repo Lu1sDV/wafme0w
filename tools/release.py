@@ -184,6 +184,21 @@ def binary_identity(binary, revision, target_os, arch, go_version=GO_VERSION):
     return {"revision": revision, "go_version": actual_go_version, "os": target_os, "arch": arch, "modified": False}
 
 
+def verify_binary_release_version(binary, tag):
+    """Require the native executable to report exactly its immutable release tag.
+
+    Go build metadata proves source identity but does not reliably expose
+    linker -X values. Run the binary on its own native packaging runner,
+    before publishing any archive, and bind the result to the verified hash.
+    """
+    version_key(tag)
+    actual = command(str(binary), "--version")
+    expected = f"wafmeow {tag}"
+    require(actual == expected,
+            f"Binary release version mismatch for {binary}: got {actual!r}, expected {expected!r}")
+    return tag
+
+
 def archive_names(tag, targets=TARGETS, prefix=ARCHIVE_PREFIXES[0]):
     version_key(tag)
     return {f"{prefix}_{tag}_{target_os}_{arch}.{extension}": (target_os, arch)
@@ -227,6 +242,7 @@ def package(args):
     validate_candidate(args.tag, args.revision)
     require(command("go", "env", "GOVERSION") == GO_VERSION, "Release compiler differs from pinned compiler")
     identity = binary_identity(args.binary, args.revision, args.os, args.arch)
+    program_version = verify_binary_release_version(args.binary, args.tag)
     names = [name for name, target in archive_names(args.tag).items() if target == (args.os, args.arch)]
     require(len(names) == 1, "Unsupported release target")
     args.dist.mkdir(parents=True, exist_ok=True)
@@ -241,8 +257,8 @@ def package(args):
         with tarfile.open(archive, "x:gz") as output:
             for source, destination in files:
                 output.add(source, arcname=destination)
-    metadata = {**identity, "tag": args.tag, "archive_sha256": digest(archive),
-                "binary_sha256": digest(args.binary)}
+    metadata = {**identity, "tag": args.tag, "program_version": program_version,
+                "archive_sha256": digest(archive), "binary_sha256": digest(args.binary)}
     with (args.dist / (archive.name + ".metadata.json")).open("x", encoding="utf-8") as output:
         json.dump(metadata, output, indent=2, sort_keys=True)
     print(archive)
@@ -276,8 +292,9 @@ def verify(args):
     for name, (target_os, arch) in sorted(expected.items()):
         archive = args.dist / name
         metadata = json.loads((args.dist / (name + ".metadata.json")).read_text())
-        require(metadata["tag"] == args.tag and metadata["archive_sha256"] == digest(archive),
-                f"Archive hash/tag differs from native build metadata: {name}")
+        require(metadata["tag"] == args.tag and metadata.get("program_version") == args.tag and
+                metadata["archive_sha256"] == digest(archive),
+                f"Archive hash/tag/program version differs from native build metadata: {name}")
         with tempfile.TemporaryDirectory(prefix="wafmeow-verify-") as temporary:
             binary = extract_archive(archive, Path(temporary))
             identity = binary_identity(binary, args.revision, target_os, arch)
@@ -318,7 +335,7 @@ def check_bundle(dist, tag, revision):
         target_os, arch = expected[name]
         require(metadata.get("revision") == revision and metadata.get("modified") is False and
                 metadata.get("go_version") == GO_VERSION and metadata.get("tag") == tag and
-                metadata.get("os") == target_os and metadata.get("arch") == arch and
+                metadata.get("program_version") == tag and metadata.get("os") == target_os and metadata.get("arch") == arch and
                 isinstance(metadata.get("binary_sha256"), str) and
                 re.fullmatch(r"[0-9a-f]{64}", metadata["binary_sha256"]),
                 f"Manifest binary identity mismatch: {name}")

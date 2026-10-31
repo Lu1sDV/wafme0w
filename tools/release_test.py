@@ -149,6 +149,59 @@ class ReleasePolicyTests(unittest.TestCase):
                 release.prepare("v2.0.1", expected_revision="b" * 40)
             self.assertEqual(output.read_text(), f"tag=v2.0.1\nrevision={'b' * 40}\nprerelease=false\n")
 
+    def test_native_release_version_matches_exact_tag(self):
+        tag = "v3.0.5-rc.1"
+        for reported, accepted in (
+            ("wafmeow " + tag, True),
+            ("wafmeow v3.0.4", False),
+            ("wafmeow devel", False),
+            ("wafmeow v3.0.5-rc.1+abcdef", False),
+            ("wafmeow v3.0.5", False),
+            (tag, False),
+            ("wafmeow " + tag + "\nextra", False),
+        ):
+            with self.subTest(reported=reported), patch.object(release, "command", return_value=reported):
+                if accepted:
+                    self.assertEqual(release.verify_binary_release_version(Path("wafmeow"), tag), tag)
+                else:
+                    with self.assertRaisesRegex(ValueError, "Binary release version mismatch"):
+                        release.verify_binary_release_version(Path("wafmeow"), tag)
+
+    def test_native_package_fails_before_archive_on_wrong_runtime_version(self):
+        revision = "b" * 40
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            binary = root / "wafmeow"
+            dist = root / "dist"
+            args = SimpleNamespace(tag="v3.0.5", revision=revision, os="linux",
+                                   arch="amd64", binary=binary, dist=dist)
+
+            def command(*args):
+                if args == ("git", "rev-parse", "HEAD"):
+                    return revision
+                if args == ("go", "env", "GOVERSION"):
+                    return release.GO_VERSION
+                if args == (str(binary), "--version"):
+                    return "wafmeow v3.0.4"
+                self.fail(f"Unexpected packaging subprocess: {args!r}")
+
+            with patch.object(release, "command", side_effect=command), \
+                    patch.object(release, "validate_candidate"), \
+                    patch.object(release, "binary_identity", return_value={"revision": revision}):
+                with self.assertRaisesRegex(ValueError, "Binary release version mismatch"):
+                    release.package(args)
+            self.assertFalse(dist.exists(), "Wrong-version binary reached archive publication")
+
+    def test_both_ci_and_release_builds_inject_and_check_selected_tags(self):
+        root = Path(__file__).resolve().parents[1]
+        variable = "github.com/Lu1sDV/wafmeow/v3/pkg/wafmeow.releaseVersion"
+        for workflow, tag in (("ci.yml", "CHECK_TAG"), ("release.yml", "RELEASE_TAG")):
+            with self.subTest(workflow=workflow):
+                text = (root / ".github" / "workflows" / workflow).read_text(encoding="utf-8")
+                guard = ":?" if workflow == "release.yml" else ""
+                self.assertIn('-ldflags="-X ' + variable + '=${' + tag + guard + '}"', text)
+                self.assertIn(f'--version "${tag}"', text)
+
     def test_build_identity_rejects_dirty_wrong_revision_and_toolchain(self):
         revision = "b" * 40
         info = (f"binary: {release.GO_VERSION}\n"
@@ -172,7 +225,7 @@ class ReleasePolicyTests(unittest.TestCase):
                 (dist / name).write_bytes(name.encode())
                 archives[name] = {"archive_sha256": hashlib.sha256(name.encode()).hexdigest(),
                                   "binary_sha256": "d" * 64, "tag": "v1.0.0",
-                                  "os": target_os, "arch": arch,
+                                  "program_version": "v1.0.0", "os": target_os, "arch": arch,
                                   "revision": "b" * 40, "go_version": release.GO_VERSION,
                                   "modified": False}
             manifest = {"schema_version": 1, "scanner": release.SCANNER,
@@ -195,6 +248,7 @@ class ReleasePolicyTests(unittest.TestCase):
                 with self.subTest(key=key), self.assertRaises(ValueError):
                     release.check_bundle(dist, "v1.0.0", "b" * 40)
             for key, value in (("os", "other"), ("arch", "other"), ("tag", "v2.0.0"),
+                               ("program_version", "v1.0.1"), ("program_version", None),
                                ("binary_sha256", "not-a-sha256")):
                 invalid = copy.deepcopy(manifest)
                 invalid["archives"][next(iter(archives))][key] = value

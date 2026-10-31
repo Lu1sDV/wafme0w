@@ -164,10 +164,13 @@ jobs:
       - name: Run native package tests
         timeout-minutes: 10
         run: go test -count=1 -timeout=5m ./...
-      - name: Build native CLI with VCS identity
+      - name: Build native CLI with release tag and VCS identity
         shell: bash
         timeout-minutes: 5
-        run: go build -trimpath -buildvcs=true -o "$RUNNER_TEMP/wafmeow$BINARY_SUFFIX" ./cmd/wafmeow
+        run: |
+          go build -trimpath -buildvcs=true \
+            -ldflags="-X github.com/Lu1sDV/wafmeow/v3/pkg/wafmeow.releaseVersion=${RELEASE_TAG:?}" \
+            -o "$RUNNER_TEMP/wafmeow$BINARY_SUFFIX" ./cmd/wafmeow
       - name: Verify binary identity and archive release files
         shell: bash
         run: |
@@ -176,7 +179,9 @@ jobs:
       - name: Smoke the extracted native archive outside checkout
         shell: bash
         timeout-minutes: 5
-        run: python tools/smoke.py archive "dist/wafmeow_${RELEASE_TAG}_${RELEASE_OS}_${RELEASE_ARCH}.${RELEASE_EXTENSION}"
+        run: |
+          python tools/smoke.py archive "dist/wafmeow_${RELEASE_TAG}_${RELEASE_OS}_${RELEASE_ARCH}.${RELEASE_EXTENSION}" \
+            --version "$RELEASE_TAG"
       - name: Build and smoke the native release container without pushing
         if: runner.os == 'Linux'
         shell: bash

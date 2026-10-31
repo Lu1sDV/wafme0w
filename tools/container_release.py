@@ -65,13 +65,15 @@ def build(args):
     image = local_image(args.tag, args.arch)
     archive = args.dist / f"wafmeow_{args.tag}_linux_{args.arch}.tar.gz"
     metadata = json.loads((args.dist / (archive.name + ".metadata.json")).read_text(encoding="utf-8"))
-    require(metadata["tag"] == args.tag and metadata["archive_sha256"] == release.digest(archive),
-            "Native archive changed before container build")
+    require(metadata["tag"] == args.tag and metadata.get("program_version") == args.tag and
+            metadata["archive_sha256"] == release.digest(archive),
+            "Native archive or embedded version changed before container build")
     require(not args.output.exists(), "Container output must be a new directory")
     with tempfile.TemporaryDirectory(prefix="wafmeow-image-") as temporary:
         root = Path(temporary)
         binary = release.extract_archive(archive, root / "extracted")
         identity = release.binary_identity(binary, args.revision, "linux", args.arch)
+        release.verify_binary_release_version(binary, args.tag)
         require(all(metadata.get(key) == value for key, value in identity.items()) and
                 release.digest(binary) == metadata["binary_sha256"], "Native binary identity changed")
         require((binary.parent / "LICENSE.md").read_bytes() == Path("LICENSE.md").read_bytes(),
@@ -86,8 +88,7 @@ def build(args):
                         "--label", "org.opencontainers.image.revision=" + args.revision,
                         "--label", "org.opencontainers.image.version=" + args.tag,
                         "--tag", image, str(context)], check=True, timeout=300)
-        version = release.command(str(binary), "--version").removeprefix("wafmeow ")
-        subprocess.run([sys.executable, "tools/smoke.py", "docker", image, "--version", version],
+        subprocess.run([sys.executable, "tools/smoke.py", "docker", image, "--version", args.tag],
                        check=True, timeout=300)
         identity = inspect_image(image, args.tag, args.revision, args.arch, repository)
         args.output.mkdir(parents=True)

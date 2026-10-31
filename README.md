@@ -83,6 +83,12 @@ go build -o wafmeow ./cmd/wafmeow
 ./wafmeow --help
 ```
 
+Source checkouts show Go module/VCS identity; published release binaries
+show their exact release tag in `--version`, the human banner and JSON
+result provenance. The release workflow embeds that tag automatically and
+checks it before packaging. Installed binaries do not change versions
+until replaced by an update.
+
 For production, use a release that passes the [release validation gates](docs/releases.md#publication-gates).
 The v1.0.0 downloads predate the security hardening in this source tree.
 
