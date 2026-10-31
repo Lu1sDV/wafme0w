@@ -211,6 +211,34 @@ product families observed overall. These differences are not an accuracy score:
 the tools use different probe sets, product-name knowledge, TLS policies, body
 limits and generic/named reporting contracts.
 
+#### Transport and false-positive checks
+
+Targeted checks of the named differences found:
+
+- `centurytel.net` serves a certificate for `*.imds.tv`, not the requested host.
+  Verified TLS therefore fails in wafmeow; wafw00f disables verification and
+  receives a **400 “Invalid host”** response with `Server: nginx`, `X-Varnish`
+  and `Via: 1.1 varnish`. Its CacheWall result is a Varnish cache-header match,
+  not evidence of a WAF. wafmeow's TLS rejection is intentional.
+- `unisa.ac.za` omits an intermediate certificate. wafmeow cannot build a
+  verified chain; wafw00f disables verification and receives the F5 rejection
+  page plus an `f5avra…` session cookie. BIG-IP is supported by that response.
+  Instart DX also matches the same F5 rejection template (“requested URL was
+  rejected… support ID”), so that second product is a **false positive**.
+- `indianrail.gov.in` has a valid certificate, but this Go client receives
+  `tls: handshake failure`; curl and Python requests negotiate TLS successfully.
+  The target reports `Server: BigIP`; wafw00f's BIG-IP result is plausible, while
+  its Instart DX result shares the same generic rejection-template weakness.
+  wafmeow cannot classify this target without a transport-compatible path.
+- `doubao.com`'s NetScaler result was intermittent: wafw00f found it in one of
+  three blocks, wafmeow fast in two and full in none. Direct requests showed
+  Tengine/Volc CDN headers and no NetScaler marker. Treat this as unstable and
+  not a clean wafw00f-only miss pending a repeatable trigger.
+
+These checks explain why the named differences are small: most are transport
+incompatibility or an upstream signature collision, not a missing wafmeow
+fingerprint.
+
 ### Build and input identity
 
 | Component | Recorded identity |
