@@ -177,6 +177,19 @@ across three runs.
 Named and generic signals can overlap; these counts are not an accuracy comparison.
 [Detection semantics, transport checks and per-block accounting](docs/benchmarks.md#600-target-vps-comparison).
 
+### Reproducible offline comparison
+
+Run the [reproducible offline comparison](docs/benchmarks.md#reproduce-the-current-checkout)
+against **wafw00f 2.4.2** from a clean committed checkout. The runner records source
+and binary hashes, compiler and Python package versions, CPU details, the exact
+synthetic corpus, repeated blocks and a verified result manifest. Workers replay
+saved responses with network access isolated by bubblewrap.
+
+The shipped synthetic-conformance fixture links cover **29 of 172 products**;
+this checks conformance to fixture expectations. The live table measures
+end-to-end CLI elapsed time, while the offline comparison isolates saved-response
+classification. Keep each result attached to its workload and measured build.
+
 ## Major caveats
 
 - Scan only systems you own or are authorized to test. Default and fast modes are active.

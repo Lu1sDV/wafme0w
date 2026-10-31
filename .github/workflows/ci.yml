@@ -37,7 +37,31 @@ jobs:
         timeout-minutes: 5
         with:
           ref: ${{ inputs.ref }}
+          # Historical review checks need the exact PR base / pre-push commit.
+          fetch-depth: 0
           persist-credentials: false
+      - name: Check fingerprint review history
+        if: matrix.go == '1.27.3'
+        timeout-minutes: 2
+        shell: bash
+        env:
+          FINGERPRINT_REVIEW_EVENT: ${{ github.event_name }}
+          FINGERPRINT_REVIEW_PR_BASE: ${{ github.event.pull_request.base.sha }}
+          FINGERPRINT_REVIEW_PUSH_BEFORE: ${{ github.event.before }}
+          FINGERPRINT_REVIEW_SOURCE_REF: ${{ inputs.ref }}
+        run: |
+          if [[ "$FINGERPRINT_REVIEW_EVENT" == pull_request ]]; then
+            review_base="$FINGERPRINT_REVIEW_PR_BASE"
+          elif [[ -n "$FINGERPRINT_REVIEW_SOURCE_REF" ]]; then
+            # Reusable release validation checks the frozen candidate's change.
+            review_base=$(git rev-parse --verify 'HEAD^')
+          elif [[ "$FINGERPRINT_REVIEW_EVENT" == push ]]; then
+            review_base="$FINGERPRINT_REVIEW_PUSH_BEFORE"
+          else
+            printf 'No trusted fingerprint review baseline for this event.\n' >&2
+            exit 2
+          fi
+          python3 tools/check_fingerprint_review.py --base "$review_base"
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         timeout-minutes: 5
         with:

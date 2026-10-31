@@ -6330,14 +6330,16 @@
     {
       "id": "pksecurity-schema1-single-marker",
       "kind": "synthetic-conformance",
-      "review": "Pinned wafw00f 2.4.2 pksec.py:20-27 accepts either schema-1 content term; the native catalogue schema omits any and requires both. Only the module marker is present, so upstream matches and native does not. Identical complete Normal and Attack observations isolate boolean structure from response-role selection. No other selected content marker is present; ordinary 200/OK metadata has no headers. Truth remains unknown: source conformance is not independently labelled product evidence.",
+      "review": "Schema 1 accepts either the module marker or Security.Alert. The module marker alone must match in both tools. Source: WAFW00F 2.4.2 pksec.py, identical at https://github.com/EnableSecurity/wafw00f/blob/69fbe3956bba47a172cf87e40e9037535d32a130/wafw00f/plugins/pksec.py. Identical complete Normal and Attack observations isolate Boolean grouping from response-role selection. The literal bodies and ordinary 200/OK metadata contain no other catalogue product markers. Expectations were authored from source before detector execution. Product truth remains unknown; these synthetic cases are not real captures or evidence of detection accuracy. Assistant source review only; maintainer fixture review is required before accepting the catalogue change.",
       "truth": {
         "state": "unknown"
       },
       "expected": {
         "wafmeow": {
           "state": "complete",
-          "products": []
+          "products": [
+            "pksecurity"
+          ]
         },
         "wafw00f": {
           "state": "complete",
@@ -6365,14 +6367,14 @@
         "source_id": "wafmeow:source-conformance/2026-09-07/pksecurity-schema1-single-marker",
         "collected_on": "2026-09-07",
         "review_status": "conformance",
-        "reviewed_on": "2026-09-07",
-        "reviewer": "OpenAI assistant (source inspection only)"
+        "reviewed_on": "2026-10-30",
+        "reviewer": "OpenAI assistant (source inspection only; maintainer review pending)"
       }
     },
     {
       "id": "pksecurity-schema1-both-markers",
       "kind": "synthetic-conformance",
-      "review": "Pinned wafw00f 2.4.2 pksec.py:20-27 accepts either schema-1 term; native requires both. Both terms are present, so both tools match. This is the positive control for the single-marker disagreement. Identical complete Normal and Attack observations isolate boolean structure from response-role selection. No other selected content marker is present; ordinary 200/OK metadata has no headers. Truth remains unknown: source conformance is not independently labelled product evidence.",
+      "review": "Both schema-1 markers satisfy its OR condition. Both tools must match once via schema 1. Source: WAFW00F 2.4.2 pksec.py, identical at https://github.com/EnableSecurity/wafw00f/blob/69fbe3956bba47a172cf87e40e9037535d32a130/wafw00f/plugins/pksec.py. Identical complete Normal and Attack observations isolate Boolean grouping from response-role selection. The literal bodies and ordinary 200/OK metadata contain no other catalogue product markers. Expectations were authored from source before detector execution. Product truth remains unknown; these synthetic cases are not real captures or evidence of detection accuracy. Assistant source review only; maintainer fixture review is required before accepting the catalogue change.",
       "truth": {
         "state": "unknown"
       },
@@ -6409,23 +6411,21 @@
         "source_id": "wafmeow:source-conformance/2026-09-07/pksecurity-schema1-both-markers",
         "collected_on": "2026-09-07",
         "review_status": "conformance",
-        "reviewed_on": "2026-09-07",
-        "reviewer": "OpenAI assistant (source inspection only)"
+        "reviewed_on": "2026-10-30",
+        "reviewer": "OpenAI assistant (source inspection only; maintainer review pending)"
       }
     },
     {
       "id": "pksecurity-schema2-single-marker",
       "kind": "synthetic-conformance",
-      "review": "Pinned wafw00f 2.4.2 pksec.py:30-40 requires all three schema-2 terms; native sets any=true and accepts one. Only the potential-attack warning is present, so native matches and upstream does not. Identical complete Normal and Attack observations isolate boolean structure from response-role selection. No other selected content marker is present; ordinary 200/OK metadata has no headers. Truth remains unknown: source conformance is not independently labelled product evidence.",
+      "review": "Schema 2 requires all three warning terms. The potential-attack term alone must not match in either tool. Source: WAFW00F 2.4.2 pksec.py, identical at https://github.com/EnableSecurity/wafw00f/blob/69fbe3956bba47a172cf87e40e9037535d32a130/wafw00f/plugins/pksec.py. Identical complete Normal and Attack observations isolate Boolean grouping from response-role selection. The literal bodies and ordinary 200/OK metadata contain no other catalogue product markers. Expectations were authored from source before detector execution. Product truth remains unknown; these synthetic cases are not real captures or evidence of detection accuracy. Assistant source review only; maintainer fixture review is required before accepting the catalogue change.",
       "truth": {
         "state": "unknown"
       },
       "expected": {
         "wafmeow": {
           "state": "complete",
-          "products": [
-            "pksecurity"
-          ]
+          "products": []
         },
         "wafw00f": {
           "state": "complete",
@@ -6451,14 +6451,14 @@
         "source_id": "wafmeow:source-conformance/2026-09-07/pksecurity-schema2-single-marker",
         "collected_on": "2026-09-07",
         "review_status": "conformance",
-        "reviewed_on": "2026-09-07",
-        "reviewer": "OpenAI assistant (source inspection only)"
+        "reviewed_on": "2026-10-30",
+        "reviewer": "OpenAI assistant (source inspection only; maintainer review pending)"
       }
     },
     {
       "id": "pksecurity-schema2-all-markers",
       "kind": "synthetic-conformance",
-      "review": "Pinned wafw00f 2.4.2 pksec.py:30-40 requires all three schema-2 terms; native accepts any one. All three are present, so both tools match. This is the positive control for the partial-conjunction disagreement. Identical complete Normal and Attack observations isolate boolean structure from response-role selection. No other selected content marker is present; ordinary 200/OK metadata has no headers. Truth remains unknown: source conformance is not independently labelled product evidence.",
+      "review": "All three schema-2 warning terms are present and neither schema-1 marker is present. Both tools must match via schema 2. Source: WAFW00F 2.4.2 pksec.py, identical at https://github.com/EnableSecurity/wafw00f/blob/69fbe3956bba47a172cf87e40e9037535d32a130/wafw00f/plugins/pksec.py. Identical complete Normal and Attack observations isolate Boolean grouping from response-role selection. The literal bodies and ordinary 200/OK metadata contain no other catalogue product markers. Expectations were authored from source before detector execution. Product truth remains unknown; these synthetic cases are not real captures or evidence of detection accuracy. Assistant source review only; maintainer fixture review is required before accepting the catalogue change.",
       "truth": {
         "state": "unknown"
       },
@@ -6495,8 +6495,172 @@
         "source_id": "wafmeow:source-conformance/2026-09-07/pksecurity-schema2-all-markers",
         "collected_on": "2026-09-07",
         "review_status": "conformance",
-        "reviewed_on": "2026-09-07",
-        "reviewer": "OpenAI assistant (source inspection only)"
+        "reviewed_on": "2026-10-30",
+        "reviewer": "OpenAI assistant (source inspection only; maintainer review pending)"
+      }
+    },
+    {
+      "id": "pksecurity-schema1-alert-only",
+      "kind": "synthetic-conformance",
+      "review": "The second schema-1 marker alone satisfies its OR condition. This independently checks the alternative to the module marker. Source: WAFW00F 2.4.2 pksec.py, identical at https://github.com/EnableSecurity/wafw00f/blob/69fbe3956bba47a172cf87e40e9037535d32a130/wafw00f/plugins/pksec.py. Identical complete Normal and Attack observations isolate Boolean grouping from response-role selection. The literal bodies and ordinary 200/OK metadata contain no other catalogue product markers. Expectations were authored from source before detector execution. Product truth remains unknown; these synthetic cases are not real captures or evidence of detection accuracy. Assistant source review only; maintainer fixture review is required before accepting the catalogue change.",
+      "truth": {
+        "state": "unknown"
+      },
+      "expected": {
+        "wafmeow": {
+          "state": "complete",
+          "products": [
+            "pksecurity"
+          ]
+        },
+        "wafw00f": {
+          "state": "complete",
+          "products": [
+            "pksecurity"
+          ]
+        }
+      },
+      "responses": [
+        {
+          "role": "Normal",
+          "status_code": 200,
+          "reason": "OK",
+          "body_sha256": "e8395d9024425c2563a1e61fdea4affbf6d8d1f4d718c64e81b21b075d149ae8"
+        },
+        {
+          "role": "Attack",
+          "status_code": 200,
+          "reason": "OK",
+          "body_sha256": "e8395d9024425c2563a1e61fdea4affbf6d8d1f4d718c64e81b21b075d149ae8"
+        }
+      ],
+      "provenance": {
+        "type": "synthetic",
+        "source_id": "wafmeow:source-conformance/2026-10-30/pksecurity-schema1-alert-only",
+        "collected_on": "2026-10-30",
+        "review_status": "conformance",
+        "reviewed_on": "2026-10-30",
+        "reviewer": "OpenAI assistant (source inspection only; maintainer review pending)"
+      }
+    },
+    {
+      "id": "pksecurity-schema2-missing-attack",
+      "kind": "synthetic-conformance",
+      "review": "The blocked-request and reload terms are present, but the potential-attack term is absent. Schema 2 must not match. Source: WAFW00F 2.4.2 pksec.py, identical at https://github.com/EnableSecurity/wafw00f/blob/69fbe3956bba47a172cf87e40e9037535d32a130/wafw00f/plugins/pksec.py. Identical complete Normal and Attack observations isolate Boolean grouping from response-role selection. The literal bodies and ordinary 200/OK metadata contain no other catalogue product markers. Expectations were authored from source before detector execution. Product truth remains unknown; these synthetic cases are not real captures or evidence of detection accuracy. Assistant source review only; maintainer fixture review is required before accepting the catalogue change.",
+      "truth": {
+        "state": "unknown"
+      },
+      "expected": {
+        "wafmeow": {
+          "state": "complete",
+          "products": []
+        },
+        "wafw00f": {
+          "state": "complete",
+          "products": []
+        }
+      },
+      "responses": [
+        {
+          "role": "Normal",
+          "status_code": 200,
+          "reason": "OK",
+          "body_sha256": "f2c0aff46925bd4d5e07f60c1455d9e19dce36a2efdb11c060464f6ee7902809"
+        },
+        {
+          "role": "Attack",
+          "status_code": 200,
+          "reason": "OK",
+          "body_sha256": "f2c0aff46925bd4d5e07f60c1455d9e19dce36a2efdb11c060464f6ee7902809"
+        }
+      ],
+      "provenance": {
+        "type": "synthetic",
+        "source_id": "wafmeow:source-conformance/2026-10-30/pksecurity-schema2-missing-attack",
+        "collected_on": "2026-10-30",
+        "review_status": "conformance",
+        "reviewed_on": "2026-10-30",
+        "reviewer": "OpenAI assistant (source inspection only; maintainer review pending)"
+      }
+    },
+    {
+      "id": "pksecurity-schema2-missing-blocked",
+      "kind": "synthetic-conformance",
+      "review": "The potential-attack and reload terms are present, but the blocked-request term is absent. Schema 2 must not match. Source: WAFW00F 2.4.2 pksec.py, identical at https://github.com/EnableSecurity/wafw00f/blob/69fbe3956bba47a172cf87e40e9037535d32a130/wafw00f/plugins/pksec.py. Identical complete Normal and Attack observations isolate Boolean grouping from response-role selection. The literal bodies and ordinary 200/OK metadata contain no other catalogue product markers. Expectations were authored from source before detector execution. Product truth remains unknown; these synthetic cases are not real captures or evidence of detection accuracy. Assistant source review only; maintainer fixture review is required before accepting the catalogue change.",
+      "truth": {
+        "state": "unknown"
+      },
+      "expected": {
+        "wafmeow": {
+          "state": "complete",
+          "products": []
+        },
+        "wafw00f": {
+          "state": "complete",
+          "products": []
+        }
+      },
+      "responses": [
+        {
+          "role": "Normal",
+          "status_code": 200,
+          "reason": "OK",
+          "body_sha256": "40c4d4f2388fdf24a2163cb211bb51ffdb645264fed8c909d0898b40e1f0ed06"
+        },
+        {
+          "role": "Attack",
+          "status_code": 200,
+          "reason": "OK",
+          "body_sha256": "40c4d4f2388fdf24a2163cb211bb51ffdb645264fed8c909d0898b40e1f0ed06"
+        }
+      ],
+      "provenance": {
+        "type": "synthetic",
+        "source_id": "wafmeow:source-conformance/2026-10-30/pksecurity-schema2-missing-blocked",
+        "collected_on": "2026-10-30",
+        "review_status": "conformance",
+        "reviewed_on": "2026-10-30",
+        "reviewer": "OpenAI assistant (source inspection only; maintainer review pending)"
+      }
+    },
+    {
+      "id": "pksecurity-schema2-missing-reload",
+      "kind": "synthetic-conformance",
+      "review": "The potential-attack and blocked-request terms are present, but the reload term is absent. Schema 2 must not match. Source: WAFW00F 2.4.2 pksec.py, identical at https://github.com/EnableSecurity/wafw00f/blob/69fbe3956bba47a172cf87e40e9037535d32a130/wafw00f/plugins/pksec.py. Identical complete Normal and Attack observations isolate Boolean grouping from response-role selection. The literal bodies and ordinary 200/OK metadata contain no other catalogue product markers. Expectations were authored from source before detector execution. Product truth remains unknown; these synthetic cases are not real captures or evidence of detection accuracy. Assistant source review only; maintainer fixture review is required before accepting the catalogue change.",
+      "truth": {
+        "state": "unknown"
+      },
+      "expected": {
+        "wafmeow": {
+          "state": "complete",
+          "products": []
+        },
+        "wafw00f": {
+          "state": "complete",
+          "products": []
+        }
+      },
+      "responses": [
+        {
+          "role": "Normal",
+          "status_code": 200,
+          "reason": "OK",
+          "body_sha256": "3600d524c91140447742385262b0abd80af6cc6d89d281425cef20d80a8bffe5"
+        },
+        {
+          "role": "Attack",
+          "status_code": 200,
+          "reason": "OK",
+          "body_sha256": "3600d524c91140447742385262b0abd80af6cc6d89d281425cef20d80a8bffe5"
+        }
+      ],
+      "provenance": {
+        "type": "synthetic",
+        "source_id": "wafmeow:source-conformance/2026-10-30/pksecurity-schema2-missing-reload",
+        "collected_on": "2026-10-30",
+        "review_status": "conformance",
+        "reviewed_on": "2026-10-30",
+        "reviewer": "OpenAI assistant (source inspection only; maintainer review pending)"
       }
     }
   ],
@@ -6511,7 +6675,7 @@
     "Reason fingerprints are exact case-sensitive literal equality, not regular expressions. Upstream Shieldon has a bracketed literal header key that cannot occur in valid HTTP evidence; its unreachable branch is intentionally not added.",
     "Observed cross-tool disagreement is reported independently of per-tool expected conformance and synthetic truth. Deliberate role, repeated-header, malformed-cookie and empty-header disagreement cases have unknown product truth.",
     "Provenance metadata explicitly classifies inherited fixtures as synthetic conformance. Historical collection/review dates and reviewer identities are unknown; migration does not constitute a new independent review or a real capture.",
-    "The 29-product expansion adds source-conformance cases for pkSecurity's boolean differences: native schema 1 is AND and schema 2 is OR; pinned wafw00f 2.4.2 pksec.py uses OR and AND respectively. Their identical response roles isolate this from Attack metadata differences. New cases retain unknown product truth, and both native schemas remain baseline-untested pending human review.",
+    "The 29-product corpus includes pkSecurity source-conformance cases. Native schema 1 now accepts either marker (OR), and schema 2 requires all three terms (AND), matching pinned wafw00f 2.4.2 pksec.py. Identical response roles isolate grouping from native evidence-pool differences. All pkSecurity cases retain unknown product truth. The linked synthetic rule review is explicitly assistant source inspection, with maintainer fixture review required before accepting the catalogue correction.",
     "Source inspection for pkSecurity found none of its five content patterns in pre-existing complete bodies. Existing product expectations and truth are retained. Native missing or unavailable bodies leave pkSecurity unknown across the response pool; upstream's first content access leaves it unknown only when Attack is missing or unavailable. The existing known-empty case supplies the complete negative control."
   ]
 }
