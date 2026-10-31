@@ -438,13 +438,23 @@ The preview loops to show the movement; a CLI run plays the startup animation
 once and lets results end it early.
 
 Without `--jsonl` or `--silent`, results stream in completion order as compact
-Signal reports. Saved captures retain input order. Each product lists **matched
-on** observation numbers, request roles and HTTP statuses from its actual
-fingerprint evidence. Numbers start at 1 for each target and identify observations,
-not wire-request attempts or retries. Live probes retain their final response and
-redirect-chain metadata in one observation; followed redirects do not receive
-separate numbers. A match does not prove that a probe triggered blocking.
-The debug and JSON evidence indexes remain zero-based.
+per-target blocks. A matched product is indented below its target; supporting
+observations, review signals, and HTTP completeness follow underneath it.
+The HTTP line groups status counts (for example, `200×3 / 403×4 / 404`) rather
+than printing eight separate probes in a long horizontal run. Repeated warnings
+from different probes are grouped by reason and list their contributing roles.
+When several products match, shared HTTP evidence and warnings stay at the
+target level rather than being attributed to one product. On shared interactive
+terminals, warnings appear directly beneath the result; when stdout is redirected,
+stderr keeps standalone target-labeled diagnostics so messages remain attributable.
+The summary is separated from the last warning by a blank line.
+Saved captures retain input order. Matched observation numbers start at 1 per
+target and identify observations, not wire-request attempts or retries.
+Live probes retain their final response and redirect-chain metadata in one
+observation; followed redirects do not receive separate numbers. Detailed
+per-probe statuses and URLs remain available through `--debug` and JSONL.
+A match does not prove a probe triggered blocking. The debug and JSON evidence
+indexes remain zero-based.
 
 | Label | Meaning |
 | --- | --- |
@@ -476,9 +486,10 @@ Use JSONL stdout or JSON/JSONL/CSV/TXT report files for structured output.
 suppresses human scan output; `--no-warning` hides diagnostic prose but preserves
 outcome and completeness. Color is disabled for redirected output, `NO_COLOR`,
 `TERM=dumb`, or `--no-colors`. Diagnostics use stderr's own terminal status for
-color, independently of stdout. HTTP diagnostics appear one per row under a
-single warning header, with descriptions aligned after the escaped role tags.
-A blank line separates the last warning from the summary or next warning group.
+color, independently of stdout. On a shared terminal, repeated HTTP diagnostics
+are grouped by reason under the result with escaped role labels. Redirected
+stderr retains a standalone target-labeled warning block and separate colors.
+A blank line follows the final warning group.
 
 ### Certificate verification failures
 

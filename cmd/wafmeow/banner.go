@@ -141,44 +141,42 @@ func printResult(stdout, stderr io.Writer, result wafmeow.Result, suppressWarnin
 	case "NO WAF MATCH":
 		label = au.Green("[ " + outcome + " ]")
 	}
+
 	var group strings.Builder
 	fmt.Fprintf(&group, "%s  %s\n", au.Bold(label), terminalText(result.Target))
+	detailIndent := "  "
+	if len(result.Outcome.Matches) == 1 {
+		detailIndent = "    "
+	}
 	for _, match := range result.Outcome.Matches {
-		fmt.Fprintf(&group, "   product  %s\n", au.Bold(au.Red(terminalText(match.Product))))
+		fmt.Fprintf(&group, "  %s\n", au.Bold(au.Red(terminalText(match.Product))))
 		indices := supportingEvidence(match, len(result.Evidence))
-		group.WriteString("   matched on  ")
 		if len(indices) == 0 {
-			group.WriteString("supporting observation unavailable")
+			group.WriteString("    matched  supporting observation unavailable\n")
 		}
-		for i, index := range indices {
-			if i != 0 {
-				group.WriteString("; ")
-			}
+		for _, index := range indices {
 			observation := result.Evidence[index]
-			fmt.Fprintf(&group, "#%d %s HTTP ", index+1, probeTag(observation.Role, au))
+			fmt.Fprintf(&group, "    matched  #%d %s HTTP ", index+1, probeTag(observation.Role, au))
 			if observation.StatusCode >= 100 && observation.StatusCode <= 999 {
 				fmt.Fprint(&group, observation.StatusCode)
 			} else {
 				group.WriteByte('?')
 			}
-			if observation.RequestURL != "" {
+			// Do not print the target URL again for an ordinary observation.
+			if observation.RequestURL != "" && observation.RequestURL != result.Target {
 				fmt.Fprintf(&group, " %s", terminalText(observation.RequestURL))
 			}
 			if observation.EffectiveURL != "" && observation.EffectiveURL != observation.RequestURL {
 				fmt.Fprintf(&group, " -> %s", terminalText(observation.EffectiveURL))
 			}
+			group.WriteByte('\n')
 		}
-		group.WriteByte('\n')
 	}
 	if len(result.Outcome.Matches) == 0 {
 		switch outcome {
 		case "ERROR":
-			group.WriteString("   result   Target evaluation failed\n")
+			group.WriteString("  result  Target evaluation failed\n")
 		case "INCOMPLETE":
-			if hasExplicitAvailability(result) {
-				group.WriteString("   result   No known WAF fingerprint matched; classification incomplete\n")
-				break
-			}
 			description := "No HTTP response received"
 			for _, observation := range result.Evidence {
 				if observation.StatusCode >= 100 && observation.StatusCode <= 999 {
@@ -186,42 +184,24 @@ func printResult(stdout, stderr io.Writer, result wafmeow.Result, suppressWarnin
 					break
 				}
 			}
-			fmt.Fprintf(&group, "   result   %s; fingerprint evidence incomplete\n", description)
-		default:
-			group.WriteString("   result   No known WAF fingerprint matched\n")
+			if hasExplicitAvailability(result) {
+				group.WriteString("  result  No named match; classification incomplete\n")
+			} else {
+				fmt.Fprintf(&group, "  result  %s; evidence incomplete\n", description)
+			}
 		}
 	}
+
 	if result.Generic.Mode != "" || result.Generic.Reason != "" {
-		description := result.Generic.Reason
-		if description == "" {
-			description = result.Generic.Mode.String()
-		}
-		fmt.Fprintf(&group, "   review   Unusual response: %s\n", terminalText(description))
+		fmt.Fprintf(&group, "%sreview  %s\n", detailIndent, humanReviewReason(result.Generic))
 	} else if outcome == "REVIEW" {
 		if hasExplicitAvailability(result) {
-			group.WriteString("   review   HTTP channels or diagnostics need review\n")
+			fmt.Fprintf(&group, "%sreview  HTTP channels or diagnostics need review\n", detailIndent)
 		} else {
-			group.WriteString("   review   HTTP diagnostics need review\n")
+			fmt.Fprintf(&group, "%sreview  HTTP diagnostics need review\n", detailIndent)
 		}
 	}
-	group.WriteString("   HTTP  ")
-	if len(result.Evidence) == 0 {
-		group.WriteString("unavailable")
-	}
-	for i, observation := range result.Evidence {
-		if i != 0 {
-			group.WriteString(" / ")
-		}
-		fmt.Fprintf(&group, "#%d ", i+1)
-		if observation.StatusCode >= 100 && observation.StatusCode <= 999 {
-			fmt.Fprint(&group, observation.StatusCode)
-		} else {
-			group.WriteByte('?')
-		}
-		if observation.BodyTruncated {
-			group.WriteString(" (body truncated)")
-		}
-	}
+	fmt.Fprintf(&group, "%sHTTP  %s\n", detailIndent, humanHTTPStatuses(result.Evidence))
 	evidenceState := au.Colorize(terminalText(string(result.Outcome.State)), 0)
 	switch result.Outcome.State {
 	case wafmeow.Incomplete:
@@ -233,34 +213,194 @@ func printResult(stdout, stderr io.Writer, result wafmeow.Result, suppressWarnin
 	if hasExplicitAvailability(result) {
 		stateLabel = "classification"
 	}
-	fmt.Fprintf(&group, " | %s %s\n", stateLabel, evidenceState)
-	if channels := channelSummary(result); channels != "" {
-		fmt.Fprintf(&group, "   channels  %s\n", channels)
+	fmt.Fprintf(&group, "%s%s  %s", detailIndent, stateLabel, evidenceState)
+	truncated := 0
+	for _, observation := range result.Evidence {
+		if observation.BodyTruncated {
+			truncated++
+		}
 	}
-	if browser := result.Browser; browser != nil {
-		fmt.Fprintf(&group, "   browser  %s (%s), text %s, image %s (separate from HTTP)\n",
-			terminalText(browser.State), terminalText(browser.Mode), terminalText(browser.DOM.State), terminalText(browser.Screenshot.State))
-		if browser.DOM.SaveState != "" {
-			fmt.Fprintf(&group, "            text save %s\n", terminalText(browser.DOM.SaveState))
+	if truncated != 0 {
+		noun := "bodies"
+		if truncated == 1 {
+			noun = "body"
 		}
-		if browser.Screenshot.SaveState != "" {
-			fmt.Fprintf(&group, "            image save %s\n", terminalText(browser.Screenshot.SaveState))
-		}
-		if browser.DOM.Saved != "" {
-			fmt.Fprintf(&group, "            text saved %s\n", terminalText(browser.DOM.Saved))
-		}
-		if browser.Screenshot.Saved != "" {
-			fmt.Fprintf(&group, "            image saved %s\n", terminalText(browser.Screenshot.Saved))
-		}
+		fmt.Fprintf(&group, " (%d truncated %s)", truncated, noun)
 	}
 	group.WriteByte('\n')
+	if channels := channelSummary(result); channels != "" {
+		fmt.Fprintf(&group, "%schannels  %s\n", detailIndent, channels)
+	}
+	if browser := result.Browser; browser != nil {
+		fmt.Fprintf(&group, "%sbrowser  %s (%s), text %s, image %s (separate from HTTP)\n",
+			detailIndent, terminalText(browser.State), terminalText(browser.Mode),
+			terminalText(browser.DOM.State), terminalText(browser.Screenshot.State))
+		if browser.DOM.SaveState != "" {
+			fmt.Fprintf(&group, "%s         text save %s\n", detailIndent, terminalText(browser.DOM.SaveState))
+		}
+		if browser.Screenshot.SaveState != "" {
+			fmt.Fprintf(&group, "%s         image save %s\n", detailIndent, terminalText(browser.Screenshot.SaveState))
+		}
+		if browser.DOM.Saved != "" {
+			fmt.Fprintf(&group, "%s         text saved %s\n", detailIndent, terminalText(browser.DOM.Saved))
+		}
+		if browser.Screenshot.Saved != "" {
+			fmt.Fprintf(&group, "%s         image saved %s\n", detailIndent, terminalText(browser.Screenshot.Saved))
+		}
+	}
+
+	// Human output is still streamed per target; JSONL never calls this.
+	// For a shared terminal, print warnings directly under the same result
+	// rather than repeating its hostname in a detached warning banner.
+	shared := writersShareTerminal(stdout, stderr)
+	if suppressWarnings || !shared || !hasResultWarnings(result) {
+		group.WriteByte('\n')
+	}
 	if _, err := io.WriteString(stdout, group.String()); err != nil {
 		return err
 	}
 	if suppressWarnings {
 		return nil
 	}
+	if shared {
+		return printNestedResultDiagnostics(stderr, result, diagnostics, detailIndent)
+	}
 	return printResultDiagnostics(stderr, result, diagnostics)
+}
+
+// Statuses are grouped in first-observed order. A status histogram summarizes
+// the probe set without implying that responses caused blocking or that each
+// observation represents a redirect/retry attempt.
+func humanHTTPStatuses(evidence []wafmeow.EvidenceSummary) string {
+	if len(evidence) == 0 {
+		return "no observations"
+	}
+	statuses := make([]string, 0, len(evidence))
+	counts := make(map[string]int, len(evidence))
+	for _, observation := range evidence {
+		status := "?"
+		if observation.StatusCode >= 100 && observation.StatusCode <= 999 {
+			status = strconv.Itoa(observation.StatusCode)
+		}
+		if counts[status] == 0 {
+			statuses = append(statuses, status)
+		}
+		counts[status]++
+	}
+	var parts []string
+	for _, status := range statuses {
+		if counts[status] == 1 {
+			parts = append(parts, status)
+		} else {
+			parts = append(parts, fmt.Sprintf("%s×%d", status, counts[status]))
+		}
+	}
+	unit := "observations"
+	if len(evidence) == 1 {
+		unit = "observation"
+	}
+	return fmt.Sprintf("%d %s: %s", len(evidence), unit, strings.Join(parts, " / "))
+}
+
+func humanReviewReason(g wafmeow.GenericDetection) string {
+	if g.Mode == wafmeow.ChangeInStatus && g.BeforeStatus >= 100 && g.AfterStatus >= 100 && g.RequestType != "" {
+		return fmt.Sprintf("HTTP %d → %d on %s (unusual response)",
+			g.BeforeStatus, g.AfterStatus, terminalText(g.RequestType))
+	}
+	if g.Reason != "" {
+		return terminalText(g.Reason)
+	}
+	return terminalText(g.Mode.String())
+}
+
+func hasResultWarnings(result wafmeow.Result) bool {
+	if len(result.Outcome.Diagnostics) != 0 {
+		return true
+	}
+	if browser := result.Browser; browser != nil {
+		return browser.Reason != "" || browser.Error != "" || len(browser.Limitations) != 0
+	}
+	return false
+}
+
+// When both output streams point at the same TTY, preserve the visual parent
+// relationship. The same warning appears on stderr as before; the JSON result
+// and its machine-readable diagnostic count are not changed.
+func printNestedResultDiagnostics(writer io.Writer, result wafmeow.Result, au *aurora.Aurora, indent string) error {
+	var group strings.Builder
+	type warningKey struct {
+		code, message string
+	}
+	type warningGroup struct {
+		message string
+		roles   []string
+	}
+	index := make(map[warningKey]int)
+	var warnings []warningGroup
+	seen := make(map[wafmeow.Diagnostic]bool, len(result.Outcome.Diagnostics))
+	for _, diagnostic := range result.Outcome.Diagnostics {
+		if seen[diagnostic] {
+			continue
+		}
+		seen[diagnostic] = true
+		message := diagnosticText(result, diagnostic)
+		key := warningKey{code: diagnostic.Code, message: message}
+		at, ok := index[key]
+		if !ok {
+			at = len(warnings)
+			index[key] = at
+			warnings = append(warnings, warningGroup{message: message})
+		}
+		role := ""
+		if diagnostic.Evidence >= 0 && diagnostic.Evidence < len(result.Evidence) {
+			role = result.Evidence[diagnostic.Evidence].Role
+		}
+		if role == "" {
+			role = "unattributed"
+		}
+		warnings[at].roles = append(warnings[at].roles, role)
+	}
+	warningLabel := au.Bold(au.Yellow("WARN"))
+	for _, warning := range warnings {
+		if len(warning.roles) == 1 {
+			role := warning.roles[0]
+			if role == "unattributed" {
+				fmt.Fprintf(&group, "%s%s  %s\n", indent, warningLabel, warning.message)
+			} else {
+				fmt.Fprintf(&group, "%s%s  %s %s\n", indent, warningLabel, probeTag(role, au), warning.message)
+			}
+			continue
+		}
+		var roles []string
+		for _, role := range warning.roles {
+			if role == "unattributed" {
+				roles = append(roles, "unattributed")
+			} else {
+				roles = append(roles, fmt.Sprint(probeTag(role, au)))
+			}
+		}
+		fmt.Fprintf(&group, "%s%s  %s (%s)\n",
+			indent, warningLabel, warning.message, strings.Join(roles, ", "))
+	}
+	if browser := result.Browser; browser != nil {
+		if browser.Reason != "" || browser.Error != "" {
+			fmt.Fprintf(&group, "%s%s  browser %s: %s\n", indent, warningLabel,
+				terminalText(browser.Reason), terminalText(browser.Error))
+		}
+		for _, limitation := range browser.Limitations {
+			fmt.Fprintf(&group, "%s%s  browser limitation: %s\n",
+				indent, warningLabel, terminalText(limitation))
+		}
+	}
+	if group.Len() == 0 {
+		return nil
+	}
+	group.WriteByte('\n')
+	n, err := io.WriteString(writer, group.String())
+	if err == nil && n != group.Len() {
+		return io.ErrShortWrite
+	}
+	return err
 }
 
 // probeTag colors a probe role. Roles are presentation labels, not machine

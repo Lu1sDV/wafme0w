@@ -339,6 +339,29 @@ def run_suite(binary, output):
             terminal_cleanup(process)
             require([first_gate.calls, second_gate.calls] == [1, 1], 'animation changed baseline request accounting')
 
+        def nested_match(start, target, directory):
+            # A local status-only fingerprint remains matchable even when the
+            # body is deliberately truncated, so the warning is also exercised.
+            (directory / 'catalogue.json').write_text(
+                '[{"name":"Fixture WAF","schemas":[{"fingerprints":[{"type":"Status","pattern":"200"}]}]}]\n')
+            url, gate = target('matched')
+            process = start([*base, '--target', url, '--max-body-bytes=1'], stderr_tty=True)
+            process.wait_for(gate.received.is_set, 'owned WAF fixture request')
+            gate.release.set()
+            process.finish()
+            out = plain(process.streams['stdout'])
+            require('[ WAF MATCH ]  ' + url in out, 'matched target missing')
+            require('  Fixture WAF\n    matched  #1 [Normal] HTTP 200' in out,
+                    'matched fingerprint not nested beneath product')
+            require('    HTTP  1 observation: 200\n' in out, 'HTTP evidence not nested')
+            require('    evidence  incomplete' in out, 'body truncation not reported')
+            require('    WARN  [Normal] ' in out, 'warning not grouped beneath WAF match')
+            require('WARN  ' + url not in out, 'nested warning repeats target name')
+            require('\n\nSUMMARY' in out, 'warning and summary are not separated')
+            require('   product  ' not in out and 'matched on  ' not in out,
+                    'verbose legacy product formatting resurfaced')
+            terminal_cleanup(process)
+
         def disabled(start, target, directory, *, flags=(), environment=None, stdout_tty=True,
                      stdin_kind='null', width=80, height=24, kind='human'):
             url, gate = target('disabled')
@@ -392,6 +415,7 @@ def run_suite(binary, output):
             case('piped target input still animates human TTY output', lambda *args: animated(*args, piped=True))
             case('combined stdout/stderr PTY preserves the plan below the cat',
                  lambda *args: animated(*args, shared=True))
+            case('human WAF evidence and warning stay nested on a shared terminal', nested_match)
             for name, kwargs in [
                 ('--no-animation', {'flags': ['--no-animation']}),
                 ('--no-colors', {'flags': ['--no-colors']}),
