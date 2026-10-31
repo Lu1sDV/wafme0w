@@ -23,9 +23,9 @@ func colorizer(writer io.Writer, disabled bool) *aurora.Aurora {
 }
 
 func printBanner(writer io.Writer, au *aurora.Aurora) error {
-	_, err := fmt.Fprintf(writer, "%s  %s  %s\n  HTTP evidence fingerprinting | fast, deep, baseline or saved capture\n\n",
+	text := fmt.Sprintf("%s  %s  %s\n  HTTP evidence fingerprinting | fast, deep, baseline or saved capture\n\n",
 		au.Cyan("/\\_/\\"), au.Bold("wafmeow"), terminalText(wafmeow.Version()))
-	return err
+	return writeLogo(writer, text)
 }
 
 // Escape controls and invisible formatting before strings enter a terminal.

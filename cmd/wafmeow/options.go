@@ -67,11 +67,12 @@ type LimitOptions struct {
 }
 
 type OutputOptions struct {
-	JSONL      bool   `long:"jsonl" description:"Stream result JSONL to stdout; human summary goes to stderr"`
-	OutputFile string `short:"O" long:"output" value-name:"FILE" unquote:"false" description:"Atomic report: .json/.jsonl/.csv select format, otherwise TXT; - is a literal file"`
-	Strict     bool   `long:"strict" description:"Exit 2 for incomplete, failed or diagnosed results after publication; matches alone do not fail"`
-	Silent     bool   `long:"silent" description:"Suppress human scan output; requires --output or --jsonl (except --list/--version)"`
-	NoColors   bool   `long:"no-colors" description:"Disable ANSI color; also honors NO_COLOR and redirected output"`
+	JSONL       bool   `long:"jsonl" description:"Stream result JSONL to stdout; human summary goes to stderr"`
+	OutputFile  string `short:"O" long:"output" value-name:"FILE" unquote:"false" description:"Atomic report: .json/.jsonl/.csv select format, otherwise TXT; - is a literal file"`
+	Strict      bool   `long:"strict" description:"Exit 2 for incomplete, failed or diagnosed results after publication; matches alone do not fail"`
+	Silent      bool   `long:"silent" description:"Suppress human scan output; requires --output or --jsonl (except --list/--version)"`
+	NoColors    bool   `long:"no-colors" description:"Disable ANSI color and logo animation; also honors NO_COLOR and redirected output"`
+	NoAnimation bool   `long:"no-animation" description:"Keep the startup cat logo still; animation only uses a capable interactive stdout"`
 }
 
 type AnalysisOptions struct {

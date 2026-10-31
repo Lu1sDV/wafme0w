@@ -12,9 +12,14 @@ func isTerminal(file *os.File) bool {
 }
 
 func terminalColumns(file *os.File) int {
+	columns, _ := terminalSize(file)
+	return columns
+}
+
+func terminalSize(file *os.File) (columns, rows int) {
 	var info windows.ConsoleScreenBufferInfo
 	if err := windows.GetConsoleScreenBufferInfo(windows.Handle(file.Fd()), &info); err != nil {
-		return 0
+		return 0, 0
 	}
-	return int(info.Window.Right-info.Window.Left) + 1
+	return int(info.Window.Right-info.Window.Left) + 1, int(info.Window.Bottom-info.Window.Top) + 1
 }

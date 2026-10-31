@@ -417,6 +417,25 @@ The plan omits target URLs, header values, origin values and file paths;
 `--silent` suppresses it. A custom User-Agent is called out because it overrides
 the no-user-agent probe too, without displaying its value.
 
+Interactive human scans show the cat climbing an orange brick wall at startup.
+The animation normally finishes in about 540 ms and runs alongside acquisition;
+the first result stops it immediately, without waiting for the remaining frames.
+The logo settles before any result, warning, debug line, overview or error is printed,
+including when stdout and stderr share one terminal. It never hides the cursor.
+
+Use `--no-animation` to keep the cat still. Animation requires ANSI-capable
+interactive stdout with room for the logo; redirected stdout, a small or
+unknown-size terminal, and `TERM=dumb` use a compact static header. Piped target
+input can still animate when stdout is an eligible terminal. `--no-colors` or
+`NO_COLOR` gives static, escape-free output. Help, version, product listings,
+`--jsonl` and `--silent` never animate. If a terminal resize is detected between
+frames, startup redraws stop because terminal reflow invalidates their coordinates.
+
+![Animated startup logo preview](../assets/demo/animated-logo.gif)
+
+The preview loops to show the movement; a CLI run plays the startup animation
+once and lets results end it early.
+
 Without `--jsonl` or `--silent`, results stream in completion order as compact
 Signal reports. Saved captures retain input order. Each product lists **matched
 on** observation numbers, request roles and HTTP statuses from its actual

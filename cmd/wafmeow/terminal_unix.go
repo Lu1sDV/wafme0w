@@ -14,9 +14,14 @@ func isTerminal(file *os.File) bool {
 }
 
 func terminalColumns(file *os.File) int {
+	columns, _ := terminalSize(file)
+	return columns
+}
+
+func terminalSize(file *os.File) (columns, rows int) {
 	size, err := unix.IoctlGetWinsize(int(file.Fd()), unix.TIOCGWINSZ)
 	if err != nil {
-		return 0
+		return 0, 0
 	}
-	return int(size.Col)
+	return int(size.Col), int(size.Row)
 }
