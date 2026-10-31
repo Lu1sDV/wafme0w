@@ -198,7 +198,8 @@ class ReleasePolicyTests(unittest.TestCase):
         for workflow, tag in (("ci.yml", "CHECK_TAG"), ("release.yml", "RELEASE_TAG")):
             with self.subTest(workflow=workflow):
                 text = (root / ".github" / "workflows" / workflow).read_text(encoding="utf-8")
-                self.assertIn(f'-ldflags="-X {variable}=${{{tag}}}"', text)
+                guard = ":?" if workflow == "release.yml" else ""
+                self.assertIn('-ldflags="-X ' + variable + '=${' + tag + guard + '}"', text)
                 self.assertIn(f'--version "${tag}"', text)
 
     def test_build_identity_rejects_dirty_wrong_revision_and_toolchain(self):
