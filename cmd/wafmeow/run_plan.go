@@ -50,7 +50,7 @@ func runPlanText(opts options, config wafmeow.Config) string {
 			fmt.Fprintf(&plan, "RUN PLAN  %s | %d workers | %s | %s/req | %s/target\n",
 				mode, config.Concurrency, parallelism, config.RequestTimeout, config.TargetTimeout)
 		}
-		if config.MaxConnections != 0 || connections != config.Concurrency {
+		if connections != config.Concurrency || (config.MaxConnections != 0 && config.MaxConnections != defaults.MaxConnections) {
 			details = append(details, fmt.Sprintf("%d in flight", connections))
 		}
 		if config.MaxRequests != defaults.MaxRequests {

@@ -330,7 +330,7 @@ func TestSignalDiagnosticsRetainDistinctObservations(t *testing.T) {
 		"  [Normal] same recorded cause\n" +
 		"  [Probe]  same recorded cause\n" +
 		"  [Normal] HTTP export cause\n" +
-		"WARN  https://fixture.invalid/ | browser browser_capture_failed: browser only cause\n"
+		"WARN  https://fixture.invalid/ | browser browser_capture_failed: browser only cause\n\n"
 	if stderr.String() != want {
 		t.Fatalf("diagnostic layout, order or attribution changed:\n got %q\nwant %q", stderr.String(), want)
 	}
@@ -373,7 +373,7 @@ func TestSignalDiagnosticRoleAlignment(t *testing.T) {
 					fmt.Sprintf("  %s%ssecond cause\n", au.Cyan("[Normal]"), strings.Repeat(" ", test.afterNormal)) +
 					strings.Repeat(" ", test.anonymousIndent) + "unattributed cause\n" +
 					strings.Repeat(" ", test.anonymousIndent) + "invalid reference\n" +
-					strings.Repeat(" ", test.anonymousIndent) + "empty role\n"
+					strings.Repeat(" ", test.anonymousIndent) + "empty role\n\n"
 				if stderr.String() != want {
 					t.Fatalf("diagnostic columns changed:\n got %q\nwant %q", stderr.String(), want)
 				}
@@ -397,7 +397,7 @@ func TestSignalDiagnosticsWithoutRoles(t *testing.T) {
 	want := "WARN  https://fixture.invalid/ | 3 diagnostics\n" +
 		"     unattributed cause\n" +
 		"     invalid reference\n" +
-		"     empty role\n"
+		"     empty role\n\n"
 	if stderr.String() != want {
 		t.Fatalf("unattributed diagnostic layout changed:\n got %q\nwant %q", stderr.String(), want)
 	}

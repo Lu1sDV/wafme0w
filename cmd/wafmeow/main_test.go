@@ -337,7 +337,7 @@ func TestConsoleBlockedRedirectDestination(t *testing.T) {
 	if err := printResult(&stdout, &stderr, result, false, aurora.New(aurora.WithColors(true)), aurora.New(aurora.WithColors(false))); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(stderr.String(), location+`\x1b\nFORGED`) || strings.Count(stderr.String(), "\n") != 2 {
+	if !strings.Contains(stderr.String(), location+`\x1b\nFORGED`) || strings.Count(stderr.String(), "\n") != 3 {
 		t.Fatalf("redirect destination was lost or unsafe: %q", stderr.String())
 	}
 }
