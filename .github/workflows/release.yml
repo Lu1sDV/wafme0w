@@ -163,7 +163,7 @@ jobs:
           sudo apparmor_parser -r "$RUNNER_TEMP/wafmeow-bwrap"
       - name: Run native package tests
         timeout-minutes: 10
-        run: go test -timeout=5m ./...
+        run: go test -count=1 -timeout=5m ./...
       - name: Build native CLI with VCS identity
         shell: bash
         timeout-minutes: 5
