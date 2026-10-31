@@ -98,7 +98,7 @@ brew install Lu1sDV/tap/wafmeow
 
 ```sh
 # Use your own local HTTP server on port 8080.
-./wafmeow --target http://127.0.0.1:8080 --baseline --jsonl
+./wafmeow --target http://127.0.0.1:8080 --fast --jsonl
 ```
 
 Use `--target` / `-t` for a URL and repeat it for several URLs. Use
@@ -118,7 +118,7 @@ active mode against a target you do not own.
 ```sh
 # Discover URLs, then send new wafmeow requests:
 httpx -l authorized-hosts.txt -silent |
-  ./wafmeow --target-file - --baseline --jsonl --silent
+  ./wafmeow --target-file - --fast --jsonl --silent
 
 # Classify exported responses without additional requests:
 httpx -l authorized-hosts.txt -silent -json -irr -probe -rstr 1048576 -rsts 1048576 |
