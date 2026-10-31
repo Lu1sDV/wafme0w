@@ -40,6 +40,15 @@ certificate checks remain enabled.
   whitespace-delimited autocomplete tokens, password-type attributes, and
   credential `data-*` names or values. Substrings are not credential names;
   arbitrary text and pixels are not guaranteed secret-free.
+- Text export records actual element/text ancestry in the isolated browser world,
+  before HTML parsing could move content out of a recognized credential subtree.
+  It acquires this additional structural snapshot only when `SaveText` is selected,
+  with limits of 1 MiB, 16,384 nodes and 128 levels. Unsupported or over-limit
+  snapshots withhold the text callback and mark `dom.save_state` as `failed`;
+  screenshot export remains independent. Raw acquired DOM bytes and their
+  `acquired_sha256` remain separate from the sanitized `wafmeow.browser-dom.v1`
+  JSON artifact. Scripts, foreign content and the other excluded active subtrees
+  are omitted structurally, so their text is never reparsed as HTML.
 - Screenshot export requires actual clipping of recognized credential content
   to its mask rectangle. Layout rectangles alone do not bound glyph ink, even
   with upright fonts. Supported regions are native text inputs and textareas

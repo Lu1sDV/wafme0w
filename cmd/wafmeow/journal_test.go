@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -14,6 +15,58 @@ import (
 
 	"github.com/Lu1sDV/wafmeow/v2/pkg/wafmeow"
 )
+
+func TestCLIJournalRejectsNewCaseInsensitiveAliasBeforeReadingInput(t *testing.T) {
+	dir := t.TempDir()
+	probe := filepath.Join(dir, "case-probe")
+	if err := os.WriteFile(probe, nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	lower, err := os.Stat(probe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	upper, err := os.Stat(filepath.Join(dir, "CASE-PROBE"))
+	if errors.Is(err, os.ErrNotExist) {
+		t.Skip("temporary filesystem is case-sensitive")
+	}
+	if err != nil || !os.SameFile(lower, upper) {
+		t.Fatalf("inspect filesystem case behavior: %v", err)
+	}
+	if err := os.Remove(probe); err != nil {
+		t.Fatal(err)
+	}
+
+	// Neither output name exists during the initial path validation. Creating
+	// the journal must expose the filesystem alias before any input is read.
+	report := filepath.Join(dir, "Result.json")
+	journal := filepath.Join(dir, "result.json")
+	input := &journalInputTracker{Reader: strings.NewReader(captureLines(t,
+		wafmeow.Capture{Target: "saved", Evidence: []wafmeow.Evidence{}},
+	))}
+	var stdout, stderr bytes.Buffer
+	code := runContext(context.Background(), []string{"--evidence=-", "--silent", "--output", report, "--diagnostics-journal", journal}, input, true, &stdout, &stderr)
+	if code != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "same file") || input.reads != 0 {
+		t.Fatalf("journal alias was not rejected before input: exit=%d reads=%d stdout=%q stderr=%q", code, input.reads, stdout.String(), stderr.String())
+	}
+	if data, err := os.ReadFile(journal); err != nil || len(data) != 0 {
+		t.Fatalf("rejected journal was written or replaced: %q %v", data, err)
+	}
+	// This also checks that error cleanup releases the journal on Windows.
+	if err := os.Remove(journal); err != nil {
+		t.Fatalf("rejected journal was left open: %v", err)
+	}
+}
+
+type journalInputTracker struct {
+	io.Reader
+	reads int
+}
+
+func (input *journalInputTracker) Read(data []byte) (int, error) {
+	input.reads++
+	return input.Reader.Read(data)
+}
 
 func TestCLIPostPublicationSinkFailureKeepsReport(t *testing.T) {
 	dir := t.TempDir()

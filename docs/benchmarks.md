@@ -345,7 +345,7 @@ go test ./pkg/wafmeow -run '^$' -bench '^BenchmarkAcquisitionPipeline$' -benchme
 ```
 
 The acquisition matrix uses owned HTTP/TLS loopback fixtures, four workers, and
-the full catalogue. Baseline/full modes perform exactly one/nine probes over
+the full catalogue. Baseline/full modes perform exactly one/eight probes over
 reused HTTP/1 connections per target. Bodies cover small HTML, 32 KiB HTML, and
 gzip. Compilation and fixture setup are outside timing; acquisition,
 classification, and serial result delivery are inside.
@@ -368,7 +368,6 @@ marker, while schema 2 requires all three warning terms. Their product truth is
 unknown, and their provenance identifies assistant source inspection with
 maintainer fixture review required before accepting the catalogue correction.
 This corpus update does not revise any historical timings or detection counts.
-
 ```sh
 python3 -m venv .offlinebench-venv
 .offlinebench-venv/bin/pip install -r tools/offlinebench/requirements.txt
@@ -388,9 +387,13 @@ together must fit within 4 MiB; repeated references count again because worker
 JSON expands each response. Hash-verified repeated bodies share immutable
 storage during loading. Split larger corpora into separate runs. These limits
 are checked before workers start, and input-limit errors abort the run. The
-whole-run timeout includes corpus loading, and manifest/body inputs must be
-regular files. Worker input is limited to 8 MiB, including whitespace and
-base64-encoded bodies.
+coordinator also checks the complete encoded worker request against a separate
+8 MiB limit before starting isolation or either detector. Base64 body encoding
+and JSON string escaping count toward this limit, so a manifest and its bodies
+can each pass their own limits while their combined request requires splitting
+the corpus. Both adapters enforce the same 8 MiB byte limit, including trailing
+whitespace, before decoding their input. The whole-run timeout includes corpus
+loading, and manifest/body inputs must be regular files.
 
 Manifest structure is checked before allocating typed records: arrays hold at
 most 4,096 entries, narrowed to 64 responses per case and 256 headers per

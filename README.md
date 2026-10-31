@@ -106,8 +106,11 @@ Use `--target` / `-t` for a URL and repeat it for several URLs. Use
 `--input PATH` and `-I PATH` remain equivalent spellings of `--target-file PATH`.
 Choose one input source; saved responses use `--evidence` for offline analysis.
 
-`--baseline` sends a normal request; default active mode sends up to nine requests,
-and `--fast` selects three. Redirects remain subject to scope and request budgets.
+`--baseline` sends a normal request; default active mode sends up to eight requests,
+and `--fast` selects three (normal, no-user-agent and the combined probe).
+Redirects remain subject to scope and request budgets. See
+[active probe payloads](docs/usage.md#active-probe-payloads) before enabling
+active mode against a target you do not own.
 
 ### ProjectDiscovery httpx pipelines
 

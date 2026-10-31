@@ -21,6 +21,7 @@ import (
 const (
 	SchemaVersion          = 3
 	maxCorpusSize          = 8 << 20
+	maxWorkerInputSize     = 8 << 20
 	maxBodySize            = 1 << 20
 	maxReferencedBodyBytes = 4 << 20
 	maxHeaders             = 256

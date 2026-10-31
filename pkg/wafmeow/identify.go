@@ -232,8 +232,12 @@ func (e *Engine) Classify(evidence []Evidence) Outcome {
 			}
 		}
 		if e.needsCookies && response.channels.headers {
-			for _, cookie := range (&http.Response{Header: response.headers}).Cookies() {
-				response.cookies = append(response.cookies, cookie.String())
+			// Response.Cookies silently drops all fields above net/http's
+			// aggregate cookie limit. Parse already-admitted fields individually.
+			for _, value := range response.headers.Values("Set-Cookie") {
+				if cookie, err := http.ParseSetCookie(value); err == nil {
+					response.cookies = append(response.cookies, cookie.String())
+				}
 			}
 		}
 	}

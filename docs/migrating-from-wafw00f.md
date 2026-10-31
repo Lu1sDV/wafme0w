@@ -50,7 +50,7 @@ selects an atomic report file and can be combined with JSONL stdout.
 
 ## Choose collection intentionally
 
-wafmeow's default active mode selects up to nine requests; `--fast` selects three.
+wafmeow's default active mode selects up to eight requests; `--fast` selects three.
 `--baseline` sends the normal request only. Redirects and budgets can change the
 actual request count. None of these modes is equivalent to every wafw00f run.
 

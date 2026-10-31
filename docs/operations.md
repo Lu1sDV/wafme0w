@@ -35,6 +35,9 @@ Enable a body-free result and diagnostics journal when durable records are neede
 ```
 
 The journal appends and syncs each result before another sink sees it by default.
+The report and journal must identify different files. The CLI checks again after
+creating the journal so that initially absent names which differ only by casing
+on a case-insensitive filesystem are rejected before reading scan input.
 `--journal-batch-size` above 1 uses group sync: pending results are not published
 to reports or output until their whole batch is synced. Partial batches flush
 within 25 ms. A crash may lose a pending batch, but those results have not yet
@@ -55,7 +58,9 @@ JSON/JSONL if that import policy cannot be guaranteed.
 ## Deployment boundaries
 
 Scan only authorized systems. Set explicit scope, timeouts, request budgets, and
-rates for the deployment. Size worker concurrency and memory limits together;
+rates for the deployment. Active mode sends exploit-shaped payloads, including a
+JNDI canary that can make a vulnerable target attempt a loopback LDAP connection;
+see [active probe payloads](usage.md#active-probe-payloads). Size worker concurrency and memory limits together;
 the retained-evidence budget is not a process RSS cap.
 
 A hosted service accepting arbitrary targets additionally needs independently

@@ -23,6 +23,10 @@ import sys
 import time
 
 
+# Keep the wire-format bound equal to internal/offlinebench.maxWorkerInputSize.
+MAX_WORKER_INPUT_BYTES = 8 << 20
+
+
 class IsolationViolation(RuntimeError):
     pass
 
@@ -150,8 +154,16 @@ def python_provenance(wafw00f):
     }
 
 
+def read_worker_input(stream):
+    """Bound UTF-8 bytes, including trailing whitespace, before decoding JSON."""
+    data = stream.read(MAX_WORKER_INPUT_BYTES + 1)
+    if len(data) > MAX_WORKER_INPUT_BYTES:
+        raise ValueError(f"worker input exceeds {MAX_WORKER_INPUT_BYTES} bytes")
+    return json.loads(data.decode("utf-8"))
+
+
 def main():
-    request = json.load(sys.stdin)
+    request = read_worker_input(sys.stdin.buffer)
     if request.get("schema_version") != 3 or request.get("iterations", 0) < 1 or request.get("profile") != "shared-products":
         raise ValueError("invalid worker schema, profile, or iteration count")
 

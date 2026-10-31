@@ -18,6 +18,8 @@ type BrowserConfig struct {
 	ResourceOrigins []string
 	// Sinks receive sanitized bounded content after Chromium has stopped. They
 	// must honor cancellation, return, and not retain Content. They may overlap.
+	// Selecting SaveText also acquires a bounded structural DOM snapshot; missing
+	// or over-limit structure fails text export instead of reparsing raw HTML.
 	SaveText       func(context.Context, BrowserArtifact) (string, error)
 	SaveScreenshot func(context.Context, BrowserArtifact) (string, error)
 }
@@ -102,19 +104,23 @@ func (r *BrowserReport) Failed() bool {
 }
 
 const (
-	browserMaxRequests = 40
-	browserMaxDOM      = 1 << 20
-	browserMaxImage    = 2 << 20
-	browserWidth       = 1440
-	browserHeight      = 900
+	browserMaxRequests   = 40
+	browserMaxDOM        = 1 << 20
+	browserMaxDOMNodes   = 16384
+	browserMaxDOMDepth   = 128
+	browserHTMLNamespace = "http://www.w3.org/1999/xhtml"
+	browserMaxImage      = 2 << 20
+	browserWidth         = 1440
+	browserHeight        = 900
 )
 
 type browserRect struct{ X, Y, Width, Height float64 }
 
 type browserCapture struct {
-	report     BrowserReport
-	dom        string
-	image      []byte
-	secrets    []browserRect
-	geometryOK bool
+	report      BrowserReport
+	dom         string
+	domSnapshot string
+	image       []byte
+	secrets     []browserRect
+	geometryOK  bool
 }
