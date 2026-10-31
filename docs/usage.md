@@ -438,10 +438,28 @@ static header. Piped target input can still animate when stdout is eligible. `--
 `--jsonl` and `--silent` never animate. If a terminal resize is detected between
 frames, startup redraws stop because terminal reflow invalidates their coordinates.
 
-![Animated startup logo preview](../assets/demo/animated-logo.gif)
+The final frame of the four-pose animation (shown without ANSI color):
 
-The preview loops to show the movement; a CLI run plays the startup animation
-once and lets results end it early.
+```text
+                              wafmeow v3.0.1
+                            WAF fingerprinting
+
+          /\_/\
+        =( o.o )=
+         / >^< \
+     ___/       ____o+-------+-------+-------+-------+
+    /   /\      /    |       |       |       |       |
+   /___/  \___/      +---+-------+-------+-------+---+
+   \  \  \      /    |   |       |       |       |   |
+    \__\  \_/\_/     +-------+-------+-------+-------+
+       \___/         |       |       |       |       |
+                     +---+-------+-------+-------+---+
+                     |   |       |       |       |   |
+                     +-------+-------+-------+-------+
+
+```
+
+A CLI run plays the movement once and may end it early when a result arrives.
 
 Without `--jsonl` or `--silent`, results stream in completion order as compact
 per-target blocks. A matched product is indented below its target; supporting
