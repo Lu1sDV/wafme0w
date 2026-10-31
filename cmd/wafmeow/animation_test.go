@@ -15,6 +15,7 @@ import (
 
 	"github.com/Lu1sDV/wafmeow/v3/pkg/wafmeow"
 	"github.com/logrusorgru/aurora/v4"
+	"github.com/rivo/uniseg"
 )
 
 func TestCLINoAnimationKeepsStaticHumanOutput(t *testing.T) {
@@ -111,6 +112,78 @@ func TestLogoFramesHaveBoundedGeometry(t *testing.T) {
 		plain := logoFrame(frame, false, aurora.New(aurora.WithColors(false)))
 		if strings.Count(plain, "\n") != logoRows || strings.ContainsAny(plain, "\x1b\r") || !strings.HasSuffix(plain, "\n") {
 			t.Errorf("frame %d changed geometry or cursor state: %q", frame, plain)
+		}
+	}
+}
+
+func TestRichLogoTitleIsCenteredOverWallAndHasBottomPadding(t *testing.T) {
+	au := aurora.New(aurora.WithColors(false))
+	heading := logoHeading(au)
+	lines := strings.Split(heading, "\n")
+	title := "wafmeow " + logoDisplayVersion()
+	for _, test := range []struct {
+		index int
+		text  string
+	}{
+		{0, title}, {1, "WAF fingerprinting"},
+	} {
+		start := strings.Index(lines[test.index], test.text)
+		want := logoWallStart + max(0, (logoWallWidth-uniseg.StringWidth(test.text))/2)
+		if start != want {
+			t.Errorf("%q starts in column %d, want wall-centered column %d: %q",
+				test.text, start, want, heading)
+		}
+	}
+	if strings.Contains(heading, "HTTP evidence fingerprinting") || !strings.HasSuffix(heading, "\n\n") {
+		t.Fatalf("heading is verbose or lacks breathing room: %q", heading)
+	}
+	last := logoFrame(logoFrameCount-1, false, au)
+	if !strings.HasSuffix(last, logoWallRows[len(logoWallRows)-1]+"\n\n") {
+		t.Fatalf("a blank line must separate the brick wall from the run plan: %q", last)
+	}
+	if !strings.Contains(last, "( o.o )") || !strings.Contains(last, ">^<") {
+		t.Fatalf("the final cat lost its face and detail: %q", last)
+	}
+	if logoColumns < 50 || logoTitleColumns() > 80 {
+		t.Fatalf("unexpected wider-logo geometry: width=%d title=%d", logoColumns, logoTitleColumns())
+	}
+}
+
+func TestLogoVersionAbbreviationIsOnlyForBanner(t *testing.T) {
+	version := logoDisplayVersion()
+	if len(version) == 0 || uniseg.StringWidth(version) > 16 {
+		t.Fatalf("long module version broke centered banner: %q", version)
+	}
+	if full := terminalText(wafmeow.Version()); uniseg.StringWidth(full) > 16 && !strings.HasSuffix(version, "…") {
+		t.Fatalf("truncated module version omitted ellipsis: %q", version)
+	}
+}
+
+func TestRichLogoWallAndPawStayFixedAcrossFrames(t *testing.T) {
+	for i, rows := range logoFrames {
+		for row := logoWallTop; row < logoWallTop+len(logoWallRows); row++ {
+			if got := rows[row][logoWallStart:]; got != logoWallRows[row-logoWallTop] {
+				t.Errorf("frame %d row %d shifted the wall: %q", i, row, got)
+			}
+		}
+		if got := rows[logoWallTop][logoWallStart-1 : logoWallStart+1]; got != "o+" {
+			t.Errorf("frame %d paw is detached from the wall: %q", i, got)
+		}
+	}
+}
+
+func TestWiderLogoFallsBackWhenTerminalCannotFit(t *testing.T) {
+	animationEnvironment(t)
+	for _, columns := range []int{35, logoColumns} {
+		terminal := animationTerminal()
+		terminal.columns = columns
+		var output bytes.Buffer
+		animation, err := startScanBanner(context.Background(), &output,
+			newOptions(wafmeow.DefaultConfig()), aurora.New(aurora.WithColors(false)),
+			terminal, func() { t.Error("unexpected abort") })
+		if animation != nil || err != nil || !strings.Contains(output.String(), "WAF fingerprinting") {
+			t.Fatalf("narrow terminal %d did not use readable static fallback: animation=%v err=%v output=%q",
+				columns, animation, err, output.String())
 		}
 	}
 }
@@ -328,14 +401,14 @@ func TestScanBannerKeepsPlanBelowAnimatedLogo(t *testing.T) {
 			t.Fatalf("startup failed: animation=%v err=%v", animation, err)
 		}
 		initial, writes := writer.snapshot()
-		if writes != 2 || !strings.HasPrefix(initial, "wafmeow") ||
-			strings.Index(initial, "RUN PLAN") <= strings.Index(initial, "+-----+") || strings.Count(initial, "RUN PLAN") != 1 {
+		if writes != 2 || !strings.Contains(initial, "wafmeow") ||
+			strings.Index(initial, "RUN PLAN") <= strings.Index(initial, "+-------+") || strings.Count(initial, "RUN PLAN") != 1 {
 			t.Fatalf("banner did not precede plan: %q", initial)
 		}
 		time.Sleep(logoInterval)
 		synctest.Wait()
 		redraw, _ := writer.snapshot()
-		if !strings.Contains(redraw, "\x1b[10A") || !strings.Contains(redraw, "\x1b[1B") {
+		if !strings.Contains(redraw, "\x1b[14A") || !strings.Contains(redraw, "\x1b[1B") {
 			t.Fatalf("redraw did not preserve the plan's cursor rows: %q", redraw)
 		}
 		if err := animation.stop(); err != nil {
@@ -411,7 +484,7 @@ func TestCLIBannerStopsBeforeSharedConsoleResultsAndDiagnostics(t *testing.T) {
 					t.Fatalf("result waited for animation: exit=%d elapsed=%v output=%q", code, time.Since(started), text)
 				}
 				first := strings.Index(text, "DEBUG")
-				if first < 0 || !strings.Contains(text[:first], "\x1b[11A") || strings.Contains(text[first:], "\x1b[11A") || !strings.Contains(text, "SUMMARY") {
+				if first < 0 || !strings.Contains(text[:first], "\x1b[15A") || strings.Contains(text[first:], "\x1b[15A") || !strings.Contains(text, "SUMMARY") {
 					t.Fatalf("shared terminal redraw interleaved with diagnostics/results: %q", text)
 				}
 				if logo, plan := strings.Index(text, "wafmeow"), strings.Index(text, "RUN PLAN"); logo < 0 || plan <= logo {
@@ -452,12 +525,12 @@ func TestCLIBannerEarlyEndAndModeExclusions(t *testing.T) {
 				started := time.Now()
 				code := runContextWithTerminal(context.Background(), args, strings.NewReader(test.input), true, writer, writer, animationTerminal())
 				text, _ := writer.snapshot()
-				redraw := strings.Contains(text, "\x1b[10A") || strings.Contains(text, "\x1b[11A")
+				redraw := strings.Contains(text, "\x1b[14A") || strings.Contains(text, "\x1b[15A")
 				if code != test.code || time.Since(started) >= logoInterval || redraw != test.animated {
 					t.Fatalf("early end/exclusion: code=%d elapsed=%v text=%q", code, time.Since(started), text)
 				}
 				for _, marker := range []string{"PARTIAL SUMMARY", "SUMMARY", "ERROR render", "ERROR open"} {
-					if at := strings.Index(text, marker); at >= 0 && strings.Contains(text[at:], "\x1b[9A") {
+					if at := strings.Index(text, marker); at >= 0 && strings.Contains(text[at:], "\x1b[13A") {
 						t.Fatalf("redraw after %s: %q", marker, text)
 					}
 				}
@@ -614,7 +687,7 @@ func TestLogoAnimationResizeBackDoesNotReenableRedraw(t *testing.T) {
 		if err := animation.stop(); err != nil {
 			t.Fatal(err)
 		}
-		if text, writes := writer.snapshot(); writes != 1 || strings.Contains(text, "\x1b[9A") {
+		if text, writes := writer.snapshot(); writes != 1 || strings.Contains(text, "\x1b[13A") {
 			t.Fatalf("resize-back reused invalidated cursor position: writes=%d text=%q", writes, text)
 		}
 	})

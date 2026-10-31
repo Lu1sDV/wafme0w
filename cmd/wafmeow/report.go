@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Lu1sDV/wafmeow/v3/pkg/wafmeow"
+	"github.com/logrusorgru/aurora/v4"
 )
 
 // Only formatted, body-free rows live on disk; replay never retains the scan.
@@ -16,9 +17,10 @@ type humanReportSpool struct {
 	file                 *os.File
 	size                 int64
 	explicitAvailability bool
+	colors               *aurora.Aurora
 }
 
-func openHumanReport(opts options) (*humanReportSpool, error) {
+func openHumanReport(opts options, colors *aurora.Aurora) (*humanReportSpool, error) {
 	if opts.Silent || opts.JSONL {
 		return nil, nil
 	}
@@ -26,7 +28,7 @@ func openHumanReport(opts options) (*humanReportSpool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create human report spool: %w", err)
 	}
-	return &humanReportSpool{file: file}, nil
+	return &humanReportSpool{file: file, colors: colors}, nil
 }
 
 func (report *humanReportSpool) add(result wafmeow.Result) error {
@@ -38,7 +40,14 @@ func (report *humanReportSpool) add(result wafmeow.Result) error {
 		if i != 0 {
 			products.WriteString("; ")
 		}
-		products.WriteString(terminalText(match.Product))
+		// Style only validated fingerprint names, never separators, URLs or
+		// supporting observation references. The spool remains bounded and
+		// replay stays a streaming copy with no additional retained rows.
+		name := terminalText(match.Product)
+		if report.colors != nil {
+			name = fmt.Sprint(report.colors.Bold(report.colors.Green(name)))
+		}
+		products.WriteString(name)
 		products.WriteString(" (observations ")
 		support := supportingEvidence(match, len(result.Evidence))
 		if len(support) == 0 {

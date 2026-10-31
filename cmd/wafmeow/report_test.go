@@ -17,7 +17,7 @@ import (
 )
 
 func TestHumanReportReplaysManyRowsWithBoundedWrites(t *testing.T) {
-	report, err := openHumanReport(options{})
+	report, err := openHumanReport(options{}, aurora.New(aurora.WithColors(false)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,8 +59,62 @@ func (writer *reportCountingWriter) Write(data []byte) (int, error) {
 	return len(data), nil
 }
 
+func TestHumanReportColorsOnlyMatchedProductNames(t *testing.T) {
+	colored := aurora.New(aurora.WithColors(true))
+	report, err := openHumanReport(options{}, colored)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer report.close()
+	result := wafmeow.Result{
+		Target:   "https://example.test/check",
+		Evidence: []wafmeow.EvidenceSummary{{Role: "Normal", StatusCode: 200}},
+		Outcome: wafmeow.Outcome{State: wafmeow.Incomplete, Matches: []wafmeow.Match{
+			{Product: "Cloudflare", Fingerprints: []wafmeow.FingerprintMatch{{Evidence: 0}}},
+			{Product: "Another WAF", Fingerprints: []wafmeow.FingerprintMatch{{Evidence: 0}}},
+		}},
+	}
+	if err := report.add(result); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := report.replay(context.Background(), &out, true); err != nil {
+		t.Fatal(err)
+	}
+	text := out.String()
+	for _, product := range []string{"Cloudflare", "Another WAF"} {
+		want := fmt.Sprint(colored.Bold(colored.Green(product)))
+		if !strings.Contains(text, want+" (observations #1)") {
+			t.Fatalf("human table did not style %q green: %q", product, text)
+		}
+	}
+	if strings.Contains(text, fmt.Sprint(colored.Red("WAF MATCH"))) ||
+		!strings.Contains(text, " | incomplete | "+result.Target) {
+		t.Fatalf("human table colored outcome, URL or metadata: %q", text)
+	}
+
+	// Redirected stderr or --no-colors produces the exact same report text
+	// without ANSI controls or any extra in-memory scan history.
+	plain, err := openHumanReport(options{}, aurora.New(aurora.WithColors(false)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer plain.close()
+	if err := plain.add(result); err != nil {
+		t.Fatal(err)
+	}
+	var uncolored bytes.Buffer
+	if err := plain.replay(context.Background(), &uncolored, true); err != nil {
+		t.Fatal(err)
+	}
+	if strings.ContainsAny(uncolored.String(), "\x1b\r") ||
+		!strings.Contains(uncolored.String(), "Cloudflare (observations #1)") {
+		t.Fatalf("redirected report retained terminal color or lost data: %q", uncolored.String())
+	}
+}
+
 func TestHumanReportPreservesFullEscapedURLAndSupportingObservations(t *testing.T) {
-	report, err := openHumanReport(options{})
+	report, err := openHumanReport(options{}, aurora.New(aurora.WithColors(false)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +146,7 @@ func TestHumanReportPreservesFullEscapedURLAndSupportingObservations(t *testing.
 }
 
 func TestHumanReportPropagatesSinkAndFileErrorsAndRemovesSpool(t *testing.T) {
-	report, err := openHumanReport(options{})
+	report, err := openHumanReport(options{}, aurora.New(aurora.WithColors(false)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +215,7 @@ func TestMachineModesDoNotCreateHumanReportSpool(t *testing.T) {
 			t.Fatal("JSONL lost its stderr overview")
 		}
 	}
-	if report, err := openHumanReport(options{}); err == nil {
+	if report, err := openHumanReport(options{}, aurora.New(aurora.WithColors(false))); err == nil {
 		_ = report.close()
 		t.Fatal("human spool creation error was lost")
 	}

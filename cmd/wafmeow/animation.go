@@ -13,62 +13,113 @@ import (
 
 	"github.com/Lu1sDV/wafmeow/v3/pkg/wafmeow"
 	"github.com/logrusorgru/aurora/v4"
+	"github.com/rivo/uniseg"
 )
 
 const (
-	logoRows     = 9
-	logoColumns  = 35
-	logoInterval = 180 * time.Millisecond
+	logoFrameCount  = 4
+	logoRows        = 13 // Includes the blank line after the wall.
+	logoColumns     = 54
+	logoWallStart   = 21
+	logoWallWidth   = 33
+	logoWallTop     = 3
+	logoHeadingRows = 3
+	logoInterval    = 180 * time.Millisecond
 )
 
-// The cat moves against a stationary wall. Every frame has the same nine ASCII
-// rows, including its leading empty rows. Keep a spare terminal row and column:
-// the final newline and automatic wrapping must not scroll away our redraw area.
-var logoFrames = [...][logoRows]string{
+// Fixed brick courses are shared across frames. The cat climbs with its
+// outstretched paw touching the same top-left corner (o+) on every frame.
+var logoWallRows = [...]string{
+	`+-------+-------+-------+-------+`,
+	`|       |       |       |       |`,
+	`+---+-------+-------+-------+---+`,
+	`|   |       |       |       |   |`,
+	`+-------+-------+-------+-------+`,
+	`|       |       |       |       |`,
+	`+---+-------+-------+-------+---+`,
+	`|   |       |       |       |   |`,
+	`+-------+-------+-------+-------+`,
+}
+
+var logoCatFrames = [logoFrameCount][logoRows]string{
 	{
 		``,
 		``,
-		`      /\_/\`,
-		`     (     )___o+-----+-----+-----+`,
-		`     /       /  |     |     |     |`,
-		`  __/       /   +--+-----+-----+--+`,
-		` (  \      /    |  |     |     |  |`,
-		`  \__\ /\ /     +-----+-----+-----+`,
-		`     (_/ \_)    |     |     |     |`,
+		`          /\_/\`,
+		`        ( -.- )_____o`,
+		`         /     \`,
+		`     ___/      \`,
+		`    /   /\      \`,
+		`   (__ /  \____/`,
+		`     \__/  \_/`,
+		`      \___/`,
+		``,
+		``,
+		``,
 	},
 	{
 		``,
-		`      /\_/\`,
-		`     (     )__`,
-		`     /      / \o+-----+-----+-----+`,
-		`  __/       /   |     |     |     |`,
-		` (  \      /    +--+-----+-----+--+`,
-		`  \__\ /\ /     |  |     |     |  |`,
-		`     (_/ \_)    +-----+-----+-----+`,
-		`                |     |     |     |`,
+		`          /\_/\`,
+		`        =( o.o )=`,
+		`        /     \_____o`,
+		`      _/        /`,
+		`    _/  /\    __/`,
+		`   /___/  \___/`,
+		`   \    \__/`,
+		`    \_/\_/`,
+		``,
+		``,
+		``,
+		``,
 	},
 	{
-		`      /\_/\`,
-		`     (     )__`,
-		`     /      / \`,
-		`  __/       / \o+-----+-----+-----+`,
-		` (  \      /    |     |     |     |`,
-		`  \__\ /\ /     +--+-----+-----+--+`,
-		`     (_/ \_)    |  |     |     |  |`,
-		`                +-----+-----+-----+`,
-		`                |     |     |     |`,
+		`          /\_/\`,
+		`        =( o.o )=`,
+		`         / >^< \`,
+		`     ___/      \____o`,
+		`    /     /\     /`,
+		`   /_____/  \___/`,
+		`   \    \      /`,
+		`    \___\  \_/\_/`,
+		`       \__/`,
+		``,
+		``,
+		``,
+		``,
 	},
 	{
-		`      /\_/\`,
-		`     (     )__`,
-		`     /      / \`,
-		`  __/       / \o+-----+-----+-----+`,
-		` (   \     /    |     |     |     |`,
-		`  \___\/\ /     +--+-----+-----+--+`,
-		`     (_/ \_)    |  |     |     |  |`,
-		`                +-----+-----+-----+`,
-		`                |     |     |     |`,
+		`          /\_/\`,
+		`        =( o.o )=`,
+		`         / >^< \`,
+		`     ___/       ____o`,
+		`    /   /\      /`,
+		`   /___/  \___/`,
+		`   \  \  \      /`,
+		`    \__\  \_/\_/`,
+		`       \___/`,
+		``,
+		``,
+		``,
+		``,
 	},
+}
+
+// Keep the wall's column fixed so redraws and independent coloring stay stable.
+var logoFrames = buildLogoFrames()
+
+func buildLogoFrames() [logoFrameCount][logoRows]string {
+	var frames [logoFrameCount][logoRows]string
+	for frame, cat := range logoCatFrames {
+		for row, drawing := range cat {
+			if row >= logoWallTop && row < logoWallTop+len(logoWallRows) {
+				frames[frame][row] = fmt.Sprintf("%-*s%s", logoWallStart,
+					drawing, logoWallRows[row-logoWallTop])
+			} else {
+				frames[frame][row] = drawing
+			}
+		}
+	}
+	return frames
 }
 
 // Dimensions are sampled again before each redraw. Tests inject this boundary
@@ -124,8 +175,58 @@ func writersShareTerminal(stdout, stderr io.Writer) bool {
 		os.SameFile(leftInfo, rightInfo)
 }
 
+// The heading occupies three lines before the sprite. Never scroll during
+// startup: a wrapped title or short screen would invalidate redraw offsets.
 func (terminal bannerTerminal) fitsLogo() bool {
-	return terminal.interactive && terminal.columns > logoColumns && terminal.rows > logoRows
+	return terminal.interactive && terminal.columns > max(logoColumns, logoTitleColumns()) &&
+		terminal.rows > logoRows+logoHeadingRows
+}
+
+// Center brand text over the wall, rather than over the cat-and-wall silhouette.
+// Widths are measured in visible terminal cells, excluding trusted ANSI styles.
+// A Go pseudo-version can be far longer than the visual wall. Keep the
+// full VCS identity in --version/JSON provenance; abbreviate only the banner
+// and make the abbreviation explicit with an ellipsis.
+func logoDisplayVersion() string {
+	version := terminalText(wafmeow.Version())
+	const maxCells = 16
+	if uniseg.StringWidth(version) <= maxCells {
+		return version
+	}
+	var short strings.Builder
+	width := 0
+	graphemes := uniseg.NewGraphemes(version)
+	for graphemes.Next() {
+		value := graphemes.Str()
+		if width+uniseg.StringWidth(value) > maxCells-1 {
+			break
+		}
+		short.WriteString(value)
+		width += uniseg.StringWidth(value)
+	}
+	return short.String() + "…"
+}
+
+func logoTitleColumns() int {
+	titleWidth := uniseg.StringWidth("wafmeow " + logoDisplayVersion())
+	if titleWidth > logoWallWidth {
+		return logoWallStart + titleWidth
+	}
+	return logoColumns
+}
+
+func centerLogoText(colored string, cells int) string {
+	indent := logoWallStart + max(0, (logoWallWidth-cells)/2)
+	return strings.Repeat(" ", indent) + colored
+}
+
+func logoHeading(au *aurora.Aurora) string {
+	version := logoDisplayVersion()
+	title := centerLogoText(fmt.Sprintf("%s %s", au.Bold("wafmeow"), version),
+		uniseg.StringWidth("wafmeow "+version))
+	subtitle := centerLogoText(fmt.Sprint(au.Cyan("WAF fingerprinting")),
+		uniseg.StringWidth("WAF fingerprinting"))
+	return title + "\n" + subtitle + "\n\n"
 }
 
 func (terminal bannerTerminal) unchanged() bool {
@@ -206,7 +307,7 @@ func startScanBannerWithPlan(ctx context.Context, writer io.Writer, opts options
 	if opts.NoColors || noColor || !terminal.ansi {
 		au = aurora.New(aurora.WithColors(false))
 	}
-	if !terminal.fitsLogo() || !terminal.ansi || footerRows < 0 || terminal.rows <= logoRows+footerRows {
+	if !terminal.fitsLogo() || !terminal.ansi || footerRows < 0 || terminal.rows <= logoRows+logoHeadingRows+footerRows {
 		if err := printBanner(writer, au); err != nil {
 			return nil, err
 		}
@@ -217,7 +318,7 @@ func startScanBannerWithPlan(ctx context.Context, writer io.Writer, opts options
 	if animated {
 		frame = 0
 	}
-	first := fmt.Sprintf("%s  %s\n  HTTP evidence fingerprinting\n\n", au.Bold("wafmeow"), terminalText(wafmeow.Version())) + logoFrame(frame, false, au)
+	first := logoHeading(au) + logoFrame(frame, false, au)
 	if err := writeLogo(writer, first); err != nil {
 		return nil, err
 	}
@@ -297,10 +398,10 @@ func logoFrameOffset(index int, redraw bool, au *aurora.Aurora, footerRows int) 
 		if redraw {
 			text.WriteString("\r\x1b[2K")
 		}
-		// The fixed wall starts in column 16; all earlier cells are the cat.
+		// Color the cat and the wider brick wall independently.
 		cat, wall := row, ""
-		if len(row) > 16 {
-			cat, wall = row[:16], row[16:]
+		if len(row) > logoWallStart {
+			cat, wall = row[:logoWallStart], row[logoWallStart:]
 		}
 		fmt.Fprintf(&text, "%s%s\n", au.Gray(16, cat), au.Index(208, wall))
 	}
