@@ -172,7 +172,7 @@ for flag in value_flags:
     case(f'option as missing value {flag}', [flag, '--strict'], expected=1)
     case(f'delimiter as missing value {flag}', [flag, '--'], expected=1)
 
-for flag in ['--fast', '--deep', '--baseline', '--no-generic', '--jsonl', '--strict', '--silent', '--no-colors', '--no-warning', '--debug', '--list', '--version']:
+for flag in ['--fast', '--deep', '--baseline', '--no-generic', '--jsonl', '--strict', '--silent', '--no-colors', '--no-animation', '--no-warning', '--debug', '--list', '--version']:
     for value in ['true', 'false', '']:
         case(f'bool argument {flag}={value}', [f'{flag}={value}'], expected=1)
 

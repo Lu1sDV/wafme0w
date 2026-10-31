@@ -409,22 +409,52 @@ wafmeow --evidence assets/demo/captures.jsonl --jsonl --silent \
 
 ## Human results and final overview
 
-Before acquisition, stderr shows a `RUN PLAN` with the selected mode, effective
-worker/request limits, pacing, deadlines and output formats. It identifies local
-rate/connection waits as part of HTTP deadlines. Offline plans state that no
-requests are sent and distinguish native worker limits from serial httpx import.
-The plan omits target URLs, header values, origin values and file paths;
-`--silent` suppresses it. A custom User-Agent is called out because it overrides
-the no-user-agent probe too, without displaying its value.
+Interactive human scans show the cat climbing an orange brick wall **first**.
+After the first frame, stderr shows a compact `RUN PLAN`: normally one line
+with the scan mode, effective worker/parallelism counts and deadlines. Only
+non-default controls (such as a rate cap, origin allowlist, report or browser)
+add short settings lines. Offline plans state that no network requests are sent.
+The plan omits target URLs, header values, origin values and file paths, and
+`--silent` suppresses it. A custom User-Agent is noted without revealing its
+value. The run plan remains on stderr, even for human scans.
+
+The animation normally finishes in about 540 ms and runs alongside acquisition;
+the first result stops it immediately, without waiting for the remaining frames.
+The logo settles before any result, warning, debug line, overview or error is printed,
+including when stdout and stderr share one terminal. It never hides the cursor.
+
+Use `--no-animation` to keep the cat still. Animation requires ANSI-capable
+interactive stdout with room for the logo and any shared-terminal plan lines;
+redirected stdout, small or unknown-size terminals, and `TERM=dumb` use a
+compact static header. Piped target
+input can still animate when stdout is an eligible terminal. `--no-colors` or
+`NO_COLOR` gives static, escape-free output. Help, version, product listings,
+`--jsonl` and `--silent` never animate. If a terminal resize is detected between
+frames, startup redraws stop because terminal reflow invalidates their coordinates.
+
+![Animated startup logo preview](../assets/demo/animated-logo.gif)
+
+The preview loops to show the movement; a CLI run plays the startup animation
+once and lets results end it early.
 
 Without `--jsonl` or `--silent`, results stream in completion order as compact
-Signal reports. Saved captures retain input order. Each product lists **matched
-on** observation numbers, request roles and HTTP statuses from its actual
-fingerprint evidence. Numbers start at 1 for each target and identify observations,
-not wire-request attempts or retries. Live probes retain their final response and
-redirect-chain metadata in one observation; followed redirects do not receive
-separate numbers. A match does not prove that a probe triggered blocking.
-The debug and JSON evidence indexes remain zero-based.
+per-target blocks. A matched product is indented below its target; supporting
+observations, review signals, and HTTP completeness follow underneath it.
+The HTTP line groups status counts (for example, `200×3 / 403×4 / 404`) rather
+than printing eight separate probes in a long horizontal run. Repeated warnings
+from different probes are grouped by reason and list their contributing roles.
+When several products match, shared HTTP evidence and warnings stay at the
+target level rather than being attributed to one product. On shared interactive
+terminals, warnings appear directly beneath the result; when stdout is redirected,
+stderr keeps standalone target-labeled diagnostics so messages remain attributable.
+The summary is separated from the last warning by a blank line.
+Saved captures retain input order. Matched observation numbers start at 1 per
+target and identify observations, not wire-request attempts or retries.
+Live probes retain their final response and redirect-chain metadata in one
+observation; followed redirects do not receive separate numbers. Detailed
+per-probe statuses and URLs remain available through `--debug` and JSONL.
+A match does not prove a probe triggered blocking. The debug and JSON evidence
+indexes remain zero-based.
 
 | Label | Meaning |
 | --- | --- |
@@ -456,8 +486,10 @@ Use JSONL stdout or JSON/JSONL/CSV/TXT report files for structured output.
 suppresses human scan output; `--no-warning` hides diagnostic prose but preserves
 outcome and completeness. Color is disabled for redirected output, `NO_COLOR`,
 `TERM=dumb`, or `--no-colors`. Diagnostics use stderr's own terminal status for
-color, independently of stdout. HTTP diagnostics appear one per row under a
-single warning header, with descriptions aligned after the escaped role tags.
+color, independently of stdout. On a shared terminal, repeated HTTP diagnostics
+are grouped by reason under the result with escaped role labels. Redirected
+stderr retains a standalone target-labeled warning block and separate colors.
+A blank line follows the final warning group.
 
 ### Certificate verification failures
 

@@ -200,6 +200,19 @@ jobs:
         if: matrix.go == '1.27.3'
         timeout-minutes: 5
         run: python3 tools/cli_options_smoke.py --binary "$PWD/wafmeow" --output "$RUNNER_TEMP/cli-option-contracts"
+      - name: Exercise startup animation with real terminals and owned fixtures
+        if: matrix.go == '1.27.3'
+        timeout-minutes: 3
+        run: python3 tools/animation_smoke.py --binary "$PWD/wafmeow" --output "$RUNNER_TEMP/animation-contracts"
+      - name: Retain startup animation evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always() && matrix.go == '1.27.3'
+        timeout-minutes: 3
+        with:
+          name: animation-contracts
+          path: ${{ runner.temp }}/animation-contracts
+          if-no-files-found: warn
+          retention-days: 7
       - name: Archive CLI filename fixtures
         if: always() && matrix.go == '1.27.3'
         timeout-minutes: 2

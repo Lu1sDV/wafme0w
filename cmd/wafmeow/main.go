@@ -65,6 +65,10 @@ func run(args []string) int {
 }
 
 func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool, stdout, stderr io.Writer) int {
+	return runContextWithTerminal(ctx, args, stdin, piped, stdout, stderr, inspectBannerTerminal(stdout))
+}
+
+func runContextWithTerminal(ctx context.Context, args []string, stdin io.Reader, piped bool, stdout, stderr io.Writer, terminal bannerTerminal) int {
 	config := wafmeow.DefaultConfig()
 	opts := newOptions(config)
 	parser := flags.NewParser(&opts, flags.HelpFlag|flags.PassDoubleDash)
@@ -90,7 +94,9 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 	}
 	console := colorizer(stdout, opts.NoColors)
 	diagnostics := colorizer(stderr, opts.NoColors)
+	var animation *bannerAnimation
 	fail := func(err error) int {
+		err = animation.join(err)
 		fmt.Fprintf(stderr, "%s %s\n", diagnostics.Bold(diagnostics.Red("ERROR")), terminalText(err.Error()))
 		if ctx.Err() != nil && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
 			return 130
@@ -194,8 +200,14 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 		}
 	}
 	var report *humanReportSpool
+	runCtx, cancelRun := context.WithCancel(ctx)
+	defer cancelRun()
+	abort := func() {
+		cancelRun()
+		closeInput()
+	}
 	finish := func(runErr error) int {
-		runErr = errors.Join(runErr, ctx.Err(), report.close())
+		runErr = errors.Join(animation.join(runErr), ctx.Err(), report.close())
 		if runErr != nil {
 			closeInput()
 			runErr = errors.Join(runErr, journal.diagnostic("run_error", runErr.Error()))
@@ -215,13 +227,14 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 	if err := ctx.Err(); err != nil {
 		return finish(err)
 	}
-	if err := printRunPlan(stderr, opts, config); err != nil {
+	plan := runPlanText(opts, config)
+	// Display the logo first, followed by the compact plan. Starting the
+	// timer only after the plan write avoids cross-stream redraw races.
+	animation, err = startScanBannerWithPlan(runCtx, stdout, opts, console, terminal, abort,
+		func() error { return writeRunPlan(stderr, plan) },
+		scanBannerPlanRows(terminal, stdout, stderr, plan))
+	if err != nil {
 		return finish(err)
-	}
-	if !opts.Silent && !opts.JSONL {
-		if err := printBanner(stdout, console); err != nil {
-			return finish(err)
-		}
 	}
 	var counts resultCounts
 	execute := func(writer io.Writer) error {
@@ -248,9 +261,12 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 		if opts.EvidenceFile != "" {
 			runner = wafmeow.RunCaptured
 		}
-		runCtx, cancelRun := context.WithCancel(ctx)
-		defer cancelRun()
 		sink := newJournalSink(journal, opts.JournalBatchSize, func(result wafmeow.Result) error {
+			// Results are already durable here. Join the animation before either
+			// stdout or stderr writes; both can refer to the same terminal.
+			if err := animation.stop(); err != nil {
+				return err
+			}
 			counts.add(result)
 			if err := report.add(result); err != nil {
 				return err
@@ -273,11 +289,9 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 				return printResult(stdout, stderr, result, opts.SuppressWarnings, console, diagnostics)
 			}
 			return nil
-		}, func() {
-			cancelRun()
-			closeInput()
-		})
+		}, abort)
 		emit := func(result wafmeow.Result) error {
+			animation.requestStop()
 			if opts.EvidenceFile == "" {
 				addInputFormatHint(&result)
 			}
@@ -293,7 +307,11 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 		}
 		runErr = withCaptureInputGuidance(opts, runErr)
 		// Join the journal owner before finalizing reports or writing diagnostics.
-		err := errors.Join(sink.close(), runErr)
+		sinkErr := sink.close()
+		if errors.Is(runErr, sinkErr) {
+			sinkErr = nil
+		}
+		err := animation.join(errors.Join(sinkErr, runErr))
 		if err == nil && output != nil {
 			err = output.Close()
 		}
@@ -308,6 +326,9 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 		err = execute(nil)
 	}
 	printFinal := func(finished bool) error {
+		// finish owns any animation error; settle before writing even the
+		// partial overview on an input or output failure.
+		_ = animation.stop()
 		if opts.Silent {
 			return nil
 		}

@@ -22,9 +22,9 @@ func TestRunPlanExplainsSelectedLiveModeAndEffectiveLimits(t *testing.T) {
 		baseline bool
 		want     []string
 	}{
-		{name: "default deep", want: []string{"RUN PLAN  deep", "normal request, then up to 7 probes", "probe concurrency: 1 after normal"}},
-		{name: "fast", fast: true, want: []string{"RUN PLAN  fast", "normal, no-user-agent and combined probe", "per-target parallel request limit: 3"}},
-		{name: "baseline", baseline: true, want: []string{"RUN PLAN  baseline", "normal request only", "1 request/target"}},
+		{name: "default deep", want: []string{"RUN PLAN  deep (7 probes)", "1 at a time"}},
+		{name: "fast", fast: true, want: []string{"RUN PLAN  fast (3 requests)", "3 at a time"}},
+		{name: "baseline", baseline: true, want: []string{"RUN PLAN  baseline (normal only)"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			config := wafmeow.DefaultConfig()
@@ -42,7 +42,7 @@ func TestRunPlanExplainsSelectedLiveModeAndEffectiveLimits(t *testing.T) {
 			if err := printRunPlan(&output, opts, config); err != nil {
 				t.Fatal(err)
 			}
-			for _, want := range append(tc.want, "target workers: 20", "global in-flight request limit: 20", "54 attempts/target", "5 redirects/request", "5 requests/s global", "5s/request", "30s/target", "include local rate/connection waits", "JSONL stdout", "atomic JSON report", "strict on") {
+			for _, want := range append(tc.want, "20 workers", "5 requests/s global", "origin allowlist on", "5s/req", "30s/target", "JSONL", "JSON report", "strict") {
 				if !strings.Contains(output.String(), want) {
 					t.Errorf("plan lacks %q: %s", want, output.String())
 				}
@@ -56,6 +56,42 @@ func TestRunPlanExplainsSelectedLiveModeAndEffectiveLimits(t *testing.T) {
 	}
 }
 
+func TestDefaultRunPlanIsOneBriefLine(t *testing.T) {
+	plan := runPlanText(newOptions(wafmeow.DefaultConfig()), wafmeow.DefaultConfig())
+	if strings.Count(plan, "\n") != 1 || len(strings.TrimSuffix(plan, "\n")) >= 80 {
+		t.Fatalf("default run plan must fit one 80-column line: %q", plan)
+	}
+	for _, redundant := range []string{"global in-flight", "redirects/request", "unlimited", "strict off", "HTTP limits", "output: human"} {
+		if strings.Contains(plan, redundant) {
+			t.Errorf("default plan contains redundant detail %q: %s", redundant, plan)
+		}
+	}
+}
+
+func TestCustomizedRunPlanShowsOnlyOverridesWithoutWrapping(t *testing.T) {
+	config := wafmeow.DefaultConfig()
+	config.MaxConnections, config.MaxRequests = 1, 4
+	config.RedirectPolicy = "none"
+	config.AllowedOrigins = []string{"https://private.invalid"}
+	config.RequestsPerSecond, config.PerOriginRequestsPerSecond = 5, 2
+	opts := newOptions(config)
+	opts.OutputFile, opts.Strict = "/private/report.json", true
+	plan := runPlanText(opts, config)
+	for _, want := range []string{"1 in flight", "4 attempts/target", "redirects off", "origin allowlist on", "5 requests/s global", "2 requests/s per origin", "JSON report", "strict"} {
+		if !strings.Contains(plan, want) {
+			t.Errorf("missing customized setting %q: %s", want, plan)
+		}
+	}
+	if strings.Contains(plan, "private.invalid") || strings.Contains(plan, "/private") {
+		t.Fatalf("plan leaked sensitive values: %q", plan)
+	}
+	for _, line := range strings.Split(strings.TrimSuffix(plan, "\n"), "\n") {
+		if len(line) >= 80 {
+			t.Errorf("plan wraps on a normal terminal: %q", line)
+		}
+	}
+}
+
 func TestRunPlanAutomaticRequestCapAndBoundedDeepFanout(t *testing.T) {
 	config := wafmeow.DefaultConfig()
 	config.Concurrency, config.ProbeConcurrency, config.MaxConnections = 2, 8, 0
@@ -63,7 +99,7 @@ func TestRunPlanAutomaticRequestCapAndBoundedDeepFanout(t *testing.T) {
 	if err := printRunPlan(&output, newOptions(config), config); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"target workers: 2", "global in-flight request limit: 8", "probe concurrency: 7 after normal", "rate: unlimited"} {
+	for _, want := range []string{"2 workers", "8 in flight", "7 at a time"} {
 		if !strings.Contains(output.String(), want) {
 			t.Errorf("effective plan lacks %q: %s", want, output.String())
 		}
@@ -79,12 +115,12 @@ func TestRunPlanExplicitRequestCapAndDisabledRedirects(t *testing.T) {
 		if err := printRunPlan(&output, newOptions(config), config); err != nil {
 			t.Fatal(err)
 		}
-		for _, want := range []string{"global in-flight request limit: 1", "0 redirects/request (none)", "origin allowlist: off"} {
+		for _, want := range []string{"1 in flight", "redirects off"} {
 			if !strings.Contains(output.String(), want) {
 				t.Errorf("effective plan lacks %q: %s", want, output.String())
 			}
 		}
-		if fast && !strings.Contains(output.String(), "per-target parallel request limit: 1") {
+		if fast && !strings.Contains(output.String(), "1 at a time") {
 			t.Errorf("fast plan ignores the global cap: %s", output.String())
 		}
 	}
@@ -97,8 +133,8 @@ func TestRunPlanOfflineWorkerCountsAndInactiveControls(t *testing.T) {
 		format string
 		want   string
 	}{
-		{format: "native", want: "classification workers: 2 (requested 20; CPU cap 2)"},
-		{format: "httpx", want: "1 classification worker (httpx import is serial)"},
+		{format: "native", want: "2 workers"},
+		{format: "httpx", want: "serial import"},
 	} {
 		t.Run(tc.format, func(t *testing.T) {
 			config := wafmeow.DefaultConfig()
@@ -108,12 +144,12 @@ func TestRunPlanOfflineWorkerCountsAndInactiveControls(t *testing.T) {
 			if err := printRunPlan(&output, opts, config); err != nil {
 				t.Fatal(err)
 			}
-			for _, want := range []string{"RUN PLAN  offline " + tc.format, "no network requests", tc.want, "live HTTP timeouts, rate, redirects and connection controls: inactive", "1048576 bytes/body"} {
+			for _, want := range []string{"RUN PLAN  offline " + tc.format, "no network", tc.want} {
 				if !strings.Contains(output.String(), want) {
 					t.Errorf("offline plan lacks %q: %s", want, output.String())
 				}
 			}
-			for _, unwanted := range []string{"target workers", "requests/s", "5s/request", "/private/"} {
+			for _, unwanted := range []string{"attempts/target", "requests/s", "5s/req", "1048576", "/private/"} {
 				if strings.Contains(output.String(), unwanted) {
 					t.Errorf("offline plan implies active acquisition or leaks input: %s", output.String())
 				}
