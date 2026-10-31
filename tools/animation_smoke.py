@@ -241,8 +241,10 @@ class Process:
 
 def human_result(process, target):
     text = plain(process.streams['stdout'])
-    require(text.count(target) == 1, f'human result for {target} was missing or duplicated')
-    require('[ NO WAF MATCH ]  ' + target in text, 'human result label or target was damaged')
+    # A shared stdout/stderr terminal also prints the target in the final
+    # human summary. Count the result row, not every mention of the URL.
+    row = '[ NO WAF MATCH ]  ' + target
+    require(text.count(row) == 1, f'human result for {target} was missing or duplicated')
 
 
 def terminal_cleanup(process):
