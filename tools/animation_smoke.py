@@ -327,7 +327,10 @@ def run_suite(binary, output):
             human_result(process, first)
             human_result(process, second)
             out = bytes(process.streams['stdout'])
-            position = out.rfind(b'\n', 0, out.index(first.encode())) + 1
+            # Cursor restoration belongs to the banner and may immediately
+            # precede the result label on a shared PTY. Check motion only after
+            # the first result target is actually written, not on its line prefix.
+            position = out.index(first.encode())
             require(not motion(out[position:]), 'animation redrew after the first result')
             if shared:
                 require(out.index(b'wafmeow') < out.index(b'RUN PLAN') < out.index(b'\x1b[11A'),
