@@ -102,8 +102,15 @@ def smoke(command, work, expected_version=None, require_vcs=False):
         require(version == "wafmeow " + expected_version, version)
 
     args = ["--evidence", CAPTURE.as_posix(), "--jsonl"]
-    normal = records_from(run([*command, *args], work).stdout)
+    normal_run = run([*command, *args], work)
+    normal = records_from(normal_run.stdout)
     check_records(normal, version)
+    require("RUN PLAN  offline native" in normal_run.stderr,
+            "Offline JSONL scan omitted the human run plan on stderr")
+    silent = run([*command, *args, "--silent"], work)
+    require(records_from(silent.stdout) == normal,
+            "Silent mode changed the result records")
+    require(silent.stderr == "", "Silent mode emitted a run plan or summary")
     human = run([*command, "--evidence", CAPTURE.as_posix(), "--no-colors"], work)
     for record in normal:
         require(record["target"] in human.stdout and record["target"] in human.stderr,
@@ -140,7 +147,7 @@ def smoke(command, work, expected_version=None, require_vcs=False):
     require(set(work.iterdir()) == initial_files | {
         work / "report.json", work / "malformed.jsonl", blocked,
     }, "Report failure left unexpected temporary files")
-    print(f"{version}: help, captures, human tables, JSONL, strict exit and atomic reports passed")
+    print(f"{version}: help, captures, run plan, silent mode, human tables, JSONL, strict exit and atomic reports passed")
 
 
 def extract_archive(archive, work, binary_stem="wafmeow"):

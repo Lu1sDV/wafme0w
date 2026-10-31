@@ -191,8 +191,11 @@ brew install Lu1sDV/tap/wafmeow
 ```
 
 Stable delivery verifies the formula and archive hashes against the published
-GitHub assets, runs `brew audit --strict --online`, installs the fresh formula
-and runs `brew test` on macOS before updating only `Formula/wafmeow.rb` in the tap.
+GitHub assets, copies the verified formula into the local tap, then grants
+[formula-scoped trust](https://docs.brew.sh/Tap-Trust) with
+`brew trust --formula Lu1sDV/tap/wafmeow` before `brew audit --strict --online`.
+It installs the fresh formula and runs `brew test` on macOS before updating only
+`Formula/wafmeow.rb` in the tap.
 The update checks the existing blob SHA to detect concurrent edits, rejects
 downgrades and unexpected formula changes, and accepts an already identical
 formula on retry. Until that job succeeds, `brew install` can still serve the
@@ -311,6 +314,33 @@ before that fix, including v2.0.0, carry no registry attestation: verify those b
 matching the digest to the release run's `published-container-identity` artifact and
 the container binary hash to `manifest.json`.
 
+## Pull request checks
+
+The [CI workflow](../.github/workflows/ci.yml) runs for pull requests and pushes to
+`main`. Release validation also calls it with the frozen candidate SHA.
+
+| Jobs | What runs |
+| --- | --- |
+| `check (1.26.10)` and `check (1.27.3)` | Every package's applicable Go tests with the race detector and statement coverage, formatting, vet and Python helper tests |
+| `check (1.27.3)` additions | Source/dependency vulnerability scans, three bounded fuzz targets, pinned real-httpx pipelines, CLI argument and terminal-help checks, isolated detector comparison, and container smoke |
+| `Local Chromium integration` | Linux browser tests enabled with `browser_integration`, a required installed native browser, and the race detector |
+| Five `Native PR test and archive smoke` jobs | All applicable Go tests, a native build, and extracted-archive smoke on Linux x64/ARM64, macOS Intel/Apple silicon, and Windows x64; Linux also tests native containers |
+
+`go test ./...` discovers tests in every package of this module. File suffixes,
+build tags and the platform select which tests can run in each job. The full
+race and native suites use `-count=1` so cached successes do not replace execution
+on the current runner. Browser tests need their separate tagged command. The
+ordinary suite executes fuzz seeds; explicit fuzz steps generate additional
+inputs for bounded periods. Python, CLI subprocess, archive and container checks
+are separate workflow steps, not part of Go's test discovery.
+
+Green checks establish that these cases passed on the tested source and runners.
+They do not establish exhaustive input coverage or real-world detector accuracy.
+Statement coverage is reported without a percentage gate; reviewed capture
+coverage and synthetic catalogue conformance are different measures. See
+[benchmark scope](benchmarks.md). Availability/import and matcher fuzz failures
+retain their reproducing corpus entries for investigation.
+
 ## Publication gates
 
 The [release workflow](../.github/workflows/release.yml) creates or resolves the
@@ -345,6 +375,13 @@ review of the latest push, stale-review dismissal, and resolved conversations.
 Apply checks to administrators too, and prohibit force-pushes and branch deletion.
 Protect `v*` tags against updates/deletion without bypass actors; enable immutable
 releases before publication.
+
+The required status-check names must include both `check` versions,
+`Local Chromium integration`, and all five native matrix entries: `linux/amd64`,
+`linux/arm64`, `darwin/amd64`, `darwin/arm64`, and `windows/amd64`, each named
+`Native PR test and archive smoke (OS/ARCH)`. A successful workflow definition
+does not make a job mandatory for merging; update repository protection when
+the platform matrix changes.
 
 Default Actions tokens should be read-only and unable to approve pull requests.
 The tag preparation and archive publication jobs explicitly request `contents: write`; only the

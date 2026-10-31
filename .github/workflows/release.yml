@@ -163,7 +163,7 @@ jobs:
           sudo apparmor_parser -r "$RUNNER_TEMP/wafmeow-bwrap"
       - name: Run native package tests
         timeout-minutes: 10
-        run: go test -timeout=5m ./...
+        run: go test -count=1 -timeout=5m ./...
       - name: Build native CLI with VCS identity
         shell: bash
         timeout-minutes: 5
@@ -399,6 +399,7 @@ jobs:
         run: |
           brew tap Lu1sDV/tap https://github.com/Lu1sDV/homebrew-tap.git
           cp dist/wafmeow.rb "$(brew --repository Lu1sDV/tap)/Formula/wafmeow.rb"
+          brew trust --formula Lu1sDV/tap/wafmeow
           brew audit --strict --online Lu1sDV/tap/wafmeow
           brew install --formula Lu1sDV/tap/wafmeow
           brew test Lu1sDV/tap/wafmeow
