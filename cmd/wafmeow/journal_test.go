@@ -76,9 +76,10 @@ func TestCLIPostPublicationSinkFailureKeepsReport(t *testing.T) {
 	}
 	input := captureLines(t, wafmeow.Capture{Target: "saved", Evidence: []wafmeow.Evidence{}})
 	var stdout bytes.Buffer
-	code := runContext(context.Background(), []string{"--evidence=-", "--jsonl", "--output", report, "--diagnostics-journal", journal, "--journal-batch-size=4"}, strings.NewReader(input), true, &stdout, failedConsole{})
-	if code != 1 {
-		t.Fatalf("summary sink failure exit=%d, want 1", code)
+	stderr := &postPublicationFailure{report: report}
+	code := runContext(context.Background(), []string{"--evidence=-", "--jsonl", "--output", report, "--diagnostics-journal", journal, "--journal-batch-size=4"}, strings.NewReader(input), true, &stdout, stderr)
+	if code != 1 || !stderr.failed {
+		t.Fatalf("summary sink failure exit=%d failed=%t, want 1 after publication", code, stderr.failed)
 	}
 	published, err := os.ReadFile(report)
 	if err != nil {
@@ -110,6 +111,26 @@ func TestCLIPostPublicationSinkFailureKeepsReport(t *testing.T) {
 	if err := decoder.Decode(&extra); err != io.EOF {
 		t.Fatalf("unexpected journal tail: %+v, %v", extra, err)
 	}
+}
+
+// Accept startup diagnostics and fail only after the atomic report replacement.
+// The regression must exercise a late sink failure, independent of how much
+// human output the CLI emits before acquisition.
+type postPublicationFailure struct {
+	report string
+	failed bool
+}
+
+func (writer *postPublicationFailure) Write(data []byte) (int, error) {
+	report, err := os.ReadFile(writer.report)
+	if err != nil {
+		return 0, err
+	}
+	if string(report) == "previous report" {
+		return len(data), nil
+	}
+	writer.failed = true
+	return failedConsole{}.Write(data)
 }
 
 type resultChunks chan []byte

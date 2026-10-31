@@ -10,7 +10,7 @@ reference is the [2.4.2 CLI source](https://github.com/EnableSecurity/wafw00f/bl
 
 | Intent | wafw00f 2.4.2 | wafmeow v2 |
 | --- | --- | --- |
-| Scan one URL | `wafw00f URL` | `wafmeow --target URL` or `wafmeow -t URL` |
+| Scan one URL | `wafw00f URL` | `wafmeow --target URL --fast` or `wafmeow -t URL --fast` |
 | Scan several direct URLs | `wafw00f URL1 URL2` | Repeat `--target URL`; one URL per flag occurrence |
 | Read a target list | `-i targets.txt` | `--target-file targets.txt`; `--input targets.txt` and `-I targets.txt` are equivalent spellings |
 | Read URLs from stdin | Supply an input file | `--target-file -`, or pipe URL lines without an explicit source; `./-` is a literal filename |
@@ -37,6 +37,8 @@ expects plain URL lines. For ProjectDiscovery httpx JSONL, use
 `--evidence - --evidence-format httpx`; see the
 [producer/import contract](usage.md#httpx-response-import). A wafw00f result
 report is not a saved HTTP response capture and cannot be imported as evidence.
+The same applies to wafmeow's own result reports; see
+[captures versus reports](usage.md#offline-captures).
 
 Existing `--input` and `-I` commands remain supported without deprecation
 warnings. Select one target-file spelling once; do not combine aliases or repeat
@@ -50,9 +52,12 @@ selects an atomic report file and can be combined with JSONL stdout.
 
 ## Choose collection intentionally
 
-wafmeow's `--deep` mode (the default, formerly called full) selects up to eight
-requests; `--fast` selects three. `--baseline` sends the normal request only. Redirects and budgets can change the
-actual request count. None of these modes is equivalent to every wafw00f run.
+Start with `--fast` for quick active fingerprinting. It selects three request
+types; `--deep` (the default, formerly called full) selects eight. Use
+`--baseline` when you want normal-response inspection without active probes.
+Baseline is optional; fast and deep already include a normal request. Redirects
+and budgets can change actual request counts. None of these modes is equivalent
+to every wafw00f run. See [collection modes](usage.md#collection-modes).
 
 Offline `--evidence` classification sends no requests. Its conclusions depend on
 the channels and completeness recorded in the capture; an imported prefix does
@@ -63,13 +68,17 @@ not become complete merely because it contains a marker.
 A useful starting point for an authorized URL list is:
 
 ```sh
-wafmeow --target-file authorized-urls.txt --baseline --jsonl --silent \
-  --output results.json --strict --rate 5
+wafmeow --target-file authorized-urls.txt --fast --jsonl --silent \
+  --output results.json --strict
 ```
 
 Parse each JSONL record's `outcome.state`, `outcome.matches`, diagnostics, and
 optional browser result. Keep incomplete/failed and unmatched results. Named
 matches can coexist with incomplete evidence, and generic anomalies are separate.
+`--strict` checks result quality, not whether a WAF matched. Empty input is a
+successful zero-target run; check the result count if your job requires targets.
+Configure [rates, concurrency and deadlines](usage.md#rate-and-deadline-tuning)
+together when limiting traffic.
 
 | Exit | Meaning |
 | --- | --- |

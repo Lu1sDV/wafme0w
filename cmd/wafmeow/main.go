@@ -69,17 +69,23 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 	opts := newOptions(config)
 	parser := flags.NewParser(&opts, flags.HelpFlag|flags.PassDoubleDash)
 	parser.Name = "wafmeow"
-	parser.LongDescription = "Fingerprint WAFs from live targets or saved responses. Default live mode is --deep (up to eight active requests); --fast sends three.\nChoose --baseline for a normal request only, or --evidence for offline analysis.\nWith no explicit source, piped stdin supplies target URLs, one per line."
+	if requestsHelp(args) {
+		if err := writeHelp(stdout); err != nil {
+			fmt.Fprintln(stderr, terminalText(err.Error()))
+			return 1
+		}
+		return 0
+	}
 	positional, err := parser.ParseArgs(args)
 	if err != nil {
 		if flagErr, ok := err.(*flags.Error); ok && flagErr.Type == flags.ErrHelp {
-			if err := writeHelp(parser, stdout); err != nil {
+			if err := writeHelp(stdout); err != nil {
 				fmt.Fprintln(stderr, terminalText(err.Error()))
 				return 1
 			}
 			return 0
 		}
-		fmt.Fprintln(stderr, terminalText(err.Error()))
+		fmt.Fprintln(stderr, terminalText(withArgumentGuidance(parser, err).Error()))
 		return 1
 	}
 	console := colorizer(stdout, opts.NoColors)
@@ -92,7 +98,7 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 		return 1
 	}
 	if len(positional) != 0 {
-		return fail(fmt.Errorf("unexpected positional arguments: %q", positional))
+		return fail(fmt.Errorf("unexpected positional arguments: %q; URLs require --target URL (repeat for more) or --target-file FILE", positional))
 	}
 	if err := opts.normalizeInputs(); err != nil {
 		return fail(err)
@@ -104,7 +110,7 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 		}
 	}
 	if len(args) == 0 && !piped {
-		if err := writeHelp(parser, stdout); err != nil {
+		if err := writeHelp(stdout); err != nil {
 			return fail(err)
 		}
 		return 0
@@ -206,6 +212,12 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 	if err != nil {
 		return finish(err)
 	}
+	if err := ctx.Err(); err != nil {
+		return finish(err)
+	}
+	if err := printRunPlan(stderr, opts, config); err != nil {
+		return finish(err)
+	}
 	if !opts.Silent && !opts.JSONL {
 		if err := printBanner(stdout, console); err != nil {
 			return finish(err)
@@ -279,6 +291,7 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 		} else {
 			runErr = runner(runCtx, engine, input, config, emit)
 		}
+		runErr = withCaptureInputGuidance(opts, runErr)
 		// Join the journal owner before finalizing reports or writing diagnostics.
 		err := errors.Join(sink.close(), runErr)
 		if err == nil && output != nil {
@@ -318,79 +331,66 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 	return 0
 }
 
-func writeHelp(parser *flags.Parser, writer io.Writer) error {
-	var help bytes.Buffer
-	parser.WriteHelp(&help)
-	help.WriteString(`
-Examples:
-  wafmeow --target https://example.com --baseline --jsonl
-  wafmeow --target-file targets.txt --deep --jsonl --silent
-  httpx -silent < authorized-hosts.txt | wafmeow --target-file - --jsonl
-  wafmeow --evidence captures.jsonl --jsonl
-  wafmeow --target-file targets.txt --fast --output results.json --strict
-
-Live HTTP controls do not change offline acquisition: --evidence sends no requests.
-Use --jsonl for structured stdout; --output writes a named file independently.
-Only target URLs are accepted on implicit stdin; saved responses need --evidence -.
-
-Exit codes:
-  0  Completed; inspect result states, or use --strict to fail on incomplete results.
-  1  Invalid configuration, input failure or output failure.
-  2  --strict found failed, incomplete or diagnosed results; reports are published first.
-  130  Cancelled by SIGINT or SIGTERM.
-`)
-	_, err := help.WriteTo(writer)
-	return err
-}
-
 func validateOptions(opts options) error {
 	switch opts.EvidenceFormat {
 	case "", "native", "httpx":
 	default:
-		return fmt.Errorf("unknown evidence format %q; choose native or httpx", opts.EvidenceFormat)
+		return fmt.Errorf("unknown evidence format %q for --evidence-format; choose native or httpx", opts.EvidenceFormat)
 	}
 	switch opts.HTTPXResponseEncoding {
 	case "", "text", "base64":
 	default:
-		return fmt.Errorf("unknown httpx response encoding %q; choose text or base64", opts.HTTPXResponseEncoding)
+		return fmt.Errorf("unknown response encoding %q for --httpx-response-encoding; choose text or base64", opts.HTTPXResponseEncoding)
 	}
 	if opts.Concurrency <= 0 || opts.Concurrency > wafmeow.MaxConcurrency {
 		return fmt.Errorf("--concurrency must be between 1 and %d", wafmeow.MaxConcurrency)
 	}
-	if opts.MaxBodyBytes <= 0 || opts.MaxRequests <= 0 {
-		return errors.New("decoded body limit and request budget must be positive")
+	if opts.MaxBodyBytes <= 0 {
+		return errors.New("--max-body-bytes must be positive")
+	}
+	if opts.MaxRequests <= 0 {
+		return errors.New("--max-requests must be positive")
 	}
 	if opts.MaxConnections < 0 {
-		return errors.New("connection limit must not be negative")
+		return errors.New("--max-connections must not be negative; 0 selects the automatic connection limit")
 	}
 	if opts.ProbeConcurrency < 1 || opts.ProbeConcurrency > 8 {
-		return errors.New("probe concurrency must be between 1 and 8")
+		return errors.New("--probe-concurrency must be between 1 and 8")
 	}
 	if opts.JournalBatchSize < 1 || opts.JournalBatchSize > maxJournalBatchSize {
-		return fmt.Errorf("journal batch size must be between 1 and %d", maxJournalBatchSize)
+		return fmt.Errorf("--journal-batch-size must be between 1 and %d", maxJournalBatchSize)
 	}
-	if opts.MaxResponseHeaderBytes < 0 || opts.MaxTargetEvidenceBytes < 0 {
-		return errors.New("response header and retained evidence limits must not be negative")
+	if opts.MaxResponseHeaderBytes < 0 {
+		return errors.New("--max-response-header-bytes must not be negative; 0 selects the default limit")
 	}
-	if opts.RequestTimeout <= 0 || opts.TargetTimeout <= 0 {
-		return errors.New("request and target timeouts must be positive")
+	if opts.MaxTargetEvidenceBytes < 0 {
+		return errors.New("--max-target-evidence-bytes must not be negative; 0 selects the default limit")
+	}
+	if opts.RequestTimeout <= 0 {
+		return errors.New("--request-timeout must be a positive duration, such as 5s")
+	}
+	if opts.TargetTimeout <= 0 {
+		return errors.New("--target-timeout must be a positive duration, such as 30s")
 	}
 	if opts.MaxRedirects < 0 {
-		return errors.New("maximum redirects must not be negative")
+		return errors.New("--max-redirects must not be negative; 0 follows none")
 	}
-	for _, rate := range []float64{opts.Rate, opts.PerOriginRate} {
-		if math.IsNaN(rate) || math.IsInf(rate, 0) || rate < 0 {
-			return errors.New("request rates must be finite and nonnegative")
+	for _, rate := range []struct {
+		name  string
+		value float64
+	}{{"rate", opts.Rate}, {"per-origin-rate", opts.PerOriginRate}} {
+		if math.IsNaN(rate.value) || math.IsInf(rate.value, 0) || rate.value < 0 {
+			return fmt.Errorf("--%s must be finite and nonnegative; 0 disables pacing", rate.name)
 		}
 	}
 	switch opts.RedirectPolicy {
 	case "canonical-host", "same-origin", "none":
 	case "allowlist":
 		if len(opts.AllowedOrigins) == 0 {
-			return errors.New("allowlist redirect policy requires --allow-origin")
+			return errors.New("--redirect-policy=allowlist requires --allow-origin")
 		}
 	default:
-		return fmt.Errorf("unknown redirect policy %q", opts.RedirectPolicy)
+		return fmt.Errorf("unknown --redirect-policy %q; choose canonical-host, same-origin, none or allowlist", opts.RedirectPolicy)
 	}
 	if opts.Target != "" && strings.TrimSpace(opts.Target) == "" {
 		return errors.New("--target must not be blank")
@@ -433,13 +433,16 @@ func parseHeaders(values []string) ([]wafmeow.Header, error) {
 		reader.TrimLeadingSpace = true
 		fields, err := reader.Read()
 		if err != nil {
-			return nil, errors.New("--header requires CSV-quoted fields when values contain commas or quotes")
+			return nil, errors.New(headerCSVRecovery)
 		}
 		for _, field := range fields {
 			name, content, ok := strings.Cut(field, ":")
 			name, content = strings.Trim(name, " \t"), strings.Trim(content, " \t")
 			if !ok || !httpmeta.ValidHeaderName(name) || !httpmeta.ValidHeaderValue(content) {
-				return nil, errors.New("--header requires valid Name: value entries")
+				if !ok && len(fields) > 1 {
+					return nil, errors.New(headerCSVRecovery)
+				}
+				return nil, errors.New("--header requires valid Name: value entries; for example, -H 'X-Tag: demo' in a POSIX shell")
 			}
 			headers = append(headers, wafmeow.Header{Name: name, Value: content})
 		}
