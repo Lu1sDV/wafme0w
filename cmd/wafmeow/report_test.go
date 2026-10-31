@@ -67,7 +67,7 @@ func TestHumanReportColorsOnlyMatchedProductNames(t *testing.T) {
 	}
 	defer report.close()
 	result := wafmeow.Result{
-		Target: "https://example.test/check",
+		Target:   "https://example.test/check",
 		Evidence: []wafmeow.EvidenceSummary{{Role: "Normal", StatusCode: 200}},
 		Outcome: wafmeow.Outcome{State: wafmeow.Incomplete, Matches: []wafmeow.Match{
 			{Product: "Cloudflare", Fingerprints: []wafmeow.FingerprintMatch{{Evidence: 0}}},

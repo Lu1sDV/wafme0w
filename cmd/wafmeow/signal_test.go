@@ -196,7 +196,7 @@ func TestSignalOutcomeColors(t *testing.T) {
 func TestHumanMatchedProductGreenWhileOutcomeRemainsRed(t *testing.T) {
 	result := signalResult(wafmeow.Complete)
 	result.Outcome.Matches = []wafmeow.Match{{
-		Product: "Cloudflare (Cloudflare Inc.)",
+		Product:      "Cloudflare (Cloudflare Inc.)",
 		Fingerprints: []wafmeow.FingerprintMatch{{Evidence: 0}},
 	}}
 	var out bytes.Buffer
