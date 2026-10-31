@@ -148,15 +148,13 @@ Configuration, input and output failures exit **1**; cancellation exits **130**.
 
 ## Benchmarks
 
-### Recorded live CLI comparison
+Median elapsed time for **600 live HTTP/HTTPS targets** — 500 non-CDN plus 100
+known-CDN targets sampled from Tranco top 10,000 — with **three runs per
+configuration** on a **Hetzner Helsinki VPS** (4 vCPU, 7.6 GiB RAM), completed
+31 October 2026. Lower is better.
 
-Median elapsed time for **600 live HTTP/HTTPS root URLs** — 500 randomly
-sampled known-non-CDN targets plus 100 randomly sampled known-CDN targets from
-Tranco ZJ8PG's top 10,000 (seeds `20261030` and `20261031`), with **three runs
-per configuration**, completed on 31 October 2026. Dead candidates were
-replaced during selection. Lower is better.
-
-**Host:** Hetzner vServer, Helsinki, Finland (AS24940) · KVM · Debian 13 · AMD EPYC-Rome, 4 vCPU @ ~2.5 GHz · 7.6 GiB RAM · measured ~1.17 Gbit/s down / ~392 Mbit/s up (Vienna Speedtest, 41.5 ms).
+[Target selection, full VPS specifications, methodology, historical runs and
+offline conformance checks](docs/benchmarks.md).
 
 | Workers / processes | wafw00f 2.4.2 | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow fast | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow full | Speedup fast | Speedup full |
 | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -166,8 +164,8 @@ replaced during selection. Lower is better.
 | 50 | 1m 59s | 16.1s | 26.6s | **7.40×** | **4.49×** |
 | 100 | 1m 52s | 9.0s | 21.9s | **12.45×** | **5.12×** |
 
-**Detection compared at 100 workers/processes** — targets out of 600, shown as
-the range across three runs.
+**Detection compared at 100 workers/processes** — targets out of 600, range
+across three runs.
 
 | Targets with… | wafw00f 2.4.2 | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow fast | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow full |
 | --- | ---: | ---: | ---: |
@@ -176,27 +174,8 @@ the range across three runs.
 | Returned result | 580–581 | 600 | 600 |
 | Complete evidence | Not reported | 529–531 | 523–528 |
 
-Named matches and generic signals can overlap, including on incomplete results.
-wafw00f emits a Generic record alongside a named product for some targets; its
-Generic-only subset at 100 workers was 66–69. Different probes, TLS policies, CDN
-composition and evidence completeness prevent an accuracy comparison. [Full results, methodology and build identities](docs/benchmarks.md#600-target-vps-comparison).
-
-The current build reuses verified HTTP/1 connections between a target's probes
-([ADR 0002](adrs/0002-http1-connection-reuse-for-probes.md)); this run replaces
-the older 2,000-target laptop table and the separate connection-reuse paragraph.
-
-### Reproducible offline comparison
-
-Run the [reproducible offline comparison](docs/benchmarks.md#reproduce-the-current-checkout)
-against **wafw00f 2.4.2** from a clean committed checkout. The runner records source
-and binary hashes, compiler and Python package versions, CPU details, the exact
-synthetic corpus, repeated blocks and a verified result manifest. Workers replay
-saved responses with network access isolated by bubblewrap.
-
-The shipped synthetic fixtures have reviewed links for **28 of 172 products**;
-this checks conformance to fixture expectations. The live table measures
-end-to-end CLI elapsed time, while the offline comparison isolates saved-response
-classification. Keep each result attached to its workload and measured build.
+Named and generic signals can overlap; these counts are not an accuracy comparison.
+[Detection semantics, transport checks and per-block accounting](docs/benchmarks.md#600-target-vps-comparison).
 
 ## Major caveats
 
