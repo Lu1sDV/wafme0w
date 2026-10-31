@@ -130,6 +130,39 @@ ground truth. Review one product/schema at a time where possible.
    disagreements; never regenerate expected labels or review status from
    wafmeow/wafw00f output to make the checks pass.
 
+### Preserve fingerprint review history
+
+The history check compares `coverage-contract.json` with the contract from an
+explicit trusted commit. An inherited `baseline-untested` entry may remain only
+with the same product, schema number, and rule hash. New or changed rules need
+reviewed fixture links; refreshing a hash cannot grandfather them. Existing
+reviews cannot become `baseline-untested`, and `reviewed-real` coverage cannot
+be downgraded to synthetic conformance. Reviewed updates and promotions are
+allowed. Deliberately removing an obsolete rule is allowed when the catalogue
+and contract are both updated and the removal is explained in review.
+
+With the intended target branch already fetched, check local changes with:
+
+```sh
+review_base=$(git rev-parse origin/main)
+python3 tools/check_fingerprint_review.py --base "$review_base"
+python3 -m unittest discover -s tools -p 'check_fingerprint_review_test.py'
+```
+
+CI uses the pull request's exact base SHA, including when testing a merge
+checkout, or the pre-push SHA for a push to `main`. Full checkout history makes
+those commits available. Missing commits/contracts and all-zero branch-creation
+baselines fail the check; they never cause it to be skipped. Reusable release
+validation compares the frozen candidate with its first parent, assuming its
+history already passed the PR/main checks. That release check is additional
+validation of the candidate's change, not a substitute for the full PR/push
+comparison. The helper reads baseline data without executing baseline code.
+
+This history check supplements the Go assessor: the assessor still validates
+current catalogue/fixture hashes, evidence provenance, and positive/negative
+expectations. Neither check establishes real-world accuracy or substitutes for
+human review of the evidence.
+
 If adapting an upstream rule, cite its repository, immutable revision, and file.
 Retain applicable attribution and redistribution terms in [LICENSE.md](LICENSE.md).
 The inherited catalogue does not have a verified source revision for every rule;

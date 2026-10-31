@@ -1905,6 +1905,7 @@
 		"name": "pkSecurity IDS (pkSec)",
 		"schemas": [
 			{
+				"any": true,
 				"fingerprints": [
 					{
 						"type": "Content",
@@ -1930,8 +1931,7 @@
 						"type": "Content",
 						"pattern": "(?i)maximum number of reloads per minute and prevented access"
 					}
-				],
-				"any": true
+				]
 			}
 		]
 	},
