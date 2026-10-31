@@ -47,8 +47,18 @@ var programVersion = func() string {
 	return version
 }()
 
-// Version reports embedded module/VCS identity, or devel when unavailable.
-func Version() string { return programVersion }
+// releaseVersion is set only by the release build's Go -ldflags -X option.
+// Local builds and go install retain their original module/VCS-derived version.
+var releaseVersion string
+
+// Version reports the selected immutable release tag for packaged binaries.
+// For development and module installs it preserves Go module/VCS identity.
+func Version() string {
+	if releaseVersion != "" {
+		return releaseVersion
+	}
+	return programVersion
+}
 
 type ScanSettings struct {
 	Concurrency                int           `json:"concurrency"`

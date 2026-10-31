@@ -141,6 +141,31 @@ go build -o wafmeow ./cmd/wafmeow
 ./wafmeow --help
 ```
 
+### Version identity
+
+The release workflow first freezes the source commit and selects the exact
+`vMAJOR.MINOR.PATCH[-PRERELEASE]` tag. Every native release build then injects
+that selected tag through Go's linker `-X` flag. Consequently, a binary
+released as `v3.0.3` prints `wafmeow v3.0.3` from `--version`, shows
+`v3.0.3` in its human banner, and records the same version in
+`provenance.program_version` for JSON results. No version file, hand-edited
+constant, runtime GitHub lookup, or background update is involved.
+
+On **each native runner**, packaging executes the binary and requires its
+`--version` output to equal the selected tag **exactly**; mismatches stop
+publication before an archive is written. The verified release manifest
+also records `program_version` alongside binary hashes, source revision
+and compiler identity, and the extracted-archive/container smoke tests require
+the same tag. The full Git commit remains independently traceable through
+verified Go build VCS metadata and the manifest; it is no longer appended
+to the user-facing version of release binaries.
+
+Ordinary source builds use the existing module/VCS-derived version
+(`devel` with a revision when available). Module installs made with
+`go install ...@version` continue to use Go's embedded module version.
+An already installed binary reports **its own** build version; updating
+a GitHub release does not rewrite existing binaries.
+
 ### Release archives
 
 [GitHub Releases](https://github.com/Lu1sDV/wafmeow/releases) is the binary
@@ -350,7 +375,7 @@ requested tag once and validates that exact commit before publication:
 | --- | --- |
 | Source validation | Formatting, vet, race tests, Go source and optional Python dependency vulnerability scans, bounded matcher and evidence fuzzing, isolated offline comparison, httpx pipeline checks, Chromium integration, and container checks |
 | Native packages | Tests and extracted-archive smoke checks on Linux x64/ARM64, macOS x64/ARM64, and Windows x64 |
-| Binary identity | Packaged binaries identify the prepared source SHA, an unmodified tree, the intended target, and Go 1.27.3 |
+| Binary identity | Native packages must report exactly `wafmeow <release-tag>` from `--version`; the frozen source SHA, unmodified tree, target and Go 1.27.3 are independently verified, with `program_version` bound to each binary hash in the manifest |
 | Artifact verification | Binary vulnerability scans, verified hashes and identities in `manifest.json`, and `SHA256SUMS` covering the manifest and generated Homebrew formula |
 | Containers | Native x64/ARM64 build and hardened offline smoke of the exact archived binaries; GHCR writes occur only after successful archive publication and explicit repository opt-in |
 | Publication | Attestation, remote tag and hash rechecks, and no asset overwrite |

@@ -51,6 +51,7 @@ class HomebrewReleaseTests(unittest.TestCase):
             path = self.dist / name
             path.write_bytes(name.encode())
             archives[name] = {"tag": TAG, "revision": REVISION, "os": target_os, "arch": arch,
+                              "program_version": TAG,
                               "archive_sha256": release.digest(path), "binary_sha256": "d" * 64,
                               "go_version": release.GO_VERSION, "modified": False}
         self.formula = release.homebrew_formula(TAG, REVISION, archives, SOURCE)

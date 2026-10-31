@@ -388,7 +388,7 @@ def main():
     container.add_argument("--runtime", "--container-runtime", default=os.environ.get("DOCKER", "docker"),
                            help="Container command (default: DOCKER environment variable or docker)")
     for subparser in (archive, container):
-        subparser.add_argument("--version", help="Expected embedded program version, not the release tag")
+        subparser.add_argument("--version", help="Expected embedded program version (the exact tag for release archives)")
     args = parser.parse_args()
     if args.mode == "archive":
         smoke_archive(args.path.resolve(), args.version)

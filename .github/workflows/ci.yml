@@ -355,13 +355,17 @@ jobs:
         run: |
           CHECK_TAG=$(python tools/release.py ci-tag)
           printf 'CHECK_TAG=%s\n' "$CHECK_TAG" >> "$GITHUB_ENV"
-          go build -trimpath -buildvcs=true -o "$RUNNER_TEMP/wafmeow$BINARY_SUFFIX" ./cmd/wafmeow
+          go build -trimpath -buildvcs=true \
+            -ldflags="-X github.com/Lu1sDV/wafmeow/v3/pkg/wafmeow.releaseVersion=${CHECK_TAG}" \
+            -o "$RUNNER_TEMP/wafmeow$BINARY_SUFFIX" ./cmd/wafmeow
           python tools/release.py package --tag "$CHECK_TAG" --revision "$(git rev-parse HEAD)" \
             --os "$RELEASE_OS" --arch "$RELEASE_ARCH" --binary "$RUNNER_TEMP/wafmeow$BINARY_SUFFIX"
       - name: Smoke extracted archive outside checkout
         shell: bash
         timeout-minutes: 5
-        run: python tools/smoke.py archive "dist/wafmeow_${CHECK_TAG}_${RELEASE_OS}_${RELEASE_ARCH}.${RELEASE_EXTENSION}"
+        run: |
+          python tools/smoke.py archive "dist/wafmeow_${CHECK_TAG}_${RELEASE_OS}_${RELEASE_ARCH}.${RELEASE_EXTENSION}" \
+            --version "$CHECK_TAG"
       - name: Native release-container build and hardened offline smoke
         if: runner.os == 'Linux'
         shell: bash
