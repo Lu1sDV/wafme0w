@@ -6,8 +6,11 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
+import sys
 import tempfile
+import textwrap
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -221,6 +224,107 @@ class HomebrewReleaseTests(unittest.TestCase):
             homebrew_release.verify_only(self.args)
         self.assertTrue(self.calls)
         self.assertTrue(all(not tap and payload is None for _, tap, payload, _ in self.calls))
+
+
+class HomebrewWorkflowTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.tap = self.root / "tap checkout"
+        (self.tap / "Formula").mkdir(parents=True)
+        self.installed_formula = self.tap / homebrew_release.FORMULA_PATH
+        self.installed_formula.write_text(formula("v2.0.0", "a" * 40))
+        (self.root / "dist").mkdir()
+        self.candidate = self.root / "dist" / release.FORMULA
+        self.candidate.write_text(formula(TAG))
+        self.log = self.root / "brew.jsonl"
+        binary_directory = self.root / "bin"
+        binary_directory.mkdir()
+        stub = binary_directory / "brew"
+        stub.write_text(f"#!{sys.executable}\n" + textwrap.dedent('''\
+            import json
+            import os
+            from pathlib import Path
+            import sys
+
+            arguments = sys.argv[1:]
+            with Path(os.environ["WAFMEOW_TEST_BREW_LOG"]).open("a") as log:
+                log.write(json.dumps(arguments) + "\\n")
+            tap = Path(os.environ["WAFMEOW_TEST_TAP"])
+            canonical = "Lu1sDV/tap/wafmeow"
+            commands = {
+                "tap": ["tap", "Lu1sDV/tap", "https://github.com/Lu1sDV/homebrew-tap.git"],
+                "--repository": ["--repository", "Lu1sDV/tap"],
+                "trust": ["trust", "--formula", canonical],
+                "audit": ["audit", "--strict", "--online", canonical],
+                "install": ["install", "--formula", canonical],
+                "test": ["test", canonical],
+            }
+            command = arguments[0] if arguments else ""
+            if arguments != commands.get(command):
+                raise SystemExit("unexpected or unscoped brew invocation: " + repr(arguments))
+            if "HOMEBREW_NO_REQUIRE_TAP_TRUST" in os.environ:
+                raise SystemExit("global tap trust bypass is forbidden")
+            if command in ("trust", "audit", "install", "test"):
+                if (tap / "Formula/wafmeow.rb").read_bytes() != Path(os.environ["WAFMEOW_TEST_FORMULA"]).read_bytes():
+                    raise SystemExit("verified formula bytes must be copied before trust or evaluation")
+            trusted = tap / "formula-trusted"
+            if command in ("audit", "install", "test") and not trusted.exists():
+                raise SystemExit("formula must be trusted before " + command)
+            if command == os.environ.get("WAFMEOW_TEST_BREW_FAIL"):
+                raise SystemExit("owned " + command + " failure")
+            if command == "--repository":
+                print(tap)
+            elif command == "trust":
+                trusted.write_text(canonical)
+            '''), encoding="utf-8")
+        stub.chmod(0o755)
+        self.environment = {
+            "PATH": str(binary_directory) + os.pathsep + os.defpath,
+            "WAFMEOW_TEST_TAP": str(self.tap),
+            "WAFMEOW_TEST_FORMULA": str(self.candidate),
+            "WAFMEOW_TEST_BREW_LOG": str(self.log),
+        }
+        workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/release.yml").read_text(encoding="utf-8")
+        self.assertNotIn("HOMEBREW_NO_REQUIRE_TAP_TRUST", workflow)
+        step = workflow.split("      - name: Audit and test the candidate formula against published archives\n", 1)[1].split("\n      - ", 1)[0]
+        self.script = textwrap.dedent(step.split("        run: |\n", 1)[1])
+        self.commands = [
+            ["tap", "Lu1sDV/tap", "https://github.com/Lu1sDV/homebrew-tap.git"],
+            ["--repository", "Lu1sDV/tap"],
+            ["trust", "--formula", "Lu1sDV/tap/wafmeow"],
+            ["audit", "--strict", "--online", "Lu1sDV/tap/wafmeow"],
+            ["install", "--formula", "Lu1sDV/tap/wafmeow"],
+            ["test", "Lu1sDV/tap/wafmeow"],
+        ]
+
+    def workflow(self, failure=""):
+        # Execute the checked-in shell step with an owned, stateful brew stub.
+        # No Ruby, Homebrew, network access, installs or publication are involved.
+        self.log.unlink(missing_ok=True)
+        (self.tap / "formula-trusted").unlink(missing_ok=True)
+        self.installed_formula.write_text(formula("v2.0.0", "a" * 40))
+        result = subprocess.run([shutil.which("bash"), "--noprofile", "--norc", "-euo", "pipefail", "-c", self.script],
+                                cwd=self.root, env={**self.environment, "WAFMEOW_TEST_BREW_FAIL": failure},
+                                capture_output=True, text=True, timeout=15)
+        calls = [json.loads(line) for line in self.log.read_text().splitlines()]
+        return result, calls
+
+    def test_workflow_trusts_only_copied_formula_before_audit(self):
+        result, calls = self.workflow()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(calls, self.commands)
+        self.assertEqual(self.installed_formula.read_bytes(), self.candidate.read_bytes())
+
+    def test_workflow_propagates_trust_and_evaluation_failures(self):
+        for command in ("trust", "audit", "install", "test"):
+            with self.subTest(command=command):
+                result, calls = self.workflow(command)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("owned " + command + " failure", result.stderr)
+                position = next(index for index, arguments in enumerate(self.commands) if arguments[0] == command)
+                self.assertEqual(calls, self.commands[:position + 1])
 
 
 class GitHubCredentialTests(unittest.TestCase):

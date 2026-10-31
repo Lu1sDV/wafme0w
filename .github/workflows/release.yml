@@ -399,6 +399,7 @@ jobs:
         run: |
           brew tap Lu1sDV/tap https://github.com/Lu1sDV/homebrew-tap.git
           cp dist/wafmeow.rb "$(brew --repository Lu1sDV/tap)/Formula/wafmeow.rb"
+          brew trust --formula Lu1sDV/tap/wafmeow
           brew audit --strict --online Lu1sDV/tap/wafmeow
           brew install --formula Lu1sDV/tap/wafmeow
           brew test Lu1sDV/tap/wafmeow

@@ -187,8 +187,11 @@ brew install Lu1sDV/tap/wafmeow
 ```
 
 Stable delivery verifies the formula and archive hashes against the published
-GitHub assets, runs `brew audit --strict --online`, installs the fresh formula
-and runs `brew test` on macOS before updating only `Formula/wafmeow.rb` in the tap.
+GitHub assets, copies the verified formula into the local tap, then grants
+[formula-scoped trust](https://docs.brew.sh/Tap-Trust) with
+`brew trust --formula Lu1sDV/tap/wafmeow` before `brew audit --strict --online`.
+It installs the fresh formula and runs `brew test` on macOS before updating only
+`Formula/wafmeow.rb` in the tap.
 The update checks the existing blob SHA to detect concurrent edits, rejects
 downgrades and unexpected formula changes, and accepts an already identical
 formula on retry. Until that job succeeds, `brew install` can still serve the
