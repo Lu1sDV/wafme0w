@@ -57,7 +57,238 @@ and preparation. It is not a number of Internet hosts per minute. Keep the
 full-native-catalogue profile distinct and retain the bootstrap interval and
 paired-case count. Do not substitute this ratio for a live CLI speedup.
 
-## Live CLI comparison
+## 600-target VPS comparison
+
+The broader-probe mode was called *full* when this benchmark was recorded;
+it is now `--deep`. The renamed mode retains the measured request behavior;
+the figures have not been rerun.
+
+Recorded 30–31 October 2026. This run measured a reproducible 600-target sample
+on a dedicated Debian 13 VPS rather than a laptop, with three complete blocks
+per configuration. It is the primary live CLI comparison; the older 2,000-target
+laptop run is retained below as historical evidence.
+
+### Target selection
+
+- Source: [Tranco ZJ8PG, 28 October 2026](https://tranco-list.eu/list/ZJ8PG/1000000),
+  top 10,000 ranked domains.
+- Selection: deterministic shuffles with seed `20261030` for the non-CDN set and
+  seed `20261031` for the CDN set. Candidates were resolved and checked for
+  known CDN fronting by CNAME suffix and ASN. Non-CDN candidates were fetched
+  over HTTPS and then HTTP; any response below status 600 counted as alive. The
+  first set discarded dead and known-CDN candidates; the second required known
+  CDN fronting. Both discarded dead candidates and continued until 500 non-CDN
+  and 100 CDN targets remained, then combined and sorted by Tranco rank.
+- Result: 600 unique targets (571 HTTPS, 29 HTTP), Tranco ranks 31–9,978, all
+  alive at selection. The target-file SHA-256 is
+  `fbd8a3bbdd5903b7d53ab6f2ffe95c37b900f5728abb76b38ce7508863c09cf5`.
+- The 100 CDN targets include Cloudflare, Amazon, Microsoft, Fastly and Google
+  edge ASNs, so the sample measures detection on shared edge infrastructure
+  without allowing CDN hosts to dominate the set. CDN classification is a
+  heuristic, not an exhaustive inventory of every CDN.
+- Scanning was explicitly requested for this benchmark. A public target list is
+  not permission to scan its entries.
+
+### Measurement setup
+
+- Host: Hetzner Online GmbH vServer (AS24940), Helsinki, Finland; KVM
+  virtualization. Debian GNU/Linux 13 (trixie), Linux
+  `6.12.101+deb13-cloud-amd64`, x86-64.
+- CPU: AMD EPYC-Rome, four vCPUs, one socket/four cores, one thread per core,
+  reported at 2,495 MHz; 16 MiB L3 cache, 2 MiB L2 per core. `GOMAXPROCS=4`;
+  inherited proxy variables cleared.
+- Memory and storage: 7.6 GiB RAM, 2 GiB swap, 76.3 GB QEMU virtual disk.
+  A 512 MiB `fdatasync` write measured about 1.5 GB/s; cached read measured
+  about 8.0 GB/s.
+- Network: Speedtest CLI against FDCservers Vienna (server 6070) measured
+  **1.17 Gbit/s download, 392 Mbit/s upload and 41.5 ms latency** after the run.
+  ICMP to `1.1.1.1` averaged 1.51 ms over four probes. These are shared virtual
+  host measurements, not guaranteed bandwidth; the benchmark traffic is mostly
+  many short TLS/HTTP exchanges rather than bulk transfer.
+- wafmeow: commit `c12e7c5` (Go 1.26.10); only `.gitignore` was modified locally
+  (`vcs.modified=true`), not application source. Binary SHA-256
+  `f4cc7f61fa24f5e251688670ff6d4704eff4f8039cd3fa51d705116599db5274`.
+- wafw00f: stock 2.4.2 on Python 3.13.5.
+- Both tools used a 3-second request timeout and disabled redirects. wafmeow
+  used verified TLS, a 30-second target deadline, a 54-request budget, a 1 MiB
+  decoded-body limit, fast mode or default serial-probe deep mode, target
+  workers and the global connection cap equal to the table concurrency, and
+  probe concurrency one. Browser capture and journaling were off.
+- wafw00f used `--findall`, `-r` (no redirects), and `-T 3`. At concurrency N,
+  N stock CLI processes consumed round-robin shards. It disables certificate
+  verification and uses a 100 KiB body-read threshold; probe sets and headers
+  differ, so detection counts are not an accuracy comparison.
+- Three blocks ran sequentially. Within each block the concurrency order was
+  100, 50, 10, 5, and 1; tool order rotated as fast/deep/wafw00f, then
+  wafw00f/fast/deep, then deep/wafw00f/fast. Cells never overlapped.
+- Timing covered process start through final output flush, excluding compilation
+  and shard partitioning. Every cell had a 3,600-second watchdog. All recorded
+  cells exited zero; no cell was retried or re-rolled after a completed timer.
+
+### Wall-clock results
+
+Times are **medians of three runs**; parentheses show the shortest–longest run.
+Lower is better.
+
+| Workers / processes | wafw00f 2.4.2 | <img src="../assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow fast | <img src="../assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow deep |
+| ---: | ---: | ---: | ---: |
+| 1 | 31m 37.6s (30m 44.7s–31m 44.4s) | 7m 49.5s (7m 34.3s–7m 54.4s) | 15m 50.5s (15m 13.1s–16m 3.1s) |
+| 5 | 6m 53.3s (6m 51.4s–7m 3.8s) | 2m 18.2s (2m 18.1s–2m 22.5s) | 3m 10.3s (3m 8.6s–3m 15.5s) |
+| 10 | 4m 46.8s (4m 43.1s–4m 57.6s) | 1m 15.8s (1m 15.2s–1m 17.3s) | 1m 34.8s (1m 33.6s–1m 37.2s) |
+| 50 | 1m 59.4s (1m 57.8s–2m 0.2s) | 16.1s (16.0s–16.4s) | 26.6s (26.1s–29.8s) |
+| 100 | 1m 52.2s (1m 51.4s–1m 56.3s) | 9.0s (9.0s–9.4s) | 21.9s (21.4s–23.7s) |
+
+Each recorded ratio divides wafw00f's median elapsed time by wafmeow's for the
+same concurrency. **Above 1 favors wafmeow; below 1 favors wafw00f.**
+
+| Workers / processes | <img src="../assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow fast | <img src="../assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow deep |
+| ---: | ---: | ---: |
+| 1 | 4.04× | 2.00× |
+| 5 | 2.99× | 2.17× |
+| 10 | 3.79× | 3.03× |
+| 50 | 7.40× | 4.49× |
+| 100 | 12.45× | 5.12× |
+
+### Result accounting
+
+Counts are targets, not fingerprint matches or HTTP requests. Each count is the
+range across the three blocks when the blocks differ. wafw00f does not report
+equivalent evidence-completion states; its unreturned targets remain unknown.
+
+| Workers / processes | Tool and mode | Returned | Named | Generic | Complete | Incomplete |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | wafmeow fast | 600 | 154–158 | 115–123 | 519–521 | 79–81 |
+| 1 | wafmeow deep | 600 | 158–159 | 142–146 | 521–525 | 75–79 |
+| 1 | wafw00f 2.4.2 | 580–582 | 156–157 | 122–128 | — | — |
+| 5 | wafmeow fast | 600 | 157–158 | 115–123 | 524–527 | 73–76 |
+| 5 | wafmeow deep | 600 | 158–159 | 141–143 | 521–525 | 75–79 |
+| 5 | wafw00f 2.4.2 | 578–580 | 154–157 | 121–125 | — | — |
+| 10 | wafmeow fast | 600 | 154–155 | 114–116 | 522–524 | 76–78 |
+| 10 | wafmeow deep | 600 | 154–157 | 139–144 | 518–525 | 75–82 |
+| 10 | wafw00f 2.4.2 | 577–580 | 155 | 118–126 | — | — |
+| 50 | wafmeow fast | 600 | 156–159 | 115–117 | 529–531 | 69–71 |
+| 50 | wafmeow deep | 600 | 158 | 144 | 525–526 | 74–75 |
+| 50 | wafw00f 2.4.2 | 575–578 | 154–158 | 116–126 | — | — |
+| 100 | wafmeow fast | 600 | 157–158 | 118–120 | 529–531 | 69–71 |
+| 100 | wafmeow deep | 600 | 157–160 | 145–146 | 523–528 | 72–77 |
+| 100 | wafw00f 2.4.2 | 580–581 | 155–157 | 121–126 | — | — |
+
+For wafmeow, `complete` describes the evidence supplied to the classifier, not
+WAF absence or active enforcement. At 100 workers, fast mode returned
+529–531 complete targets and deep mode 523–528; higher
+concurrency can still change evidence completeness, so shorter wall time alone
+does not establish equal completed work.
+
+#### Interpreting the Generic WAF signal
+
+Generic signals are target-level heuristics, not WAF product identities, and they
+are not mutually exclusive with named matches. wafw00f can emit a named record
+and a `Generic` record for the same target under `--findall`; the table counts
+**any** Generic record, while its **Generic-only** subset at 100 workers was
+66–69. At that concurrency, 55–57 wafw00f targets had both a named and generic
+result. The earlier 66–69 figure was a generic-only count accidentally produced
+by collapsing multiple wafw00f records per URL; it is not the total generic
+signal count.
+
+wafw00f's generic detector checks for a changed response to a missing
+User-Agent, XSS, LFI or SQLi request, a changed Server header, or a
+connection-level block. wafmeow's separate detector checks status and Server
+changes across its probes, plus explicit WAF marker headers. Fast mode sends
+three request roles; deep mode sends eight, giving deep mode more opportunities
+to observe a status change and explaining why its generic count is higher
+(145–146 versus 118–120 at 100 workers). The counts differ because the probe
+sets, trigger rules, CDN targets and evidence completeness differ; they do not
+rank detection accuracy or prove enforcement.
+
+#### Named detections compared
+
+Using the union of the three 100-worker runs, wafw00f returned 585 of the 600
+targets; the other 15 are unknown, not clean misses. Of the returned targets,
+156 had named matches from both wafw00f and fast mode, and 155 from both wafw00f
+and deep mode; wafw00f alone named
+three targets against fast and four against deep, while wafmeow alone named
+three and five respectively. The only named product family observed by wafmeow
+and not wafw00f was Reflected Networks (one deep-mode target); wafw00f more often
+named Instart DX. Common detections were stable: Cloudflare 53/53/53, AWS Elastic
+Load Balancer 22/22/22 and CacheWall 22/22/22 (wafw00f/fast/deep), with 24 named
+product families observed overall. These differences are not an accuracy score:
+the tools use different probe sets, product-name knowledge, TLS policies, body
+limits and generic/named reporting contracts.
+
+#### Transport and false-positive checks
+
+Targeted checks of the named differences found:
+
+- `centurytel.net` serves a certificate for `*.imds.tv`, not the requested host.
+  Verified TLS therefore fails in wafmeow; wafw00f disables verification and
+  receives a **400 “Invalid host”** response with `Server: nginx`, `X-Varnish`
+  and `Via: 1.1 varnish`. Its CacheWall result is a Varnish cache-header match,
+  not evidence of a WAF. wafmeow's TLS rejection is intentional.
+- `unisa.ac.za` omits an intermediate certificate. wafmeow cannot build a
+  verified chain; wafw00f disables verification and receives the F5 rejection
+  page plus an `f5avra…` session cookie. BIG-IP is supported by that response.
+  Instart DX also matches the same F5 rejection template (“requested URL was
+  rejected… support ID”), so that second product is a **false positive**.
+- `indianrail.gov.in` has a valid certificate, but this Go client receives
+  `tls: handshake failure`; curl and Python requests negotiate TLS successfully.
+  The target reports `Server: BigIP`; wafw00f's BIG-IP result is plausible, while
+  its Instart DX result shares the same generic rejection-template weakness.
+  wafmeow cannot classify this target without a transport-compatible path.
+- `doubao.com`'s NetScaler result was intermittent: wafw00f found it in one of
+  three blocks, wafmeow fast in two and deep in none. Direct requests showed
+  Tengine/Volc CDN headers and no NetScaler marker. Treat this as unstable and
+  not a clean wafw00f-only miss pending a repeatable trigger.
+
+These checks explain why the named differences are small: most are transport
+incompatibility or an upstream signature collision, not a missing wafmeow
+fingerprint.
+
+### Build and input identity
+
+| Component | Recorded identity |
+| --- | --- |
+| wafmeow | Commit `c12e7c5`, Go `1.26.10-X:nodwarf5`, `vcs.modified=true` (only `.gitignore`) |
+| wafw00f | Unmodified 2.4.2, Python 3.13.5 |
+| Targets | 600 live root URLs: 500 known-non-CDN plus 100 known-CDN, sampled from Tranco ZJ8PG top 10,000; seeds `20261030`/`20261031` |
+| Target file | SHA-256 `fbd8a3bbdd5903b7d53ab6f2ffe95c37b900f5728abb76b38ce7508863c09cf5` |
+| Binary | SHA-256 `f4cc7f61fa24f5e251688670ff6d4704eff4f8039cd3fa51d705116599db5274` |
+| Host | Hetzner vServer, Helsinki, Finland (AS24940), KVM; Debian 13, kernel `6.12.101+deb13-cloud-amd64` |
+| CPU / RAM | AMD EPYC-Rome, 4 vCPU at 2,495 MHz; 7.6 GiB RAM, 2 GiB swap |
+| Storage / network | 76.3 GB QEMU disk; ~1.5 GB/s fdatasync write, ~8.0 GB/s cached read; ~1.17 Gbit/s down / ~392 Mbit/s up, 41.5 ms Speedtest server |
+
+Raw captures, process logs and the target list are local measurement artifacts;
+the tables and identities above are the published record.
+
+### Reproduce the VPS comparison
+
+Use an independently authorized target file and retain every attempted target,
+process exit status, command, build identity and raw output. Clear inherited
+proxy settings and keep the same CPU affinity for both tools.
+
+```sh
+# Choose 1, 5, 10, 50, or 100; use --fast for fast or --deep for deep (default).
+N=10
+GOMAXPROCS=4 ./wafmeow --input targets.txt --jsonl --silent --no-colors \
+  --concurrency="$N" --max-connections="$N" --probe-concurrency=1 \
+  --request-timeout=3s --target-timeout=30s --max-requests=54 \
+  --max-body-bytes=1048576 --redirect-policy=none --max-redirects=0
+```
+
+For wafw00f 2.4.2, divide the same input into N round-robin shards and run N
+copies of this command, one per shard:
+
+```sh
+python -m wafw00f.main -i shard.txt -a -r -T 3 --no-colors \
+  -f json -o shard.json
+```
+
+Start the timer before launching processes and stop it after every process
+exits. A watchdog-aborted configuration is not a completed timing. Account for
+missing upstream records as unknown, never negative. Hold the input, timeouts,
+limits, TLS policy, block count and accounting method fixed when comparing
+builds.
+
+## Historical 2,000-target live comparison
 
 Historical records used the name *full* for what is now `--deep`. All deep-mode
 figures below are the original deep-mode measurements, not reruns.
