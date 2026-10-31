@@ -267,6 +267,22 @@ func TestHumanCompactSingleMatchKeepsSupportingEvidenceAndUncertainty(t *testing
 	}
 }
 
+func TestHumanCompleteFingerprintWithPartialBodyDoesNotClaimCompleteEvidence(t *testing.T) {
+	result := signalResult(wafmeow.Complete)
+	result.Evidence[0].BodyTruncated = true
+	result.Outcome.Matches = []wafmeow.Match{{Product: "Status fixture",
+		Fingerprints: []wafmeow.FingerprintMatch{{Evidence: 0}}}}
+	var output bytes.Buffer
+	if err := printResult(&output, io.Discard, result, true,
+		aurora.New(aurora.WithColors(false)), aurora.New(aurora.WithColors(false))); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(output.String(), "classification  complete (1 truncated body)") ||
+		strings.Contains(output.String(), "evidence  complete") {
+		t.Fatalf("a complete classification mislabeled partial HTTP evidence: %q", output.String())
+	}
+}
+
 func TestHumanNestedWarningsGroupRepeatedReasonsByProbe(t *testing.T) {
 	result := signalResult(wafmeow.Incomplete)
 	result.Evidence = []wafmeow.EvidenceSummary{

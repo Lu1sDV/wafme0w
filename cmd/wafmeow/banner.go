@@ -209,17 +209,19 @@ func printResult(stdout, stderr io.Writer, result wafmeow.Result, suppressWarnin
 	case wafmeow.Failed:
 		evidenceState = au.Red(evidenceState)
 	}
-	stateLabel := "evidence"
-	if hasExplicitAvailability(result) {
-		stateLabel = "classification"
-	}
-	fmt.Fprintf(&group, "%s%s  %s", detailIndent, stateLabel, evidenceState)
 	truncated := 0
 	for _, observation := range result.Evidence {
 		if observation.BodyTruncated {
 			truncated++
 		}
 	}
+	// A status/header-only fingerprint may classify successfully even when
+	// body acquisition is partial. Do not describe that as "evidence complete".
+	stateLabel := "evidence"
+	if hasExplicitAvailability(result) || (truncated != 0 && result.Outcome.State == wafmeow.Complete) {
+		stateLabel = "classification"
+	}
+	fmt.Fprintf(&group, "%s%s  %s", detailIndent, stateLabel, evidenceState)
 	if truncated != 0 {
 		noun := "bodies"
 		if truncated == 1 {

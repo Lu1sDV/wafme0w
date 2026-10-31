@@ -354,7 +354,8 @@ def run_suite(binary, output):
             require('  Fixture WAF\n    matched  #1 [Normal] HTTP 200' in out,
                     'matched fingerprint not nested beneath product')
             require('    HTTP  1 observation: 200\n' in out, 'HTTP evidence not nested')
-            require('    evidence  incomplete' in out, 'body truncation not reported')
+            require('    classification  complete (1 truncated body)' in out,
+                    'complete classification must not imply a complete response body')
             require('    WARN  [Normal] ' in out, 'warning not grouped beneath WAF match')
             require('WARN  ' + url not in out, 'nested warning repeats target name')
             require('\n\nSUMMARY' in out, 'warning and summary are not separated')
