@@ -406,7 +406,7 @@ func TestSignalCertificateGuidancePreservesCauseAndOtherEvidence(t *testing.T) {
 			if !strings.Contains(test.want, "SSL_CERT_FILE") && strings.Contains(stderr.String(), "SSL_CERT_FILE") {
 				t.Fatalf("unrelated certificate-trust guidance: %q", stderr.String())
 			}
-			if !strings.Contains(stdout.String(), "[ WAF MATCH ]") || !strings.Contains(stdout.String(), "HTTP  2 observations: 200 / ?", "evidence  incomplete") || strings.Contains(stdout.String(), "No HTTP response received") || strings.Contains(stdout.String(), test.cause) {
+			if !strings.Contains(stdout.String(), "[ WAF MATCH ]") || !strings.Contains(stdout.String(), "HTTP  2 observations: 200 / ?") || !strings.Contains(stdout.String(), "evidence  incomplete") || strings.Contains(stdout.String(), "No HTTP response received") || strings.Contains(stdout.String(), test.cause) {
 				t.Fatalf("TLS failure erased usable evidence or leaked diagnostic to stdout: %q", stdout.String())
 			}
 			for _, unsafe := range []string{"insecure", "skip verification", "disable validation", "retry"} {
