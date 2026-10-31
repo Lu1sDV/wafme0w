@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Lu1sDV/wafmeow/v2/internal/atomicfile"
+	"github.com/Lu1sDV/wafmeow/v3/internal/atomicfile"
 )
 
 type Config struct {

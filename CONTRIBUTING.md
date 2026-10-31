@@ -174,7 +174,7 @@ Explain the problem, the change, and the resulting behavior. Include a minimal
 reproducer and the relevant validation evidence. Update the existing user docs
 when behavior changes; keep detailed contracts under `docs/`.
 
-Preserve the documented v2 Go API, CLI flags and exit codes, and result/report
+Preserve the documented v3 Go API, CLI flags and exit codes, and result/report
 contracts. Use keyed public struct literals. Call out any proposed incompatible
 change so that its versioning can be reviewed explicitly. Keep unrelated
 refactoring and generated artifacts out of the diff.

@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Lu1sDV/wafmeow/v2/pkg/wafmeow"
+	"github.com/Lu1sDV/wafmeow/v3/pkg/wafmeow"
 )
 
 func TestRunPlanExplainsSelectedLiveModeAndEffectiveLimits(t *testing.T) {

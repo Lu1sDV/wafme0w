@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Lu1sDV/wafmeow/v2/pkg/wafmeow"
+	"github.com/Lu1sDV/wafmeow/v3/pkg/wafmeow"
 )
 
 // Only formatted, body-free rows live on disk; replay never retains the scan.

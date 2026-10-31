@@ -11,7 +11,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/Lu1sDV/wafmeow/v2/internal/httpmeta"
+	"github.com/Lu1sDV/wafmeow/v3/internal/httpmeta"
 )
 
 type fingerprintMatcher struct {
