@@ -150,34 +150,35 @@ Configuration, input and output failures exit **1**; cancellation exits **130**.
 
 ### Recorded live CLI comparison
 
-Median elapsed time for **500 live, known-non-CDN HTTP/HTTPS root URLs** randomly
-sampled from Tranco ZJ8PG's top 10,000 (seed `20261030`), with **three runs per
-configuration**, completed on 31 October 2026. Dead and known-CDN-fronted
-candidates were replaced during selection. Lower is better.
+Median elapsed time for **600 live HTTP/HTTPS root URLs** — 500 randomly
+sampled known-non-CDN targets plus 100 randomly sampled known-CDN targets from
+Tranco ZJ8PG's top 10,000 (seeds `20261030` and `20261031`), with **three runs
+per configuration**, completed on 31 October 2026. Dead candidates were
+replaced during selection. Lower is better.
 
 **Host:** Debian 13 VPS · AMD EPYC-Rome, 4 vCPU · 7 GB RAM · `GOMAXPROCS=4`.
 
 | Workers / processes | wafw00f 2.4.2 | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow fast | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow full | Speedup fast | Speedup full |
 | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1 | 26m 38s | 6m 41s | 13m 45s | **3.99×** | **1.94×** |
-| 5 | 6m 36s | 2m 02s | 2m 49s | **3.25×** | **2.34×** |
-| 10 | 4m 03s | 1m 03s | 1m 24s | **3.83×** | **2.89×** |
-| 50 | 2m 07s | 14.1s | 24.4s | **8.97×** | **5.20×** |
-| 100 | 1m 44s | 8.1s | 22.3s | **12.86×** | **4.67×** |
+| 1 | 31m 38s | 7m 49s | 15m 50s | **4.04×** | **2.00×** |
+| 5 | 6m 53s | 2m 18s | 3m 10s | **2.99×** | **2.17×** |
+| 10 | 4m 47s | 1m 16s | 1m 35s | **3.79×** | **3.03×** |
+| 50 | 1m 59s | 16.1s | 26.6s | **7.40×** | **4.49×** |
+| 100 | 1m 52s | 9.0s | 21.9s | **12.45×** | **5.12×** |
 
-**Detection results at 100 workers/processes** — targets out of 500, shown as
+**Detection compared at 100 workers/processes** — targets out of 600, shown as
 the range across three runs.
 
 | Targets with… | wafw00f 2.4.2 | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow fast | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow full |
 | --- | ---: | ---: | ---: |
-| Named WAF match | 82–85 | 82–85 | 81–88 |
-| Generic WAF signal | 60–70 | 91–94 | 108–116 |
-| Returned result | 481–487 | 500 | 500 |
-| Complete evidence | Not reported | 439–440 | 431–438 |
+| Named WAF match | 155–157 | 157–158 | 157–160 |
+| Generic WAF signal | 66–69 | 118–120 | 145–146 |
+| Returned result | 580–581 | 600 | 600 |
+| Complete evidence | Not reported | 529–531 | 523–528 |
 
 Named matches and generic signals can overlap, including on incomplete results.
-Different probes, TLS policies, CDN exclusions and evidence completeness prevent
-an accuracy comparison. [Full results, methodology and build identities](docs/benchmarks.md#500-target-vps-comparison).
+Different probes, TLS policies, CDN composition and evidence completeness prevent
+an accuracy comparison. [Full results, methodology and build identities](docs/benchmarks.md#600-target-vps-comparison).
 
 The current build reuses verified HTTP/1 connections between a target's probes
 ([ADR 0002](adrs/0002-http1-connection-reuse-for-probes.md)); this run replaces

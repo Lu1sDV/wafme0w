@@ -57,9 +57,9 @@ and preparation. It is not a number of Internet hosts per minute. Keep the
 full-native-catalogue profile distinct and retain the bootstrap interval and
 paired-case count. Do not substitute this ratio for a live CLI speedup.
 
-## 500-target VPS comparison
+## 600-target VPS comparison
 
-Recorded 30–31 October 2026. This run measured a reproducible 500-target sample
+Recorded 30–31 October 2026. This run measured a reproducible 600-target sample
 on a dedicated Debian 13 VPS rather than a laptop, with three complete blocks
 per configuration. It is the primary live CLI comparison; the older 2,000-target
 laptop run is retained below as historical evidence.
@@ -68,18 +68,20 @@ laptop run is retained below as historical evidence.
 
 - Source: [Tranco ZJ8PG, 28 October 2026](https://tranco-list.eu/list/ZJ8PG/1000000),
   top 10,000 ranked domains.
-- Selection: deterministic shuffle with seed `20261030`; candidates were
-  resolved and checked for known CDN fronting by CNAME suffix and ASN. Non-CDN
-  candidates were fetched over HTTPS and then HTTP; any response below status
-  600 counted as alive. Dead and known-CDN candidates were discarded and the
-  next shuffled candidate was tried until 500 remained.
-- Result: 500 unique targets (472 HTTPS, 28 HTTP), Tranco ranks 31–9,944, all
+- Selection: deterministic shuffles with seed `20261030` for the non-CDN set and
+  seed `20261031` for the CDN set. Candidates were resolved and checked for
+  known CDN fronting by CNAME suffix and ASN. Non-CDN candidates were fetched
+  over HTTPS and then HTTP; any response below status 600 counted as alive. The
+  first set discarded dead and known-CDN candidates; the second required known
+  CDN fronting. Both discarded dead candidates and continued until 500 non-CDN
+  and 100 CDN targets remained, then combined and sorted by Tranco rank.
+- Result: 600 unique targets (571 HTTPS, 29 HTTP), Tranco ranks 31–9,978, all
   alive at selection. The target-file SHA-256 is
-  `b9b770a70928e4ec2d4db98d03254ef8859d5f73389f734a6ec3f65c970fd6ff`.
-- This excludes well-known CDN-fronted hosts to avoid concentrating the sample
-  on shared edge infrastructure. The exclusion is heuristic, not an exhaustive
-  CDN inventory, and it changes the product mix relative to an unfiltered Tranco
-  sample.
+  `fbd8a3bbdd5903b7d53ab6f2ffe95c37b900f5728abb76b38ce7508863c09cf5`.
+- The 100 CDN targets include Cloudflare, Amazon, Microsoft, Fastly and Google
+  edge ASNs, so the sample measures detection on shared edge infrastructure
+  without allowing CDN hosts to dominate the set. CDN classification is a
+  heuristic, not an exhaustive inventory of every CDN.
 - Scanning was explicitly requested for this benchmark. A public target list is
   not permission to scan its entries.
 
@@ -114,22 +116,22 @@ Lower is better.
 
 | Workers / processes | wafw00f 2.4.2 | <img src="../assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow fast | <img src="../assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow full |
 | ---: | ---: | ---: | ---: |
-| 1 | 26m 38.3s (26m 23.6s–27m 22.8s) | 6m 40.8s (6m 24.6s–6m 48.8s) | 13m 44.7s (13m 36.8s–13m 53.9s) |
-| 5 | 6m 35.5s (6m 29.7s–6m 37.8s) | 2m 1.6s (2m 0.6s–2m 3.3s) | 2m 49.0s (2m 46.9s–2m 50.2s) |
-| 10 | 4m 3.3s (4m 2.4s–4m 4.5s) | 1m 3.5s (1m 3.3s–1m 6.6s) | 1m 24.2s (1m 22.7s–1m 24.7s) |
-| 50 | 2m 6.7s (2m 4.4s–2m 6.7s) | 14.1s (13.9s–14.5s) | 24.4s (23.8s–28.8s) |
-| 100 | 1m 43.8s (1m 43.7s–1m 44.2s) | 8.1s (7.9s–8.7s) | 22.3s (19.2s–25.2s) |
+| 1 | 31m 37.6s (30m 44.7s–31m 44.4s) | 7m 49.5s (7m 34.3s–7m 54.4s) | 15m 50.5s (15m 13.1s–16m 3.1s) |
+| 5 | 6m 53.3s (6m 51.4s–7m 3.8s) | 2m 18.2s (2m 18.1s–2m 22.5s) | 3m 10.3s (3m 8.6s–3m 15.5s) |
+| 10 | 4m 46.8s (4m 43.1s–4m 57.6s) | 1m 15.8s (1m 15.2s–1m 17.3s) | 1m 34.8s (1m 33.6s–1m 37.2s) |
+| 50 | 1m 59.4s (1m 57.8s–2m 0.2s) | 16.1s (16.0s–16.4s) | 26.6s (26.1s–29.8s) |
+| 100 | 1m 52.2s (1m 51.4s–1m 56.3s) | 9.0s (9.0s–9.4s) | 21.9s (21.4s–23.7s) |
 
 Each recorded ratio divides wafw00f's median elapsed time by wafmeow's for the
 same concurrency. **Above 1 favors wafmeow; below 1 favors wafw00f.**
 
 | Workers / processes | <img src="../assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow fast | <img src="../assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow full |
 | ---: | ---: | ---: |
-| 1 | 3.99× | 1.94× |
-| 5 | 3.25× | 2.34× |
-| 10 | 3.83× | 2.89× |
-| 50 | 8.97× | 5.20× |
-| 100 | 12.86× | 4.67× |
+| 1 | 4.04× | 2.00× |
+| 5 | 2.99× | 2.17× |
+| 10 | 3.79× | 3.03× |
+| 50 | 7.40× | 4.49× |
+| 100 | 12.45× | 5.12× |
 
 ### Result accounting
 
@@ -139,25 +141,25 @@ equivalent evidence-completion states; its unreturned targets remain unknown.
 
 | Workers / processes | Tool and mode | Returned | Named | Generic | Complete | Incomplete |
 | ---: | --- | ---: | ---: | ---: | ---: | ---: |
-| 1 | wafmeow fast | 500 | 82–83 | 90–95 | 430–436 | 64–70 |
-| 1 | wafmeow full | 500 | 83–85 | 104–107 | 427–432 | 68–73 |
-| 1 | wafw00f 2.4.2 | 481–485 | 81–82 | 66–70 | — | — |
-| 5 | wafmeow fast | 500 | 82–85 | 87–91 | 427–429 | 71–73 |
-| 5 | wafmeow full | 500 | 83–85 | 106–108 | 425–432 | 68–75 |
-| 5 | wafw00f 2.4.2 | 478–482 | 80–81 | 63–67 | — | — |
-| 10 | wafmeow fast | 500 | 81–84 | 88–92 | 431–436 | 64–69 |
-| 10 | wafmeow full | 500 | 81–84 | 104–106 | 429 | 71 |
-| 10 | wafw00f 2.4.2 | 479–482 | 81–82 | 61–66 | — | — |
-| 50 | wafmeow fast | 500 | 82–85 | 87–93 | 436–443 | 57–64 |
-| 50 | wafmeow full | 500 | 81–86 | 105–109 | 426–432 | 68–74 |
-| 50 | wafw00f 2.4.2 | 480–483 | 79–82 | 64–72 | — | — |
-| 100 | wafmeow fast | 500 | 82–85 | 91–94 | 439–440 | 60–61 |
-| 100 | wafmeow full | 500 | 81–88 | 108–116 | 431–438 | 62–69 |
-| 100 | wafw00f 2.4.2 | 481–487 | 82–85 | 60–70 | — | — |
+| 1 | wafmeow fast | 600 | 154–158 | 115–123 | 519–521 | 79–81 |
+| 1 | wafmeow full | 600 | 158–159 | 142–146 | 521–525 | 75–79 |
+| 1 | wafw00f 2.4.2 | 580–582 | 156–157 | 65–72 | — | — |
+| 5 | wafmeow fast | 600 | 157–158 | 115–123 | 524–527 | 73–76 |
+| 5 | wafmeow full | 600 | 158–159 | 141–143 | 521–525 | 75–79 |
+| 5 | wafw00f 2.4.2 | 578–580 | 154–157 | 65–67 | — | — |
+| 10 | wafmeow fast | 600 | 154–155 | 114–116 | 522–524 | 76–78 |
+| 10 | wafmeow full | 600 | 154–157 | 139–144 | 518–525 | 75–82 |
+| 10 | wafw00f 2.4.2 | 577–580 | 155 | 61–70 | — | — |
+| 50 | wafmeow fast | 600 | 156–159 | 115–117 | 529–531 | 69–71 |
+| 50 | wafmeow full | 600 | 158 | 144 | 525–526 | 74–75 |
+| 50 | wafw00f 2.4.2 | 575–578 | 154–158 | 62–66 | — | — |
+| 100 | wafmeow fast | 600 | 157–158 | 118–120 | 529–531 | 69–71 |
+| 100 | wafmeow full | 600 | 157–160 | 145–146 | 523–528 | 72–77 |
+| 100 | wafw00f 2.4.2 | 580–581 | 155–157 | 66–69 | — | — |
 
 For wafmeow, `complete` describes the evidence supplied to the classifier, not
 WAF absence or active enforcement. At 100 workers, fast mode returned
-439–440 complete targets and full mode 431–438; higher
+529–531 complete targets and full mode 523–528; higher
 concurrency can still change evidence completeness, so shorter wall time alone
 does not establish equal completed work.
 
@@ -167,8 +169,8 @@ does not establish equal completed work.
 | --- | --- |
 | wafmeow | Commit `c12e7c5`, Go `1.26.10-X:nodwarf5`, `vcs.modified=true` (only `.gitignore`) |
 | wafw00f | Unmodified 2.4.2, Python 3.13.5 |
-| Targets | 500 live, known-non-CDN root URLs sampled from Tranco ZJ8PG top 10,000; seed `20261030` |
-| Target file | SHA-256 `b9b770a70928e4ec2d4db98d03254ef8859d5f73389f734a6ec3f65c970fd6ff` |
+| Targets | 600 live root URLs: 500 known-non-CDN plus 100 known-CDN, sampled from Tranco ZJ8PG top 10,000; seeds `20261030`/`20261031` |
+| Target file | SHA-256 `fbd8a3bbdd5903b7d53ab6f2ffe95c37b900f5728abb76b38ce7508863c09cf5` |
 | Binary | SHA-256 `f4cc7f61fa24f5e251688670ff6d4704eff4f8039cd3fa51d705116599db5274` |
 | Host | Debian 13, AMD EPYC-Rome, four vCPUs, 7 GB RAM |
 
