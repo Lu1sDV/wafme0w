@@ -69,7 +69,7 @@ func runContext(ctx context.Context, args []string, stdin io.Reader, piped bool,
 	opts := newOptions(config)
 	parser := flags.NewParser(&opts, flags.HelpFlag|flags.PassDoubleDash)
 	parser.Name = "wafmeow"
-	parser.LongDescription = "Fingerprint WAFs from live targets or saved responses. Default live mode sends active probes.\nChoose --baseline for a normal request only, or --evidence for offline analysis.\nWith no explicit source, piped stdin supplies target URLs, one per line."
+	parser.LongDescription = "Fingerprint WAFs from live targets or saved responses. Default live mode is --deep (up to eight active requests); --fast sends three.\nChoose --baseline for a normal request only, or --evidence for offline analysis.\nWith no explicit source, piped stdin supplies target URLs, one per line."
 	positional, err := parser.ParseArgs(args)
 	if err != nil {
 		if flagErr, ok := err.(*flags.Error); ok && flagErr.Type == flags.ErrHelp {
@@ -324,10 +324,10 @@ func writeHelp(parser *flags.Parser, writer io.Writer) error {
 	help.WriteString(`
 Examples:
   wafmeow --target https://example.com --baseline --jsonl
-  wafmeow --target-file targets.txt --jsonl --silent
+  wafmeow --target-file targets.txt --deep --jsonl --silent
   httpx -silent < authorized-hosts.txt | wafmeow --target-file - --jsonl
   wafmeow --evidence captures.jsonl --jsonl
-  wafmeow --target-file targets.txt --output results.json --strict
+  wafmeow --target-file targets.txt --fast --output results.json --strict
 
 Live HTTP controls do not change offline acquisition: --evidence sends no requests.
 Use --jsonl for structured stdout; --output writes a named file independently.
@@ -398,14 +398,17 @@ func validateOptions(opts options) error {
 	if opts.Target != "" && opts.InputFile != "" {
 		return errors.New("--target and --target-file (or --input / -I) are mutually exclusive")
 	}
-	if opts.EvidenceFile != "" && (opts.Target != "" || opts.InputFile != "" || opts.FastMode || opts.BaselineOnly || len(opts.Headers) != 0) {
-		return errors.New("--evidence is exclusive with --target, --target-file (or --input / -I), --fast, --baseline and --header")
+	if opts.EvidenceFile != "" && (opts.Target != "" || opts.InputFile != "" || opts.FastMode || opts.DeepMode || opts.BaselineOnly || len(opts.Headers) != 0) {
+		return errors.New("--evidence is exclusive with --target, --target-file (or --input / -I), --fast, --deep, --baseline and --header")
 	}
-	if opts.FastMode && opts.BaselineOnly {
-		return errors.New("--fast is active and cannot be combined with --baseline")
+	if opts.FastMode && opts.DeepMode {
+		return errors.New("--fast and --deep are mutually exclusive")
+	}
+	if opts.BaselineOnly && (opts.FastMode || opts.DeepMode) {
+		return errors.New("--baseline cannot be combined with --fast or --deep")
 	}
 	if opts.ListWAFS || opts.Version {
-		if opts.ListWAFS && opts.Version || opts.JSONL || opts.Target != "" || opts.InputFile != "" || opts.EvidenceFile != "" || opts.OutputFile != "" || opts.JournalFile != "" || opts.FastMode || opts.BaselineOnly {
+		if opts.ListWAFS && opts.Version || opts.JSONL || opts.Target != "" || opts.InputFile != "" || opts.EvidenceFile != "" || opts.OutputFile != "" || opts.JournalFile != "" || opts.FastMode || opts.DeepMode || opts.BaselineOnly {
 			return errors.New("--list and --version cannot be combined with scanning or output options")
 		}
 	}

@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -50,8 +51,8 @@ func TestCLIRejectsInactiveOptionDependencies(t *testing.T) {
 		{[]string{"--browser-settle=1s"}, "requires --browser"},
 		{[]string{"--browser=off", "--browser-timeout=30s"}, "requires --browser"},
 		{[]string{"--journal-batch-size=8"}, "requires --diagnostics-journal"},
-		{[]string{"--fast", "--probe-concurrency=2"}, "full mode"},
-		{[]string{"--baseline", "--probe-concurrency=2"}, "full mode"},
+		{[]string{"--fast", "--probe-concurrency=2"}, "deep mode"},
+		{[]string{"--baseline", "--probe-concurrency=2"}, "deep mode"},
 	} {
 		t.Run(strings.Join(tc.args, " "), func(t *testing.T) {
 			args := append([]string{"--target=invalid://fixture", "--jsonl", "--silent"}, tc.args...)
@@ -83,7 +84,7 @@ func TestCLIHelpShowsWorkflowAndGroups(t *testing.T) {
 		if code != 0 || stderr.Len() != 0 {
 			t.Fatalf("help: exit=%d stderr=%q", code, stderr.String())
 		}
-		for _, want := range []string{"Input:", "Detection:", "HTTP requests:", "Limits:", "Output:", "Browser:", "Information:", "Examples:", "--evidence captures.jsonl", "Exit codes:", "--strict"} {
+		for _, want := range []string{"--fast", "--deep", "Input:", "Detection:", "HTTP requests:", "Limits:", "Output:", "Browser:", "Information:", "Examples:", "--evidence captures.jsonl", "Exit codes:", "--strict"} {
 			if !strings.Contains(stdout.String(), want) {
 				t.Errorf("help omits %q", want)
 			}
@@ -108,4 +109,48 @@ func TestCLITargetKeepsLiteralShellQuotes(t *testing.T) {
 		t.Fatalf("literal argument: exit=%d stderr=%q", code, stderr)
 	}
 	assertCLIContractTargets(t, stdout, []string{value})
+}
+
+func TestCLIDetectionModesKeepProbeSelectionAndProvenance(t *testing.T) {
+	deepRoles := []string{"Normal", "NoUserAgent", "NonExistent", "XssAttack", "XxeAttack", "LfiAttack", "CentralAttack", "JndiAttack"}
+	for _, tc := range []struct {
+		name     string
+		flags    []string
+		wantMode string
+		wantFast bool
+		roles    []string
+	}{
+		{"default deep", nil, "deep", false, deepRoles},
+		{"explicit deep", []string{"--deep"}, "deep", false, deepRoles},
+		{"parallel deep", []string{"--deep", "--probe-concurrency=4"}, "deep", false, deepRoles},
+		{"fast", []string{"--fast"}, "fast", true, []string{"Normal", "NoUserAgent", "CentralAttack"}},
+		{"baseline", []string{"--baseline"}, "baseline", false, []string{"Normal"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusNoContent)
+			}))
+			defer server.Close()
+			args := append([]string{"--target", server.URL, "--jsonl", "--silent", "--max-redirects=0"}, tc.flags...)
+			code, stdout, stderr := runCLI(t, nil, args...)
+			if code != 0 || stderr != "" {
+				t.Fatalf("mode %s: exit=%d stderr=%q", tc.name, code, stderr)
+			}
+			results := decodeResultLines(t, stdout)
+			if len(results) != 1 {
+				t.Fatalf("mode %s: got %d results, want one", tc.name, len(results))
+			}
+			got := results[0]
+			if got.Provenance.ScanMode != tc.wantMode || got.Provenance.Settings.FastMode != tc.wantFast {
+				t.Fatalf("mode %s: incorrect provenance: %+v", tc.name, got.Provenance)
+			}
+			var roles []string
+			for _, evidence := range got.Evidence {
+				roles = append(roles, evidence.Role)
+			}
+			if !slices.Equal(roles, tc.roles) {
+				t.Fatalf("mode %s: evidence roles %q, want %q", tc.name, roles, tc.roles)
+			}
+		})
+	}
 }

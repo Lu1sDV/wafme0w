@@ -87,7 +87,7 @@ Run operational checks against the candidate binary, native archive, and image:
 
 ```sh
 # Linux: owned loopback traffic, mixed failures, and resource accounting.
-# --seconds is the feed duration for each of baseline, fast, and full modes.
+# --seconds is the feed duration for each of baseline, fast, and deep modes.
 python3 tools/soak.py --binary ./wafmeow --output benchmarks/soak --seconds 60
 
 # Extract the native release archive and exercise its binary and fixtures.

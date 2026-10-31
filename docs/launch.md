@@ -108,8 +108,8 @@ completes different amounts of work and does not support an unqualified “× fa
 headline. The README carries the recorded live comparison with explicit mode,
 date, build and accounting links: on the 600-target VPS run completed 30–31
 October 2026, with a 600-target non-CDN-plus-CDN Tranco sample, the **median elapsed ratio
-was 12.45× at 100 workers in fast mode and 4.04× at one worker in fast mode; full
-mode was 5.12× and 2.00× respectively**. Slower cells must stay visible beside
+was 12.45× at 100 workers in fast mode and 4.04× at one worker in fast mode; deep
+mode (then called full) was 5.12× and 2.00× respectively**. Slower cells must stay visible beside
 faster ones. Report per-block returned and complete counts with any live claim,
 and keep offline conformance results attached to their own workload. The
 [VPS comparison protocol](benchmarks.md#reproduce-the-vps-comparison) governs the

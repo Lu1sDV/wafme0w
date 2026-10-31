@@ -60,7 +60,7 @@ file, stdin, or repeated flags instead. Repeated singular sources are rejected
 instead of silently overriding earlier values.
 
 Explicit browser modifiers need an enabled browser, explicit journal batching
-needs a journal, and probe parallelism above 1 needs full mode. Target concurrency
+needs a journal, and probe parallelism above 1 needs deep mode. Target concurrency
 is limited to 1..65,536 before workers are created. The sections below describe
 those dependencies and defaults. Arguments already quoted by the shell retain
 their literal contents; headers use the documented CSV quoting rules.
@@ -69,17 +69,24 @@ their literal contents; headers use the documented CSV quoting rules.
 
 | Mode | Network behavior |
 | --- | --- |
-| Default | Up to eight selected active requests, before redirects; serial after the normal request unless `--probe-concurrency` is raised |
+| `--deep` (default) | Up to eight selected active requests, before redirects; serial after the normal request unless `--probe-concurrency` is raised |
 | `--fast` | Three selected active requests launched without a fixed stagger; fewer requests, **not passive** or a latency guarantee |
 | `--baseline` | One normal request, subject to redirect and request budgets |
 
-`--fast` and `--baseline` are mutually exclusive. Values 2..8 for
-`--probe-concurrency` apply to default full mode; fast and baseline modes require
-the default value of 1. Explicit `--probe-concurrency 1` is also valid.
+`--fast`, `--deep` and `--baseline` are mutually exclusive; omitting all three
+selects `--deep`. Values 2..8 for `--probe-concurrency` apply only to deep mode;
+fast and baseline require the default value of 1. Explicit
+`--probe-concurrency 1` is also valid. `--evidence` cannot be combined with any
+live mode flag.
+
+In result provenance, the default live `scan_mode` is now `"deep"` instead of
+`"active"`; `"fast"`, `"baseline"` and offline `"passive"` are unchanged.
+The result JSON schema stays at version 1, so consumers filtering by mode must
+update their accepted values.
 
 ### Active probe payloads
 
-Full mode sends one normal request, one no-user-agent request, one random-path
+Deep mode sends one normal request, one no-user-agent request, one random-path
 request, and five active probes: separate XSS, XXE and LFI probes (`p`), one
 combined probe (`l`, `l2`, `d`, `v`, `c`, `r`, `h`), and a JNDI canary (`p`).
 `--fast` sends only the normal, no-user-agent and combined requests. The JNDI
@@ -476,7 +483,7 @@ Overrides apply to every selected request.
 | Target line size | Go's 64 KiB scanner token limit |
 | Catalogue size | At most 8 MiB; one JSON array with known fields and valid HTTP header names |
 | Target concurrency | `--concurrency` / `-c` accepts 1..65536; default 20 |
-| Full-mode probe concurrency | `--probe-concurrency` defaults to 1; values 2..8 run active probes concurrently after the normal response succeeds and cannot be combined with `--fast` or `--baseline` |
+| Deep-mode probe concurrency | `--probe-concurrency` defaults to 1; values 2..8 run active probes concurrently after the normal response succeeds and cannot be combined with `--fast` or `--baseline` |
 | Response body size | `--max-body-bytes` defaults to 1,048,576 decoded bytes and must be positive |
 | Response header size | `--max-response-header-bytes` defaults to 65,536 bytes; 0 selects that default |
 | Retained HTTP evidence | `--max-target-evidence-bytes` defaults to 16,777,216 bytes per target across all probes; 0 selects that default |
@@ -488,7 +495,7 @@ Overrides apply to every selected request.
 Parallel probes are also bounded by `--max-connections`. At 0 it follows the
 larger of target concurrency and probe concurrency, so raising
 `--probe-concurrency` alone takes effect. On 100 Tranco targets at one worker,
-probe concurrency 4 and 8 reduced full-mode elapsed time from 113.2 s to 68.0 s
+probe concurrency 4 and 8 reduced deep-mode elapsed time from 113.2 s to 68.0 s
 and 58.7 s with unchanged named, generic and complete counts. Lowering
 `--max-body-bytes` to 102,400 saved about 3% but truncated 24 probes and reduced
 complete evidence by five targets; lowering `--request-timeout` to 1 s saved

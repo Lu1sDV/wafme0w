@@ -12,6 +12,9 @@
 | Review point | Reviewed captures or live comparisons showing changed evidence completeness or named/generic findings attributable to connection reuse, or unexpected `request_budget` diagnostics under default limits. |
 | Supersedes / superseded by | None |
 
+> **Terminology note:** The active scan called *full* in these historical
+> measurements is now called `--deep`. Its request behavior is unchanged.
+
 ## Context
 
 At one target worker, full mode was slower than stock wafw00f 2.4.2 on the same
