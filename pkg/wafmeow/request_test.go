@@ -30,7 +30,7 @@ const (
 // spans 100000.html through the valid seven-digit 1000000.html.
 var randomPathExpr = regexp.MustCompile(`^/(?:[1-9][0-9]{5}|1000000)\.html$`)
 
-// activeProbes is the full-mode probe set after removing the standalone
+// activeProbes is the deep-mode probe set after removing the standalone
 // SqliAttack and RceAttack requests. Order follows the catalogue.
 func activeProbes() []struct{ role, query string } {
 	return []struct{ role, query string }{
@@ -165,7 +165,7 @@ func TestAppendedDotSegmentsOnWire(t *testing.T) {
 }
 
 // TestProbeModesOnWire pins which requests each mode actually sends. The JNDI
-// canary is full-mode only, and fast mode replaces the five active probes with
+// canary is deep-mode only, and fast mode replaces the five active probes with
 // the combined probe.
 func TestProbeModesOnWire(t *testing.T) {
 	for _, test := range []struct {
@@ -175,7 +175,7 @@ func TestProbeModesOnWire(t *testing.T) {
 	}{
 		{"baseline", func(c *Config) { c.BaselineOnly = true }, []string{"Normal"}},
 		{"fast", func(c *Config) { c.FastMode = true }, []string{"Normal", "NoUserAgent", "CentralAttack"}},
-		{"full", func(*Config) {}, []string{"Normal", "NoUserAgent", "NonExistent", "XssAttack", "XxeAttack", "LfiAttack", "CentralAttack", "JndiAttack"}},
+		{"deep", func(*Config) {}, []string{"Normal", "NoUserAgent", "NonExistent", "XssAttack", "XxeAttack", "LfiAttack", "CentralAttack", "JndiAttack"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			var mutex sync.Mutex
@@ -270,7 +270,7 @@ func TestBlockedCombinedProbeKeepsAttributionCoarse(t *testing.T) {
 		fast    bool
 		wantLen int
 	}{
-		{"full", false, 8},
+		{"deep", false, 8},
 		{"fast", true, 3},
 	} {
 		t.Run(test.name, func(t *testing.T) {

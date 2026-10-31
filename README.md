@@ -106,8 +106,9 @@ Use `--target` / `-t` for a URL and repeat it for several URLs. Use
 `--input PATH` and `-I PATH` remain equivalent spellings of `--target-file PATH`.
 Choose one input source; saved responses use `--evidence` for offline analysis.
 
-`--baseline` sends a normal request; default active mode sends up to eight requests,
-and `--fast` selects three (normal, no-user-agent and the combined probe).
+`--baseline` sends a normal request; `--deep` (the default) sends up to eight
+active requests, while `--fast` sends three (normal, no-user-agent and the combined
+probe). `--fast`, `--deep` and `--baseline` are mutually exclusive.
 Redirects remain subject to scope and request budgets. See
 [active probe payloads](docs/usage.md#active-probe-payloads) before enabling
 active mode against a target you do not own.
@@ -148,6 +149,9 @@ Configuration, input and output failures exit **1**; cancellation exits **130**.
 
 ## Benchmarks
 
+The broader-probe mode was labeled *full* in these historical measurements;
+it is now `--deep`. The figures below were not rerun for the rename.
+
 Median elapsed time for **600 live HTTP/HTTPS targets** — 500 non-CDN plus 100
 known-CDN targets sampled from Tranco top 10,000 — with **three runs per
 configuration** on a **Hetzner Helsinki VPS** (4 vCPU, 7.6 GiB RAM), completed
@@ -156,7 +160,7 @@ configuration** on a **Hetzner Helsinki VPS** (4 vCPU, 7.6 GiB RAM), completed
 [Target selection, full VPS specifications, methodology, historical runs and
 offline conformance checks](docs/benchmarks.md).
 
-| Workers / processes | wafw00f 2.4.2 | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow fast | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow full | Speedup fast | Speedup full |
+| Workers / processes | wafw00f 2.4.2 | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow fast | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow deep | Speedup fast | Speedup deep |
 | ---: | ---: | ---: | ---: | ---: | ---: |
 | 1 | 31m 38s | 7m 49s | 15m 50s | **4.04×** | **2.00×** |
 | 5 | 6m 53s | 2m 18s | 3m 10s | **2.99×** | **2.17×** |
@@ -167,7 +171,7 @@ offline conformance checks](docs/benchmarks.md).
 **Detection compared at 100 workers/processes** — targets out of 600, range
 across three runs.
 
-| Targets with… | wafw00f 2.4.2 | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow fast | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow full |
+| Targets with… | wafw00f 2.4.2 | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow fast | <img src="assets/wafmeow.svg" width="20" height="20" alt=""> wafmeow deep |
 | --- | ---: | ---: | ---: |
 | Named WAF match | 155–157 | 157–158 | 157–160 |
 | Generic WAF signal | 121–126 | 118–120 | 145–146 |
@@ -192,7 +196,7 @@ classification. Keep each result attached to its workload and measured build.
 
 ## Major caveats
 
-- Scan only systems you own or are authorized to test. Default and fast modes are active.
+- Scan only systems you own or are authorized to test. Both `--deep` (default) and `--fast` send active probes.
 - A fingerprint match is evidence, not proof of WAF enforcement. No match is not proof of absence; incomplete is not negative.
 - Optional Chromium capture is not an OS-enforced network or resource sandbox.
 

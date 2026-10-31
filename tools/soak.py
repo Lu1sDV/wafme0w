@@ -83,8 +83,7 @@ def exercise(binary, root, origin, mode, duration):
                '--concurrency=10', '--max-connections=30', '--max-body-bytes=4096',
                '--request-timeout=1s', '--target-timeout=5s', '--max-requests=18',
                '--rate=200', '--redirect-policy=same-origin', '--max-redirects=2']
-    if mode != 'full':
-        command.append('--' + mode)
+    command.append('--' + mode)
     environment = {key: value for key, value in os.environ.items()
                    if key.lower() not in ('http_proxy', 'https_proxy', 'all_proxy', 'no_proxy')}
     environment['NO_PROXY'] = '127.0.0.1'
@@ -104,6 +103,8 @@ def exercise(binary, root, origin, mode, duration):
                 for line in stdout:
                     output.write(line)
                     row = json.loads(line)
+                    if row['provenance']['scan_mode'] != mode:
+                        raise AssertionError(f'{mode}: incorrect scan mode in result')
                     target = row['target']
                     received[target] += 1
                     kind = urlsplit(target).path.split('/')[1]
@@ -215,7 +216,7 @@ def main():
         for worker in workers:
             worker.start()
         try:
-            for mode in ('baseline', 'fast', 'full'):
+            for mode in ('baseline', 'fast', 'deep'):
                 reports.append(exercise(binary, args.output, f'http://127.0.0.1:{server.server_port}', mode, args.seconds))
             if denied.denied_requests:
                 raise AssertionError('redirect scope reached the denied origin')

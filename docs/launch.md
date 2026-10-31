@@ -110,7 +110,7 @@ date, build and accounting links: on the 2,000-target run from clean commit
 `836252b`, before HTTP/1 connection reuse
 ([ADR 0002](../adrs/0002-http1-connection-reuse-for-probes.md)), the **median
 elapsed ratio was 5.90× at 100 workers in fast mode and 0.90× at one worker in
-full mode**. The reused-connection build's one-worker result is recorded in the
+deep mode (then called full)**. The reused-connection build's one-worker result is recorded in the
 [connection-reuse comparison](benchmarks.md#connection-reuse-comparison); do not
 merge it into the older table. Slower cells must stay visible beside faster ones.
 Report per-block returned and complete counts with any live claim, and keep
